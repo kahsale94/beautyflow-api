@@ -1,7 +1,16 @@
+# Geral
+Pendencias.txt
+alembic/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
+**/__pycache__/
+*.py[cod]
 *.py[codz]
 *$py.class
+
+script.sql
+alembic.ini
 
 # C extensions
 *.so
