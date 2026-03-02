@@ -1,8 +1,9 @@
 from sqlalchemy.orm import Session
-from src.models.availability_model import Availability
-from src.schemas.availability_schema import AvailabilityCreate, AvailabilityUpdate
-from src.repositories.availability_repo import AvailabilityRepository
-from src.repositories.professional_repo import ProfessionalRepository
+
+from src.models import Availability
+from src.core import DataBaseDep
+from src.schemas import AvailabilityCreate, AvailabilityUpdate
+from src.repositories import AvailabilityRepository, ProfessionalRepository
 
 class ProfessionalNotFoundError(Exception):
     pass
@@ -18,50 +19,64 @@ class AvailabilityNotFoundError(Exception):
 
 class AvailabilityService:
 
-    def __init__(self):
-        self.availability_repo = AvailabilityRepository()
-        self.professional_repo = ProfessionalRepository()
+    def __init__(
+        self,
+        db: Session,
+        availability_repo: AvailabilityRepository,
+        professional_repo: ProfessionalRepository,
+    ):
+        self.db = db
+        self.availability_repo = availability_repo
+        self.professional_repo = professional_repo
 
-    def create_availability(self, db: Session, data: AvailabilityCreate):
-
-        professional = self.professional_repo.get_by_id(db, data.professional_id)
-
-        if not professional or not professional.is_active:
+    def create_availability(self, business_id: int, data: AvailabilityCreate):
+        professional = self.professional_repo.get_by_id(self.db, data.professional_id)
+        if not professional or not professional.is_active or professional.business_id != business_id:
             raise ProfessionalNotFoundError()
 
         if data.start_time >= data.end_time:
             raise InvalidTimeRangeError()
 
-        existing = self.availability_repo.get_by_professional_and_weekday(db, data.professional_id, data.weekday)
+        existing = self.availability_repo.get_by_professional_and_weekday(self.db, data.professional_id, data.weekday)
 
         if existing:
             raise AvailabilityAlreadyExistsError()
 
-        availability = Availability(**data.model_dump())
+        availability = Availability(
+            professional_id=data.professional_id,
+            weekday=data.weekday,
+            start_time=data.start_time,
+            end_time=data.end_time,
+        )
 
-        self.availability_repo.add(db, availability)
+        self.availability_repo.add(self.db, availability)
 
-        db.commit()
-        db.refresh(availability)
+        self.db.commit()
+        self.db.refresh(availability)
 
         return availability
 
-    def get_availability(self, db: Session, availability_id: int | None = None):
+    def get_availability(self, business_id: int, professional_id: int, weekday: int | None = None):
+        professional = self.professional_repo.get_by_id(self.db, professional_id)
+        if not professional or not professional.is_active or professional.business_id != business_id:
+            raise ProfessionalNotFoundError()
         
-        if availability_id is None:
-            return self.availability_repo.get_all(db)
-
-        availability = self.availability_repo.get_by_id(db, availability_id)
+        if weekday is None:
+            availability = self.availability_repo.get_by_professional(self.db, professional_id)
+        else:
+            availability = self.availability_repo.get_by_professional_and_weekday(self.db, professional_id, weekday)
 
         if not availability:
             raise AvailabilityNotFoundError()
-
+        
         return availability
 
-    def update_availability(self, db: Session, availability_id: int, data: AvailabilityUpdate):
-
-        availability = self.availability_repo.get_by_id(db, availability_id)
-
+    def update_availability(self, business_id: int, professional_id: int, data: AvailabilityUpdate):
+        professional = self.professional_repo.get_by_id(self.db, professional_id)
+        if not professional or not professional.is_active or professional.business_id != business_id:
+            raise ProfessionalNotFoundError()
+        
+        availability = self.availability_repo.get_by_professional(self.db, professional_id)
         if not availability:
             raise AvailabilityNotFoundError()
 
@@ -77,26 +92,35 @@ class AvailabilityService:
 
         if "weekday" in update_data:
 
-            existing = self.availability_repo.get_by_professional_and_weekday(db, availability.professional_id, update_data["weekday"])
+            existing = self.availability_repo.get_by_professional_and_weekday(self.db, availability.professional_id, update_data["weekday"])
 
-            if existing and existing.id != availability.id:
+            if existing and (existing.professional_id != availability.professional_id or existing.weekday != availability.weekday):
                 raise AvailabilityAlreadyExistsError()
 
         for field, value in update_data.items():
             setattr(availability, field, value)
 
-        db.commit()
-        db.refresh(availability)
+        self.db.commit()
+        self.db.refresh(availability)
 
         return availability
 
-    def delete_availability(self, db: Session, availability_id: int):
-
-        availability = self.availability_repo.get_by_id(db, availability_id)
-
+    def delete_availability(self, business_id: int, professional_id: int):
+        professional = self.professional_repo.get_by_id(self.db, professional_id)
+        if not professional or not professional.is_active or professional.business_id != business_id:
+            raise ProfessionalNotFoundError()
+        
+        availability = self.availability_repo.get_by_professional(self.db, professional_id)
         if not availability:
             raise AvailabilityNotFoundError()
 
-        self.availability_repo.delete(db, availability)
+        self.availability_repo.delete(self.db, availability)
 
-        db.commit()
+        self.db.commit()
+
+def get_availability_service(db: DataBaseDep):
+    return AvailabilityService(
+        db,
+        AvailabilityRepository(),
+        ProfessionalRepository(),
+    )

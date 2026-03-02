@@ -3,7 +3,6 @@ from pydantic import BaseModel, ConfigDict
 
 class AppointmentCreate(BaseModel):
     professional_id: int
-    business_id: int
     service_id: int
     client_name: str
     client_phone: str

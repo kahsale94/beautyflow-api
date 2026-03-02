@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+from .api.v1 import router as v1_router
 from .middlewares import LoggingMiddleware, RateLimitMiddleware
-from .routes import register_routers
 
 app = FastAPI(title="API de Agendamento de Serviços")
 
@@ -15,4 +16,4 @@ app.add_middleware(CORSMiddleware,
 app.add_middleware(LoggingMiddleware)
 app.add_middleware(RateLimitMiddleware, max_requests=100, window=60)
 
-register_routers(app)
+app.include_router(v1_router, prefix="/v1")

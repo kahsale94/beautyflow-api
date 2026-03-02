@@ -1,80 +1,91 @@
 from sqlalchemy.orm import Session
-from src.models.service_model import Service
-from src.schemas.service_schema import ServiceCreate, ServiceUpdate
-from src.repositories.service_repo import ServiceRepository
-from src.repositories.business_repo import BusinessRepository
+
+from src.models import Service
+from src.core import DataBaseDep
+from src.schemas import ServiceCreate, ServiceUpdate
+from src.repositories import ServiceRepository, BusinessRepository
 
 class ServiceNotFoundError(Exception):
     pass
 
-class BusinessNotFoundError(Exception):
-    pass
-
 class ServiceService:
 
-    def __init__(self):
-        self.service_repo = ServiceRepository()
-        self.business_repo = BusinessRepository()
+    def __init__(
+        self,
+        db: Session,
+        service_repo: ServiceRepository,
+        business_repo: BusinessRepository,
+    ):
+        self.db = db
+        self.service_repo = service_repo
+        self.business_repo = business_repo
 
-    def create_service(self, db: Session, data: ServiceCreate):
+    def create_service(self, business_id: int, data: ServiceCreate):      
+        if data.duration_minutes <= 0:
+            raise ValueError()
 
-        business = self.business_repo.get_by_id(db, data.business_id)
-        if not business or not business.is_active:
-            raise BusinessNotFoundError()
+        if data.price < 0:
+            raise ValueError()
 
         service = Service(
-            business_id=data.business_id,
+            business_id=business_id,
             name=data.name,
             duration_minutes=data.duration_minutes,
             price=data.price,
         )
 
-        self.service_repo.add(db, service)
+        self.service_repo.add(self.db, service)
 
-        db.commit()
-        db.refresh(service)
+        self.db.commit()
+        self.db.refresh(service)
 
         return service
 
-    def get_service(self, db: Session, service_id: int | None = None):
-
+    def get_service(self, business_id: int, service_id: int | None = None):
         if service_id is None:
-            return self.service_repo.get_all(db)
+            return self.service_repo.get_by_business(self.db, business_id)
 
-        service = self.service_repo.get_by_id(db, service_id)
-
-        if not service:
+        service = self.service_repo.get_by_id(self.db, service_id)
+        if not service or service.business_id != business_id:
             raise ServiceNotFoundError()
 
         return service
 
-    def update_service(self, db: Session, service_id: int, data: ServiceUpdate):
-
-        service = self.service_repo.get_by_id(db, service_id)
-
-        if not service:
+    def update_service(self, business_id: int, service_id: int, data: ServiceUpdate):        
+        service = self.service_repo.get_by_id(self.db, service_id)
+        if not service or service.business_id != business_id:
             raise ServiceNotFoundError()
 
-        if data.business_id is not None:
-            business = self.business_repo.get_by_id(db, data.business_id)
-            if not business or not business.is_active:
-                raise BusinessNotFoundError()
+        update_data = data.model_dump(exclude_unset=True)
 
-        for field, value in data.model_dump(exclude_unset=True).items():
+        if "duration_minutes" in update_data:
+            if update_data.duration_minutes <= 0:
+                raise ValueError()
+
+        if "price" in update_data:
+            if update_data.price < 0:
+                raise ValueError()
+
+        for field, value in update_data.items():
             setattr(service, field, value)
 
-        db.commit()
-        db.refresh(service)
+        self.db.commit()
+        self.db.refresh(service)
 
         return service
 
-    def delete_service(self, db: Session, service_id: int):
-
-        service = self.service_repo.get_by_id(db, service_id)
-
-        if not service:
+    def delete_service(self, business_id: int, service_id: int):
+        service = self.service_repo.get_by_id(self.db, service_id)
+        if not service or service.business_id != business_id:
             raise ServiceNotFoundError()
 
-        self.service_repo.delete(db, service)
+        self.service_repo.delete(self.db, service)
 
-        db.commit()
+        self.db.commit()
+
+def get_service_service(db: DataBaseDep):
+    return ServiceService(
+        db,
+        ServiceRepository(),
+        BusinessRepository(),    
+    )

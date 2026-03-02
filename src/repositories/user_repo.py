@@ -1,11 +1,15 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from src.models.user_model import User
+
+from src.models import User
 
 class UserRepository:
 
     def add(self, db: Session, user: User):
         db.add(user)
+
+    def delete(self, db: Session, user: User):
+        db.delete(user)
 
     def get_by_id(self, db: Session, user_id: int):
         return db.get(User, user_id)
@@ -14,6 +18,6 @@ class UserRepository:
         stmt = select(User).where(User.email == user_email)
         return db.scalars(stmt).first()
 
-    def get_all(self, db: Session):
-        stmt = select(User)
+    def get_by_business(self, db: Session, business_id: int):
+        stmt = select(User).where(User.business_id == business_id)
         return db.scalars(stmt).all()

@@ -13,7 +13,6 @@ class AvailabilityUpdate(BaseModel):
     end_time: time | None = None
 
 class AvailabilityResponse(BaseModel):
-    id: int
     professional_id: int
     weekday: int
     start_time: time

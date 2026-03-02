@@ -1,6 +1,10 @@
 # Geral
-Pendencias.txt
+workflows/
+z_cache_files/
+
+# Alembic
 alembic/
+alembic.ini
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -8,9 +12,6 @@ __pycache__/
 *.py[cod]
 *.py[codz]
 *$py.class
-
-script.sql
-alembic.ini
 
 # C extensions
 *.so

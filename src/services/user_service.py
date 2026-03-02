@@ -1,8 +1,10 @@
 from sqlalchemy.orm import Session
-from src.models.user_model import User
-from src.schemas.user_schema import UserCreate
-from src.repositories.user_repo import UserRepository
-from src.security.security import Security
+
+from src.models import User
+from src.core import DataBaseDep
+from src.security import ActorSecurity
+from src.repositories import UserRepository
+from src.schemas import UserCreate, UserUpdate
 
 class UserAlreadyExistsError(Exception):
     pass
@@ -12,43 +14,81 @@ class UserNotFoundError(Exception):
 
 class UserService:
 
-    def __init__(self):
-        self.user_repo = UserRepository()
+    def __init__(
+        self,
+        db: Session,
+        user_repo: UserRepository,
+    ):
+        self.db = db
+        self.user_repo = user_repo
 
-    def create_user(self, db: Session, data: UserCreate):
-
-        existing = self.user_repo.get_by_email(db, data.email)
-
-        if existing:
+    def create_user(self, business_id: int, data: UserCreate):        
+        existing = self.user_repo.get_by_email(self.db, data.email)
+        if existing and existing.business_id == business_id:
             raise UserAlreadyExistsError()
 
-        password_hash = Security.password_hash(data.senha)
+        password_hash = ActorSecurity.password_hash(data.password)
 
         user = User(
-            email=data.email,
-            password_hash=password_hash,
-            role=data.role
+            email = data.email,
+            password_hash = password_hash,
+            role = data.role,
+            business_id = business_id,
         )
 
-        self.user_repo.add(db, user)
+        self.user_repo.add(self.db, user)
 
-        db.commit()
-        db.refresh(user)
+        self.db.commit()
+        self.db.refresh(user)
 
         return user
 
-    def get_user(self, db: Session, user_id: int | None = None, user_email: str | None = None):
-        
+    def get_user(self, business_id: int, user_id: int | None = None, user_email: str | None = None):
         if user_id is None:
             if user_email is None:
-                return self.user_repo.get_all(db)
-            result = self.user_repo.get_by_email(db, user_email)
+                return self.user_repo.get_by_business(self.db, business_id)
+            user = self.user_repo.get_by_email(self.db, user_email)
         else:
-            result = self.user_repo.get_by_id(db, user_id)
-       
-        user = result
+            user = self.user_repo.get_by_id(self.db, user_id)
 
-        if not user:
-            return UserNotFoundError()
+        if not user or user.business_id != business_id:
+            raise UserNotFoundError()
         
         return user
+    
+    def update_user(self, business_id: int, user_id: int, data: UserUpdate):        
+        user = self.user_repo.get_by_id(self.db, user_id)
+        if not user or user.business_id != business_id:
+            raise UserNotFoundError()
+        
+        update_data = data.model_dump(exclude_unset=True)
+
+        if "email" in update_data:
+            email = update_data.get("email", user.email)
+            
+            existing = self.user_repo.get_by_email(self.db, email)
+            if existing and existing.business_id == business_id and existing.id != user.id:
+                raise UserAlreadyExistsError()
+
+        for field, value in update_data.items():
+            setattr(user, field, value)
+
+        self.db.commit()
+        self.db.refresh(user)
+
+        return user
+
+    def delete_user(self, business_id: int, user_id: int):
+        user = self.user_repo.get_by_id(self.db, user_id)
+        if not user or user.business_id != business_id:
+            raise UserNotFoundError()
+
+        self.user_repo.delete(self.db, user)
+
+        self.db.commit()
+    
+def get_user_service(db: DataBaseDep):
+    return UserService(
+        db,
+        UserRepository(),
+    )
