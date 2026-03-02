@@ -1,13 +1,14 @@
 from typing import TYPE_CHECKING
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from .base_model import Base, intpk, business_fk
 
 if TYPE_CHECKING:
-    from service_model import Service
-    from business_model import Business
-    from appointment_model import Appointment
-    from availability_model import Availability
-    from professional_service_model import ProfessionalService
+    from .service_model import Service
+    from .business_model import Business
+    from .appointment_model import Appointment
+    from .availability_model import Availability
+    from .professional_service_model import ProfessionalService
 
 class Professional(Base):
     __tablename__ = "professionals"

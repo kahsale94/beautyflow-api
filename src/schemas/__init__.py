@@ -1,6 +1,8 @@
-from .appointment_schema import AppointmentCreate, AppointmentResponse, AppointmentUpdate
-from .availability_schema import AvailabilityCreate, AvailabilityResponse, AvailabilityUpdate
-from .business_schema import BusinessCreate, BusinessResponse, BusinessUpdate
-from .professional_schema import ProfessionalCreate, ProfessionalResponse, ProfessionalUpdate
+from .user_schema import UserCreate, UserResponse, UserUpdate
+from .client_schema import ClientCreate, ClientResponse, ClientUpdate
 from .service_schema import ServiceCreate, ServiceResponse, ServiceUpdate
-from .user_schema import UserCreate, UserResponse
+from .business_schema import BusinessCreate, BusinessResponse, BusinessUpdate
+from .appointment_schema import AppointmentCreate, AppointmentResponse, AppointmentUpdate
+from .integration_schema import IntegrationCreate, IntegrationResponse, IntegrationUpdate
+from .availability_schema import AvailabilityCreate, AvailabilityResponse, AvailabilityUpdate
+from .professional_schema import ProfessionalCreate, ProfessionalResponse, ProfessionalUpdate

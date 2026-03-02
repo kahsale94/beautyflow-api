@@ -1,8 +1,2 @@
-from .database import db_dependecy
-from .config import DATABASE_URL
-from .config import N8N_URL
-from .config import N8N_KEY
-from .config import SECRET_KEY
-from .config import ALGORITHM
-from .config import ACCESS_TOKEN_EXPIRE_MINUTES
-from .config import REFRESH_TOKEN_EXPIRE_DAYS
+from .database import DataBaseDep, get_db
+from .config import DATABASE_URL, SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS

@@ -1,6 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from src.models.business_model import Business
+
+from src.models import Business
 
 class BusinessRepository:
 
