@@ -8,7 +8,7 @@ class UserContext(BaseActor):
     id: int
     email: str
     role: str
-    business_id: int
+    business_id: int | None = None
 
 class IntegrationContext(BaseActor):
     integration_id: int

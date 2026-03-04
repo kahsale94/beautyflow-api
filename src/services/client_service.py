@@ -1,3 +1,4 @@
+import re
 from sqlalchemy.orm import Session
 
 from src.models import Client
@@ -20,30 +21,35 @@ class ClientService:
         self.db = db
         self.client_repo = client_repo
 
+    def normalize_phone(phone: str) -> str:
+        return re.sub(r"\D", "", phone)
+
     def create_client(self, business_id: int, data):
+
+        phone = self.normalize_phone(data.phone)
+
         existing = self.client_repo.get_by_phone(self.db, data.phone)
-        if existing:
+        if existing and existing.business_id == business_id:
             raise ClientAlreadyExistsError()
 
         client = Client(
-            business_id=business_id,
-            phone=data.phone,
-            name=data.name,
-            name_wpp=data.name_wpp,
+            business_id = business_id,
+            phone = phone,
+            name = data.name,
+            name_wpp = data.name_wpp,
         )
 
         self.client_repo.add(self.db, client)
-
         self.db.commit()
         self.db.refresh(client)
 
         return client
 
-    def get_client(self, business_id: int, client_id: int | None = None, phone: str | None = None):
+    def get_client(self, business_id: int, client_id: int | None = None, client_phone: str | None = None):
         if client_id is None:
-            if phone is None:
+            if client_phone is None:
                 return self.client_repo.get_by_business(self.db, business_id)
-            client = self.client_repo.get_by_phone(self.db, phone)
+            client = self.client_repo.get_by_phone(self.db, client_phone)
         else:
             client = self.client_repo.get_by_id(self.db, client_id)
 

@@ -4,7 +4,7 @@ from src.schemas import UserCreate, UserResponse, UserUpdate
 from src.dependecies import UserServiceDep, CurrentUserDep, SuperAdminDep, AdminDep, BusinessScopeDep
 from src.services.user_service import UserAlreadyExistsError, UserNotFoundError
 
-router = APIRouter(prefix="/users", tags=["Users"])
+router = APIRouter(prefix="/user", tags=["Users"])
 
 @router.get("/me", response_model=UserResponse)
 def get_me(current_user: CurrentUserDep):
@@ -29,9 +29,9 @@ def get_user_by_email(user_email: str, business_id: BusinessScopeDep, service: U
         raise HTTPException(status_code=404, detail="Usuário não encontrado!")
 
 @router.post("/", response_model=UserResponse, status_code=201)
-def create_user(data: UserCreate, business_id: BusinessScopeDep, service: UserServiceDep, super_admin: SuperAdminDep):
+def create_user(business_id: BusinessScopeDep, data: UserCreate, service: UserServiceDep):
     try:
-        return service.create_user(business_id, data)
+        return service.create_user(data, business_id)
     except UserAlreadyExistsError:
         raise HTTPException(status_code=409, detail="Email já cadastrado!")
     

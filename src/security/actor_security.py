@@ -1,12 +1,13 @@
 from typing import Union
 from datetime import datetime, timedelta, timezone
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from fastapi import Depends, HTTPException
 
 from .token import TokenManager
 from .oauth import oauth2_scheme
-from src.models import User, Integration
+from src.models import User, Integration, BusinessIntegration
 from .context import UserContext, IntegrationContext
 from src.core import get_db, ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS
 
@@ -45,11 +46,20 @@ class ActorSecurity:
         return TokenManager.encode(payload)
 
     @staticmethod
-    def create_integration_token(integration_id: int, business_id: int, name: str) -> str:
+    def create_integration_token(db: Session, business_id: int, integration_id: int) -> str:
+        stmt = select(BusinessIntegration).where(
+            BusinessIntegration.integration_id == integration_id,
+            BusinessIntegration.business_id == business_id,
+            BusinessIntegration.is_active == True,
+        )
+
+        result = db.scalar(stmt)
+        if not result:
+            raise HTTPException(status_code=401, detail="Integração inválida")
+        
         payload = {
             "sub": str(integration_id),
             "business_id": business_id,
-            "name": name,
             "type": "integration",
             "token_type": "access",
             "exp": datetime.now(timezone.utc) + timedelta(days=365),
@@ -91,10 +101,15 @@ class ActorSecurity:
             integration_id = int(payload.get("sub"))
             business_id = payload.get("business_id")
 
-            integration = db.get(Integration, integration_id)
+            stmt = select(BusinessIntegration).where(
+                BusinessIntegration.integration_id == integration_id,
+                BusinessIntegration.business_id == business_id,
+                BusinessIntegration.is_active == True,
+            )
 
-            if not integration or not business_id:
-                raise HTTPException(status_code=401, detail="Token inválido")
+            result = db.scalar(stmt)
+            if not result:
+                raise HTTPException(status_code=401, detail="Integração inválida")
 
             return IntegrationContext(
                 type = "integration",

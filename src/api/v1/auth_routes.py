@@ -10,6 +10,7 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 
 @router.post("/login")
 def login(db: DataBaseDep, service: AuthServiceDep, form_data: OAuth2PasswordRequestForm = Depends()):
+    print("funcionando")
     try:
         access_token, refresh_token = service.login(
             db=db,

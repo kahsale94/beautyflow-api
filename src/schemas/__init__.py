@@ -1,4 +1,5 @@
 from .user_schema import UserCreate, UserResponse, UserUpdate
+from .business_integration_schma import BusinessIntegrationResponse
 from .client_schema import ClientCreate, ClientResponse, ClientUpdate
 from .service_schema import ServiceCreate, ServiceResponse, ServiceUpdate
 from .business_schema import BusinessCreate, BusinessResponse, BusinessUpdate

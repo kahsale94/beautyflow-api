@@ -4,7 +4,7 @@ from src.dependecies import BusinessScopeDep, BusinessServiceDep, SuperAdminDep
 from src.schemas import BusinessCreate, BusinessResponse, BusinessUpdate
 from src.services.business_service import BusinessNotFoundError, BusinessAlreadyExistsError
 
-router = APIRouter(prefix="/businesses", tags=["Businesses"])
+router = APIRouter(prefix="/business", tags=["Businesses"])
 
 @router.get("/me", response_model=BusinessResponse)
 def get_my_business(business_id: BusinessScopeDep, service: BusinessServiceDep):
