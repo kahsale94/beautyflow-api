@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from src.models import Client
 from src.core import DataBaseDep
+from src.schemas import ClientCreate
 from src.repositories import ClientRepository
 
 class ClientNotFoundError(Exception):
@@ -10,6 +11,9 @@ class ClientNotFoundError(Exception):
 
 class ClientAlreadyExistsError(Exception):
     pass
+
+def normalize_phone(phone: str) -> str:
+    return re.sub(r"\D", "", phone)
 
 class ClientService:
 
@@ -21,12 +25,9 @@ class ClientService:
         self.db = db
         self.client_repo = client_repo
 
-    def normalize_phone(phone: str) -> str:
-        return re.sub(r"\D", "", phone)
+    def create_client(self, business_id: int, data: ClientCreate):
 
-    def create_client(self, business_id: int, data):
-
-        phone = self.normalize_phone(data.phone)
+        phone = normalize_phone(data.phone)
 
         existing = self.client_repo.get_by_phone(self.db, data.phone)
         if existing and existing.business_id == business_id:
