@@ -4,7 +4,7 @@ from src.dependecies import AvailabilityServiceDep, BusinessScopeDep
 from src.schemas import AvailabilityCreate, AvailabilityUpdate, AvailabilityResponse
 from src.services.availability_service import ProfessionalNotFoundError, InvalidTimeRangeError, AvailabilityAlreadyExistsError, AvailabilityNotFoundError
 
-router = APIRouter(prefix="/availabilities", tags=["Availabilities"])
+router = APIRouter(prefix="/availability", tags=["Availabilities"])
 
 @router.get("/{professional_id}", response_model=list[AvailabilityResponse])
 def get_all_availability(professional_id: int, business_id: BusinessScopeDep, service: AvailabilityServiceDep):
@@ -31,8 +31,8 @@ def create_availability(data: AvailabilityCreate, business_id: BusinessScopeDep,
     except InvalidTimeRangeError:
         raise HTTPException(status_code=400, detail="Intervalo de tempo invalido!")
 
-@router.put("/{professional_id}", response_model=AvailabilityResponse)
-def update_availability(professional_id: int, data: AvailabilityUpdate, business_id: BusinessScopeDep, service: AvailabilityServiceDep):
+@router.put("/{professional_id}/{weekday}", response_model=AvailabilityResponse)
+def update_availability(professional_id: int, weekday: int, data: AvailabilityUpdate, business_id: BusinessScopeDep, service: AvailabilityServiceDep):
     try:
         return service.update_availability(business_id, professional_id, data)
     except AvailabilityNotFoundError:
@@ -42,8 +42,8 @@ def update_availability(professional_id: int, data: AvailabilityUpdate, business
     except InvalidTimeRangeError:
         raise HTTPException(status_code=400, detail="Intervalo de tempo invalido!")
 
-@router.delete("/{professional_id}", status_code=204)
-def delete_availability(professional_id: int, business_id: BusinessScopeDep, service: AvailabilityServiceDep):
+@router.delete("/{professional_id}/{weekday}", status_code=204)
+def delete_availability(professional_id: int, weekday: int, business_id: BusinessScopeDep, service: AvailabilityServiceDep):
     try:
         service.delete_availability(business_id, professional_id)
     except AvailabilityNotFoundError:

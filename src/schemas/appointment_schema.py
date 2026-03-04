@@ -1,31 +1,31 @@
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 
+from src.models import AppointmentStatus
+
 class AppointmentCreate(BaseModel):
+    client_id: int
     professional_id: int
     service_id: int
-    client_name: str
-    client_phone: str
     start_datetime: datetime
-    end_datetime: datetime
 
 class AppointmentUpdate(BaseModel):
+    client_id: int | None = None
     professional_id: int | None = None
     service_id: int | None = None
     start_datetime: datetime | None = None
     end_datetime: datetime | None = None
-    status: str | None = None
+    status: AppointmentStatus | None = None
 
 class AppointmentResponse(BaseModel):
     id: int
+    client_id: int
     professional_id: int
-    business_id: int
     service_id: int
-    client_name: str
-    client_phone: str
+    business_id: int
     start_datetime: datetime
     end_datetime: datetime
     created_at: datetime
-    status: str
+    status: AppointmentStatus
 
     model_config = ConfigDict(from_attributes=True)

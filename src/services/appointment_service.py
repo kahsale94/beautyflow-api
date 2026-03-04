@@ -1,11 +1,15 @@
+from datetime import timedelta, datetime
 from sqlalchemy.orm import Session
 
 from src.core import DataBaseDep
 from src.models import Appointment
 from src.schemas import AppointmentCreate, AppointmentUpdate
-from src.repositories import AppointmentRepository, ProfessionalRepository, BusinessRepository
+from src.repositories import AppointmentRepository, ProfessionalRepository, BusinessRepository, ServiceRepository, AvailabilityRepository
 
 class ProfessionalNotAvailableError(Exception):
+    pass
+
+class ServiceNotAvailableError(Exception):
     pass
 
 class AppointmentTimeConflictError(Exception):
@@ -19,13 +23,17 @@ class AppointmentService:
     def __init__(
         self,
         db: Session,
+        service_repo: ServiceRepository,
         business_repo: BusinessRepository,
         appointment_repo: AppointmentRepository,
+        availability_repo: AvailabilityRepository,
         professional_repo: ProfessionalRepository,
     ):
         self.db = db
+        self.service_repo = service_repo
         self.business_repo = business_repo
         self.appointment_repo = appointment_repo
+        self.availability_repo = availability_repo
         self.professional_repo = professional_repo
 
     def create_appointment(self, business_id: int, data: AppointmentCreate):
@@ -33,25 +41,41 @@ class AppointmentService:
         if not professional or not professional.is_active or professional.business_id != business_id:
             raise ProfessionalNotAvailableError()
 
-        if data.start_datetime >= data.end_datetime:
+        service = self.service_repo.get_by_id(self.db, data.service_id)
+        if not service or service.business_id != business_id or not service.is_active:
+            raise ServiceNotAvailableError()
+        
+        if data.start_datetime < datetime.now(professional.business.timezone):
             raise ValueError()
+        
+        end_datetime = data.start_datetime + timedelta(minutes=service.duration_minutes)
+        if data.start_datetime >= end_datetime:
+            raise ValueError()
+        
+        weekday = data.start_datetime.weekday()
+        availability = self.availability_repo.get_by_professional_and_weekday(self.db, data.professional_id, weekday)
+        if not availability:
+            raise ProfessionalNotAvailableError()
+        
+        start_time = data.start_datetime.time()
+        end_time = end_datetime.time()
+        if not availability.start_time <= start_time and end_time <= availability.end_time:
+            raise ProfessionalNotAvailableError()
 
-        if self.appointment_repo.has_conflict(self.db, business_id=business_id, professional_id=data.professional_id, start=data.start_datetime, end=data.end_datetime):
+        if self.appointment_repo.has_conflict(self.db, business_id=business_id, professional_id=data.professional_id, start=data.start_datetime, end=end_datetime):
             raise AppointmentTimeConflictError()
 
         appointment = Appointment(
+            client_id = data.client_id,
             professional_id = data.professional_id,
-            business_id = business_id,
             service_id = data.service_id,
-            client_name = data.client_name,
-            client_phone = data.client_phone,
+            business_id = business_id,
             start_datetime = data.start_datetime,
-            end_datetime = data.end_datetime,
+            end_datetime = end_datetime,
             status = "scheduled",
         )
 
         self.appointment_repo.add(self.db, appointment)
-
         self.db.commit()
         self.db.refresh(appointment)
 
@@ -113,6 +137,7 @@ class AppointmentService:
 def get_appointment_service(db: DataBaseDep):
     return AppointmentService(
         db,
+        ServiceRepository(),
         BusinessRepository(),
         AppointmentRepository(),
         ProfessionalRepository(),

@@ -4,7 +4,7 @@ from src.dependecies import ClientServiceDep, BusinessScopeDep
 from src.schemas import ClientCreate, ClientUpdate, ClientResponse
 from src.services.client_service import ClientNotFoundError, ClientAlreadyExistsError
 
-router = APIRouter(prefix="/clients", tags=["Clients"])
+router = APIRouter(prefix="/client", tags=["Clients"])
 
 @router.get("/", response_model=list[ClientResponse])
 def get_all_clients(business_id: BusinessScopeDep, service: ClientServiceDep):

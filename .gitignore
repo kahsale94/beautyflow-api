@@ -2,10 +2,6 @@
 workflows/
 z_cache_files/
 
-# Alembic
-alembic/
-alembic.ini
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 **/__pycache__/

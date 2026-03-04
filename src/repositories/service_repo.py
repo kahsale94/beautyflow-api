@@ -15,5 +15,8 @@ class ServiceRepository:
         return db.get(Service, service_id)
 
     def get_by_business(self, db: Session, business_id: int):
-        stmt = select(Service).where(Service.business_id == business_id)
+        stmt = select(Service).where(
+            Service.business_id == business_id,
+            Service.is_active == True
+        )
         return db.scalars(stmt).all()

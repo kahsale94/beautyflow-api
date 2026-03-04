@@ -4,7 +4,7 @@ from src.dependecies import ServiceServiceDep, BusinessScopeDep
 from src.schemas import ServiceCreate, ServiceUpdate, ServiceResponse
 from src.services.service_service import ServiceNotFoundError
 
-router = APIRouter(prefix="/services", tags=["Services"])
+router = APIRouter(prefix="/service", tags=["Services"])
 
 @router.get("/", response_model=list[ServiceResponse])
 def get_all_services(business_id: BusinessScopeDep, service: ServiceServiceDep):

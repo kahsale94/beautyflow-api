@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 
 from src.core import DataBaseDep
 from src.models import Integration
+from src.security import ActorSecurity
 from src.repositories import IntegrationRepository
 from src.schemas import IntegrationCreate, IntegrationUpdate
 
@@ -27,8 +28,8 @@ class IntegrationService:
             raise IntegrationAlreadyExistsError()
 
         integration = Integration(
-            name=data.name,
-            type=data.type,
+            name = data.name,
+            type = data.type,
         )
 
         self.integration_repo.add(self.db, integration)

@@ -1,4 +1,6 @@
+from datetime import datetime
 from typing import TYPE_CHECKING
+from sqlalchemy import func, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base_model import Base, business_fk, integration_fk
@@ -12,6 +14,8 @@ class BusinessIntegration(Base):
 
     business_id: Mapped[business_fk] = mapped_column(primary_key=True)
     integration_id: Mapped[integration_fk] = mapped_column(primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    is_active: Mapped[bool] = mapped_column(nullable=False, default=True)
 
     business: Mapped["Business"] = relationship(back_populates="business_integrations")
     integration: Mapped["Integration"] = relationship(back_populates="business_integrations")

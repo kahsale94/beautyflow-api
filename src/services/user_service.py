@@ -22,7 +22,7 @@ class UserService:
         self.db = db
         self.user_repo = user_repo
 
-    def create_user(self, business_id: int, data: UserCreate):        
+    def create_user(self, data: UserCreate, business_id: int | None = None):        
         existing = self.user_repo.get_by_email(self.db, data.email)
         if existing and existing.business_id == business_id:
             raise UserAlreadyExistsError()

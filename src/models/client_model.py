@@ -6,6 +6,7 @@ from .base_model import Base, intpk, business_fk
 
 if TYPE_CHECKING:
     from .business_model import Business
+    from .appointment_model import Appointment
 
 class Client(Base):
     __tablename__ = "clients"
@@ -19,3 +20,4 @@ class Client(Base):
     business_id: Mapped[business_fk]
 
     business: Mapped["Business"] = relationship(back_populates="clients")
+    appointments: Mapped[list["Appointment"]] = relationship(back_populates="client", cascade="all, delete-orphan")

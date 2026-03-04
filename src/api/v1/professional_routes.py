@@ -4,7 +4,7 @@ from src.dependecies import ProfessionalServiceDep, BusinessScopeDep, AdminDep
 from src.schemas import ProfessionalCreate, ProfessionalResponse, ProfessionalUpdate
 from src.services.professional_service import ProfessionalNotFoundError
 
-router = APIRouter(prefix="/professionals", tags=["Professionals"])
+router = APIRouter(prefix="/professional", tags=["Professionals"])
 
 @router.get("/", response_model=list[ProfessionalResponse])
 def get_all_professionals(business_id: BusinessScopeDep, service: ProfessionalServiceDep):

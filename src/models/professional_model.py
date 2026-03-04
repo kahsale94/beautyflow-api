@@ -1,4 +1,5 @@
 from typing import TYPE_CHECKING
+from sqlalchemy import UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base_model import Base, intpk, business_fk
@@ -12,6 +13,8 @@ if TYPE_CHECKING:
 
 class Professional(Base):
     __tablename__ = "professionals"
+
+    __table_args__ = (UniqueConstraint("business_id", "name",  name="uq_professional_business_name"),)
 
     id: Mapped[intpk]
     business_id: Mapped[business_fk]

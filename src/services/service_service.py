@@ -46,7 +46,7 @@ class ServiceService:
             return self.service_repo.get_by_business(self.db, business_id)
 
         service = self.service_repo.get_by_id(self.db, service_id)
-        if not service or service.business_id != business_id:
+        if not service or service.business_id != business_id or not service.is_active:
             raise ServiceNotFoundError()
 
         return service
