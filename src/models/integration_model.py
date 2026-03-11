@@ -15,6 +15,7 @@ class Integration(Base):
     id: Mapped[intpk]
     name: Mapped[str] = mapped_column(nullable=False)
     type: Mapped[Optional[str]]
+    api_token_hash: Mapped[Optional[str]]
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     is_active: Mapped[bool] = mapped_column(nullable=False, default=True)
 

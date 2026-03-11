@@ -27,7 +27,7 @@ class UserService:
         if existing and existing.business_id == business_id:
             raise UserAlreadyExistsError()
 
-        password_hash = ActorSecurity.password_hash(data.password)
+        password_hash = ActorSecurity.hash(data.password)
 
         user = User(
             email = data.email,

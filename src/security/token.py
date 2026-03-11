@@ -14,4 +14,4 @@ class TokenManager:
         try:
             return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         except JWTError:
-            raise HTTPException(status_code=401, detail="Token inválido ou expirado")
+            raise HTTPException(status_code=401, detail="Token inválido ou expirado!")

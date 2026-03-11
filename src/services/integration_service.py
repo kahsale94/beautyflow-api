@@ -33,11 +33,22 @@ class IntegrationService:
         )
 
         self.integration_repo.add(self.db, integration)
+        self.db.flush()
+
+        api_token = ActorSecurity.create_integration_token(integration.id)
+        integration.api_token_hash = ActorSecurity.hash(api_token)
 
         self.db.commit()
         self.db.refresh(integration)
 
-        return integration
+        return {
+            "id": integration.id,
+            "name": integration.name,
+            "type": integration.type,
+            "api_token": api_token,
+            "created_at": integration.created_at,
+            "is_active": integration.is_active,
+        }
 
     def get_integration(self, integration_id: int | None = None):
         if integration_id is None:
