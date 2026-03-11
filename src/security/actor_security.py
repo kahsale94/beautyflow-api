@@ -8,20 +8,20 @@ from fastapi import Depends, HTTPException
 from .token import TokenManager
 from .oauth import oauth2_scheme
 from src.models import User, Integration, BusinessIntegration
-from .context import UserContext, IntegrationContext
-from src.core import get_db, ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS
+from .context import UserContext, IntegrationContext, BusinessIntegrationContext
+from src.core import get_db, ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS, INTEGRATION_TOKEN_EXPIRE_DAYS
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 class ActorSecurity:
 
     @staticmethod
-    def password_hash(password: str) -> str:
-        return pwd_context.hash(password)
+    def hash(secret: str) -> str:
+        return pwd_context.hash(secret)
 
     @staticmethod
-    def verify_password(password: str, password_hash: str) -> bool:
-        return pwd_context.verify(password, password_hash)
+    def verify_hash(secret: str, secret_hash: str) -> bool:
+        return pwd_context.verify(secret, secret_hash)
 
     @staticmethod
     def create_user_access_token(user_id: int) -> str:
@@ -46,29 +46,30 @@ class ActorSecurity:
         return TokenManager.encode(payload)
 
     @staticmethod
-    def create_integration_token(db: Session, business_id: int, integration_id: int) -> str:
-        stmt = select(BusinessIntegration).where(
-            BusinessIntegration.integration_id == integration_id,
-            BusinessIntegration.business_id == business_id,
-            BusinessIntegration.is_active == True,
-        )
+    def create_integration_token(integration_id: int) -> str:      
+        payload = {
+            "sub": str(integration_id),
+            "type": "integration",
+            "token_type": "access",
+            "exp": datetime.now(timezone.utc) + timedelta(days=INTEGRATION_TOKEN_EXPIRE_DAYS),
+        }
 
-        result = db.scalar(stmt)
-        if not result:
-            raise HTTPException(status_code=401, detail="Integração inválida")
-        
+        return TokenManager.encode(payload)
+    
+    @staticmethod
+    def create_business_integration_token(business_id: int, integration_id: int) -> str:
         payload = {
             "sub": str(integration_id),
             "business_id": business_id,
-            "type": "integration",
+            "type": "business_integration",
             "token_type": "access",
-            "exp": datetime.now(timezone.utc) + timedelta(days=365),
+            "exp": datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
         }
 
         return TokenManager.encode(payload)
 
     @staticmethod
-    def get_current_actor(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)) -> Union[UserContext, IntegrationContext]:
+    def get_current_actor(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)) -> Union[UserContext, BusinessIntegrationContext, IntegrationContext]:
         payload = TokenManager.decode(token)
 
         actor_type = payload.get("type")
@@ -99,6 +100,25 @@ class ActorSecurity:
         if actor_type == "integration":
 
             integration_id = int(payload.get("sub"))
+
+            stmt = select(Integration).where(
+                Integration.id == integration_id,
+                Integration.is_active == True,
+            )
+
+            result = db.scalar(stmt)
+            if not result:
+                raise HTTPException(status_code=401, detail="Integração inválida")
+
+            return IntegrationContext(
+                type = "integration",
+                id = integration_id,
+                token = token,
+            )
+        
+        if actor_type == "business_integration":
+
+            integration_id = int(payload.get("sub"))
             business_id = payload.get("business_id")
 
             stmt = select(BusinessIntegration).where(
@@ -109,10 +129,10 @@ class ActorSecurity:
 
             result = db.scalar(stmt)
             if not result:
-                raise HTTPException(status_code=401, detail="Integração inválida")
+                raise HTTPException(status_code=401, detail="Integração inválida para Empresa!")
 
-            return IntegrationContext(
-                type = "integration",
+            return BusinessIntegrationContext(
+                type = "business_integration",
                 integration_id = integration_id,
                 business_id = int(business_id),
             )

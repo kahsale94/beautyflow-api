@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 
-from src.models import Availability
 from src.core import DataBaseDep
+from src.models import Availability
 from src.schemas import AvailabilityCreate, AvailabilityUpdate
 from src.repositories import AvailabilityRepository, ProfessionalRepository
 

@@ -1,10 +1,16 @@
 from fastapi import Depends, HTTPException
 
-from .context import UserContext
 from .actor_security import ActorSecurity
+from .context import UserContext, IntegrationContext
 
 def require_user(actor: UserContext = Depends(ActorSecurity.get_current_actor)) -> UserContext:
     if actor.type != "user":
+        raise HTTPException(status_code=403)
+
+    return actor
+
+def require_integration(actor: IntegrationContext = Depends(ActorSecurity.get_current_actor)) -> IntegrationContext:
+    if actor.type != "integration":
         raise HTTPException(status_code=403)
 
     return actor
