@@ -1,6 +1,6 @@
 # Geral
 workflows/
-z_cache_files/
+z_files/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

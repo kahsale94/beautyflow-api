@@ -1,7 +1,7 @@
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 
-from src.models import AppointmentStatus
+from src.models.appointment_model import AppointmentStatus
 
 class AppointmentCreate(BaseModel):
     client_id: int
@@ -14,8 +14,6 @@ class AppointmentUpdate(BaseModel):
     professional_id: int | None = None
     service_id: int | None = None
     start_datetime: datetime | None = None
-    end_datetime: datetime | None = None
-    status: AppointmentStatus | None = None
 
 class AppointmentResponse(BaseModel):
     id: int

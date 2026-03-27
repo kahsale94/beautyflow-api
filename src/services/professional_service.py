@@ -1,11 +1,15 @@
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from src.core import DataBaseDep
 from src.models import Professional
+from src.repositories import ProfessionalRepository
 from src.schemas import ProfessionalCreate, ProfessionalUpdate
-from src.repositories import ProfessionalRepository, BusinessRepository
 
 class ProfessionalNotFoundError(Exception):
+    pass
+
+class ProfessionalAlreadyExistsError(Exception):
     pass
 
 class ProfessionalService:
@@ -13,14 +17,48 @@ class ProfessionalService:
     def __init__(
         self,
         db: Session,
-        business_repo: BusinessRepository,
         professional_repo: ProfessionalRepository,
     ):
         self.db = db
-        self.business_repo = business_repo
         self.professional_repo = professional_repo
 
-    def create_professional(self, business_id: int, data: ProfessionalCreate):
+    def _get_valid(self, business_id: int, professional_id: int):
+        professional = self.professional_repo.get_by_id(self.db, business_id, professional_id)
+        if (
+            not professional
+            or not professional.is_active
+            or professional.business_id != business_id
+        ):
+            raise ProfessionalNotFoundError()
+
+        return professional
+
+    def get_all(self, business_id: int):
+        result = self.professional_repo.get_by_business(self.db, business_id)
+        if (
+            not result
+            or not all(item.is_active for item in result)
+            or not all(item.business_id != business_id for item in result)
+        ):
+            raise ProfessionalNotFoundError()
+
+        return result
+
+    def get_by_id(self, business_id: int, professional_id: int):
+        return self._get_valid(business_id, professional_id)
+    
+    def get_by_name(self, business_id: int, professional_name: int):
+        result = self.professional_repo.get_by_name(self.db, business_id, professional_name)
+        if (
+            not result
+            or not result.is_active
+            or result.business_id != business_id
+        ):
+            raise ProfessionalNotFoundError()
+
+        return result
+    
+    def create(self, business_id: int, data: ProfessionalCreate):
         professional = Professional(
             business_id = business_id,
             name = data.name,
@@ -28,48 +66,53 @@ class ProfessionalService:
 
         self.professional_repo.add(self.db, professional)
 
-        self.db.commit()
+        try:
+            self.db.commit()
+        except IntegrityError:
+            self.db.rollback()
+            raise ProfessionalAlreadyExistsError()
+
         self.db.refresh(professional)
 
         return professional
 
-    def get_professional(self, business_id: int, professional_id: int | None = None):
-        if professional_id is None:
-            return self.professional_repo.get_by_business(self.db, business_id)
-
-        professional = self.professional_repo.get_by_id(self.db, professional_id)
-        if not professional or professional.business_id != business_id:
-            raise ProfessionalNotFoundError()
-
-        return professional
-
-    def update_professional(self, business_id: int, professional_id: int, data: ProfessionalUpdate):    
-        professional = self.professional_repo.get_by_id(self.db, professional_id)
-        if not professional or not professional.is_active or professional.business_id != business_id:
-            raise ProfessionalNotFoundError()
+    def update(self, business_id: int, professional_id: int, data: ProfessionalUpdate):
+        professional = self._get_valid(business_id, professional_id)
 
         update_data = data.model_dump(exclude_unset=True)
 
         for field, value in update_data.items():
             setattr(professional, field, value)
 
-        self.db.commit()
+        try:
+            self.db.commit()
+        except IntegrityError:
+            self.db.rollback()
+            raise ProfessionalAlreadyExistsError()
+        
         self.db.refresh(professional)
 
         return professional
+    
+    def deactivate(self, business_id: int, professional_id: int):
+        professional = self._get_valid(business_id, professional_id)
 
-    def delete_professional(self, business_id: int, professional_id: int):
-        professional = self.professional_repo.get_by_id(self.db, professional_id)
-        if not professional or professional.business_id != business_id:
-            raise ProfessionalNotFoundError()
-
-        self.professional_repo.delete(self.db, professional)
+        professional.is_active = False
 
         self.db.commit()
+
+        return
+
+    def delete(self, business_id: int, professional_id: int):
+        professional = self._get_valid(business_id, professional_id)
+
+        self.professional_repo.delete(self.db, professional)
+        self.db.commit()
+
+        return
 
 def get_professional_service(db: DataBaseDep):
     return ProfessionalService(
         db,
-        BusinessRepository(),
-        ProfessionalRepository(),    
+        ProfessionalRepository(),
     )

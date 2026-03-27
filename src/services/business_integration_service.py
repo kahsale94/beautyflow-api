@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from src.core import DataBaseDep
 from src.security import ActorSecurity
@@ -22,73 +23,93 @@ class BusinessIntegrationService:
         self.db = db
         self.business_integration_repo = business_integration_repo
 
-    def create_business_integration(self, business_id: int, integration: BusinessIntegrationCreate):
-        existing = self.business_integration_repo.get_by_ids(self.db, business_id, integration.integration_id)
-        if existing:
-            raise BusinessIntegrationAlreadyExistsError()
+    def _get_valid(self, business_id: int, integration_id: int):
+        result = self.business_integration_repo.get_by_ids(self.db, business_id, integration_id)
+        if (
+            not result
+            or not result.is_active
+            or result.business_id != business_id
+            or result.integration_id != integration_id
+        ):
+            raise BusinessIntegrationNotFoundError()
 
-        config = integration.config or {}
+        return result
 
-        record = BusinessIntegration(
+    def get_all(self, business_id: int):
+        result = self.business_integration_repo.get_by_business(self.db, business_id)
+        if (
+            not result
+            or not all(item.is_active for item in result)
+            or not all(item.business_id == business_id for item in result)
+        ):
+            raise BusinessIntegrationNotFoundError()
+
+        return result
+
+    def get_by_ids(self, business_id: int, integration_id: int):
+        return self._get_valid(business_id, integration_id)
+
+    def create(self, business_id: int, data: BusinessIntegrationCreate):
+        result = BusinessIntegration(
             business_id = business_id,
-            integration_id = integration.integration_id,
-            config = config,
+            integration_id = data.integration_id,
+            config = data.config or {},
         )
 
-        self.db.add(record)
-        self.db.commit()
-        self.db.refresh(record)
-        
-        return record
-    
-    def get_business_integration(self, business_id: int, integration_id: int | None = None):
-        if integration_id is None:
-            result = self.business_integration_repo.get_by_business(self.db, business_id)
-        else:
-            result = self.business_integration_repo.get_by_ids(self.db, business_id, integration_id)
+        self.business_integration_repo.add(self.db, result)
 
-        if not result:
-            raise BusinessIntegrationNotFoundError()
+        try:
+            self.db.commit()
+        except IntegrityError:
+            self.db.rollback()
+            raise BusinessIntegrationAlreadyExistsError()
         
+        self.db.refresh(result)
+
         return result
-    
+
     def update_config(self, business_id: int, integration_id: int, data: BusinessIntegrationUpdate):
-        record = self.business_integration_repo.get_by_ids(self.db, business_id, integration_id)
-        if not record:
-            raise BusinessIntegrationNotFoundError()
+        result = self._get_valid(business_id, integration_id)
 
-        config = record.config or {}
+        update_data = data.model_dump(exclude_unset=True)
 
-        for key, value in data.config.items():
-            config[key] = value
+        if update_data.get("config"):
+            result.config = result.config or {}
 
-        record.config = config
-
-        self.db.commit()
-        self.db.refresh(record)
-
-        return record
-    
-    def deactive_business_integration(self, business_id: int, integration_id: int):
-        result = self.business_integration_repo.get_by_ids(self.db, business_id, integration_id)
-        if not result:
-            raise BusinessIntegrationNotFoundError()
-        
-        result.is_active = False
+            for key, value in update_data["config"].items():
+                result.config[key] = value
 
         self.db.commit()
         self.db.refresh(result)
-        
-        return
-    
-    def update_key(self, business_id: int, integration_id: int):
-        result = self.business_integration_repo.get_by_ids(self.db, business_id, integration_id)
-        if not result:
-            raise BusinessIntegrationNotFoundError()
 
-        new_token = ActorSecurity.create_business_integration_token(self.db, business_id, integration_id)
-        
+        return result
+
+    def update_key(self, business_id: int, integration_id: int):
+        self._get_valid(business_id, integration_id)
+
+        new_token = ActorSecurity.create_business_integration_token(
+            business_id,
+            integration_id
+        )
+
         return new_token
+
+    def deactivate(self, business_id: int, integration_id: int):
+        result = self._get_valid(business_id, integration_id)
+
+        result.is_active = False
+
+        self.db.commit()
+
+        return
+
+    def delete(self, business_id: int, integration_id: int):
+        result = self._get_valid(business_id, integration_id)
+
+        self.business_integration_repo.delete(self.db, result)
+        self.db.commit()
+
+        return
 
 def get_business_integration_service(db: DataBaseDep):
     return BusinessIntegrationService(

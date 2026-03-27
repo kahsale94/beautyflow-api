@@ -1,6 +1,6 @@
 from enum import Enum as PyEnum
-from sqlalchemy import Enum as SAEnum
 from typing import TYPE_CHECKING
+from sqlalchemy import Enum as SAEnum
 from sqlalchemy import UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 

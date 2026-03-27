@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from src.models import User
 from src.core import DataBaseDep
@@ -22,70 +23,99 @@ class UserService:
         self.db = db
         self.user_repo = user_repo
 
-    def create_user(self, data: UserCreate, business_id: int | None = None):        
-        existing = self.user_repo.get_by_email(self.db, data.email)
-        if existing and existing.business_id == business_id:
-            raise UserAlreadyExistsError()
+    def _get_valid(self, business_id: int, user_id: int):
+        user = self.user_repo.get_by_id(self.db, business_id, user_id)
+        if (
+            not user
+            or not user.is_active
+            or user.business_id != business_id
+        ):
+            raise UserNotFoundError()
 
-        password_hash = ActorSecurity.hash(data.password)
+        return user
 
+    def get_all(self, business_id: int):
+        result = self.user_repo.get_by_business(self.db, business_id)
+        if (
+            not result
+            or not all(item.is_active for item in result)
+            or not all(item.business_id != business_id for item in result)
+        ):
+            raise UserNotFoundError()
+
+        return result
+
+    def get_by_id(self, business_id: int, user_id: int):
+        return self._get_valid(business_id, user_id)
+
+    def get_by_email(self, business_id: int, user_email: str):
+        user = self.user_repo.get_by_email(self.db, business_id, user_email)
+        if (
+            not user
+            or not user.is_active
+            or user.business_id != business_id
+        ):
+            raise UserNotFoundError()
+
+        return user
+
+    def create(self, business_id: int | None, data: UserCreate):
         user = User(
             email = data.email,
-            password_hash = password_hash,
+            password_hash = ActorSecurity.hash(data.password),
             role = data.role,
             business_id = business_id,
         )
 
         self.user_repo.add(self.db, user)
 
-        self.db.commit()
+        try:
+            self.db.commit()
+        except IntegrityError:
+            self.db.rollback()
+            raise UserAlreadyExistsError()
+
         self.db.refresh(user)
 
         return user
 
-    def get_user(self, business_id: int, user_id: int | None = None, user_email: str | None = None):
-        if user_id is None:
-            if user_email is None:
-                return self.user_repo.get_by_business(self.db, business_id)
-            user = self.user_repo.get_by_email(self.db, user_email)
-        else:
-            user = self.user_repo.get_by_id(self.db, user_id)
+    def update(self, business_id: int, user_id: int, data: UserUpdate):
+        user = self._get_valid(business_id, user_id)
 
-        if not user or user.business_id != business_id:
-            raise UserNotFoundError()
-        
-        return user
-    
-    def update_user(self, business_id: int, user_id: int, data: UserUpdate):        
-        user = self.user_repo.get_by_id(self.db, user_id)
-        if not user or user.business_id != business_id:
-            raise UserNotFoundError()
-        
         update_data = data.model_dump(exclude_unset=True)
 
-        if "email" in update_data:
-            email = update_data.get("email", user.email)
-            
-            existing = self.user_repo.get_by_email(self.db, email)
-            if existing and existing.business_id == business_id and existing.id != user.id:
-                raise UserAlreadyExistsError()
+        if "password" in update_data:
+            user.password_hash = ActorSecurity.hash(update_data.pop("password"))
 
         for field, value in update_data.items():
             setattr(user, field, value)
 
-        self.db.commit()
+        try:
+            self.db.commit()
+        except IntegrityError:
+            self.db.rollback()
+            raise UserAlreadyExistsError()
+        
         self.db.refresh(user)
 
         return user
+    
+    def deactivate(self, business_id: int, user_id: int):
+        user = self._get_valid(business_id, user_id)
 
-    def delete_user(self, business_id: int, user_id: int):
-        user = self.user_repo.get_by_id(self.db, user_id)
-        if not user or user.business_id != business_id:
-            raise UserNotFoundError()
-
-        self.user_repo.delete(self.db, user)
+        user.is_active = False
 
         self.db.commit()
+
+        return
+
+    def delete(self, business_id: int, user_id: int):
+        user = self._get_valid(business_id, user_id)
+
+        self.user_repo.delete(self.db, user)
+        self.db.commit()
+
+        return
     
 def get_user_service(db: DataBaseDep):
     return UserService(

@@ -2,10 +2,11 @@ from typing import Union
 from fastapi import Depends, Header, HTTPException
 
 from .actor_security import ActorSecurity
+from .authorization import require_integration
 from .context import UserContext, BusinessIntegrationContext, IntegrationContext
 
-def get_business_scope(actor: Union[UserContext, IntegrationContext, BusinessIntegrationContext] = Depends(ActorSecurity.get_current_actor),
-     x_business_id: int | str | None = Header(default = None, alias = "X-Business-ID")) -> Union[int, str]:
+def get_business_scope(actor: Union[UserContext, BusinessIntegrationContext] = Depends(ActorSecurity.get_current_actor),
+     x_business_id: int | None = Header(default = None, alias = "X-Business-ID")) -> int:
 
     if isinstance(actor, UserContext) and actor.role == "super_admin":
 
@@ -21,18 +22,25 @@ def get_business_scope(actor: Union[UserContext, IntegrationContext, BusinessInt
 
         return actor.business_id
     
-    if isinstance(actor, IntegrationContext):
-
-        if x_business_id is not None:
-            raise HTTPException(status_code=400, detail="X-Business-ID obrigatório para integracao!")
-
-        return x_business_id
-    
     if isinstance(actor, BusinessIntegrationContext):
 
         if x_business_id is not None and x_business_id != actor.business_id:
-            raise HTTPException(status_code=403)
-
+            raise HTTPException(status_code=403, detail="Escopo de empresa inválido!")
+        
         return actor.business_id
 
-    raise HTTPException(status_code=403)
+    raise HTTPException(status_code=403, detail="Acesso negado!")
+
+def normalize_phone(phone: str) -> str:
+    return "".join(ch for ch in phone if ch.isdigit())
+
+def get_business_phone(actor: IntegrationContext = Depends(require_integration), x_business_phone: str | None = Header(default=None, alias="X-Business-Phone")) -> str:
+    if not x_business_phone:
+        raise HTTPException(status_code=400, detail="X-Business-Phone obrigatório!")
+
+    normalized = normalize_phone(x_business_phone)
+
+    if len(normalized) < 10:
+        raise HTTPException(status_code=400, detail="Telefone inválido!")
+
+    return normalized

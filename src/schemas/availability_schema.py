@@ -1,20 +1,19 @@
 from datetime import time
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 class AvailabilityCreate(BaseModel):
     professional_id: int
-    weekday: int
+    weekday: int = Field(ge=0, le=6)
     start_time: time
     end_time: time
 
 class AvailabilityUpdate(BaseModel):
-    weekday: int | None = None
     start_time: time | None = None
     end_time: time | None = None
 
 class AvailabilityResponse(BaseModel):
     professional_id: int
-    weekday: int
+    weekday: int = Field(ge=0, le=6)
     start_time: time
     end_time: time
 

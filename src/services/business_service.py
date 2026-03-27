@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from src.models import Business
 from src.core import DataBaseDep
@@ -21,55 +22,92 @@ class BusinessService:
         self.db = db
         self.business_repo = business_repo
 
-    def create_business(self, data: BusinessCreate):
-        existing = self.business_repo.get_by_name(self.db, data.name)
-        if existing:
-            raise BusinessAlreadyExistsError()
+    def _get_valid(self, business_id: int):
+        business = self.business_repo.get_by_id(self.db, business_id)
+        if (
+            not business 
+            or not business.is_active
+        ):
+            raise BusinessNotFoundError()
 
+        return business
+
+    def get_all(self):
+        result = self.business_repo.get_all(self.db)
+        if (
+            not result
+            or not all(item.is_active for item in result)
+        ):
+            raise BusinessNotFoundError()
+
+        return result
+
+    def get_by_id(self, business_id: int):
+        return self._get_valid(business_id)
+
+    def get_by_name(self, business_name: str):
+        result = self.business_repo.get_by_name(self.db, business_name)
+        if (
+            not result
+            or not result.is_active
+        ):
+            raise BusinessNotFoundError()
+
+        return result
+
+    def create(self, data: BusinessCreate):
         business = Business(
-            name=data.name,
-            type=data.type,
-            timezone=data.timezone,
+            name = data.name,
+            type = data.type,
+            timezone = data.timezone,
         )
 
         self.business_repo.add(self.db, business)
 
-        self.db.commit()
+        try:
+            self.db.commit()
+        except IntegrityError:
+            self.db.rollback()
+            raise BusinessAlreadyExistsError()
+
         self.db.refresh(business)
 
         return business
 
-    def get_business(self, business_id: int | None = None):
-        if business_id is None:
-            return self.business_repo.get_all(self.db)
+    def update(self, business_id: int, data: BusinessUpdate):
+        business = self._get_valid(business_id)
 
-        business = self.business_repo.get_by_id(self.db, business_id)
-        if not business or not business.is_active:
-            raise BusinessNotFoundError()
+        update_data = data.model_dump(exclude_unset=True)
 
-        return business
-
-    def update_business(self, business_id: int, data: BusinessUpdate):
-        business = self.business_repo.get_by_id(self.db, business_id)
-        if not business or not business.is_active:
-            raise BusinessNotFoundError()
-
-        for field, value in data.model_dump(exclude_unset=True).items():
+        for field, value in update_data.items():
             setattr(business, field, value)
 
-        self.db.commit()
+        try:
+            self.db.commit()
+        except IntegrityError:
+            self.db.rollback()
+            raise BusinessAlreadyExistsError()
+        
         self.db.refresh(business)
 
         return business
 
-    def delete_business(self, business_id: int):
-        business = self.business_repo.get_by_id(self.db, business_id)
-        if not business or not business.is_active:
-            raise BusinessNotFoundError()
+    def deactivate(self, business_id: int):
+        business = self._get_valid(business_id)
 
-        self.business_repo.delete(self.db, business)
+        business.is_active = False
 
         self.db.commit()
+
+        return
+
+    def delete(self, business_id: int):
+        business = self._get_valid(business_id)
+
+        self.business_repo.delete(self.db, business)
+        self.db.commit()
+
+        return
 
 def get_business_service(db: DataBaseDep):
     return BusinessService(

@@ -1,15 +1,16 @@
 from pydantic import BaseModel, ConfigDict
 
+from .base_schema import name_type
+
 class ProfessionalCreate(BaseModel):
-    name: str
+    name: name_type
 
 class ProfessionalUpdate(BaseModel):
-    name: str | None = None
-    is_active: bool | None = None
+    name: name_type | None = None
 
 class ProfessionalResponse(BaseModel):
     id: int
-    name: str
+    name: name_type
     business_id: int
     is_active: bool
 

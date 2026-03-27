@@ -1,4 +1,6 @@
+from datetime import time
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from src.core import DataBaseDep
 from src.models import Availability
@@ -29,94 +31,103 @@ class AvailabilityService:
         self.availability_repo = availability_repo
         self.professional_repo = professional_repo
 
-    def create_availability(self, business_id: int, data: AvailabilityCreate):
-        professional = self.professional_repo.get_by_id(self.db, data.professional_id)
-        if not professional or not professional.is_active or professional.business_id != business_id:
+    def _get_valid_professional(self, business_id: int, professional_id: int):
+        professional = self.professional_repo.get_by_id(self.db, business_id, professional_id)
+        if (
+            not professional
+            or not professional.is_active
+            or professional.business_id != business_id
+        ):
             raise ProfessionalNotFoundError()
 
-        if data.start_time >= data.end_time:
+        return professional
+
+    def _validate_time_range(self, start: time, end: time):
+        if start >= end:
             raise InvalidTimeRangeError()
 
-        existing = self.availability_repo.get_by_professional_and_weekday(self.db, data.professional_id, data.weekday)
+    def get_all(self, business_id: int, professional_id: int):
+        self._get_valid_professional(business_id, professional_id)
 
-        if existing:
-            raise AvailabilityAlreadyExistsError()
+        result = self.availability_repo.get_by_professional(self.db, professional_id)
+        if (
+            not result
+            or not all(item.professional_id == professional_id for item in result)
+        ):
+            raise AvailabilityNotFoundError()
+
+        return result
+
+    def get_by_weekday(self, business_id: int, professional_id: int, weekday: int):
+        self._get_valid_professional(business_id, professional_id)
+
+        result = self.availability_repo.get_by_professional_and_weekday(self.db, professional_id, weekday)
+        if (
+            not result
+            or result.professional_id != professional_id
+        ):
+            raise AvailabilityNotFoundError()
+
+        return result
+
+    def create(self, business_id: int, data: AvailabilityCreate):
+        self._get_valid_professional(business_id, data.professional_id)
+
+        self._validate_time_range(data.start_time, data.end_time)
 
         availability = Availability(
-            professional_id=data.professional_id,
-            weekday=data.weekday,
-            start_time=data.start_time,
-            end_time=data.end_time,
+            professional_id = data.professional_id,
+            weekday = data.weekday,
+            start_time = data.start_time,
+            end_time = data.end_time,
         )
 
         self.availability_repo.add(self.db, availability)
+        
+        try:
+            self.db.commit()
+        except IntegrityError:
+            self.db.rollback()
+            raise AvailabilityAlreadyExistsError()
 
-        self.db.commit()
         self.db.refresh(availability)
 
         return availability
 
-    def get_availability(self, business_id: int, professional_id: int, weekday: int | None = None):
-        professional = self.professional_repo.get_by_id(self.db, professional_id)
-        if not professional or not professional.is_active or professional.business_id != business_id:
-            raise ProfessionalNotFoundError()
-        
-        if weekday is None:
-            availability = self.availability_repo.get_by_professional(self.db, professional_id)
-        else:
-            availability = self.availability_repo.get_by_professional_and_weekday(self.db, professional_id, weekday)
+    def update(self, business_id: int, professional_id: int, weekday: int, data: AvailabilityUpdate):
+        self._get_valid_professional(business_id, professional_id)
 
-        if not availability:
-            raise AvailabilityNotFoundError()
-        
-        return availability
-
-    def update_availability(self, business_id: int, professional_id: int, data: AvailabilityUpdate):
-        professional = self.professional_repo.get_by_id(self.db, professional_id)
-        if not professional or not professional.is_active or professional.business_id != business_id:
-            raise ProfessionalNotFoundError()
-        
-        availability = self.availability_repo.get_by_professional(self.db, professional_id)
-        if not availability:
-            raise AvailabilityNotFoundError()
+        availability = self.get_by_weekday(self.db, business_id, professional_id, weekday)
 
         update_data = data.model_dump(exclude_unset=True)
 
-        if "start_time" in update_data or "end_time" in update_data:
+        start = update_data.get("start_time", availability.start_time)
+        end = update_data.get("end_time", availability.end_time)
 
-            start = update_data.get("start_time", availability.start_time)
-            end = update_data.get("end_time", availability.end_time)
-
-            if start >= end:
-                raise InvalidTimeRangeError()
-
-        if "weekday" in update_data:
-
-            existing = self.availability_repo.get_by_professional_and_weekday(self.db, availability.professional_id, update_data["weekday"])
-
-            if existing and (existing.professional_id != availability.professional_id or existing.weekday != availability.weekday):
-                raise AvailabilityAlreadyExistsError()
+        self._validate_time_range(start, end)
 
         for field, value in update_data.items():
             setattr(availability, field, value)
-
-        self.db.commit()
+            
+        try:
+            self.db.commit()
+        except IntegrityError:
+            self.db.rollback()
+            raise AvailabilityAlreadyExistsError()
+        
         self.db.refresh(availability)
 
         return availability
 
-    def delete_availability(self, business_id: int, professional_id: int):
-        professional = self.professional_repo.get_by_id(self.db, professional_id)
-        if not professional or not professional.is_active or professional.business_id != business_id:
-            raise ProfessionalNotFoundError()
-        
-        availability = self.availability_repo.get_by_professional(self.db, professional_id)
-        if not availability:
-            raise AvailabilityNotFoundError()
+    def delete(self, business_id: int, professional_id: int, weekday: int):
+        self._get_valid_professional(business_id, professional_id)
+
+        availability = self.get_by_weekday(self.db, business_id, professional_id, weekday)
 
         self.availability_repo.delete(self.db, availability)
-
         self.db.commit()
+
+        return
 
 def get_availability_service(db: DataBaseDep):
     return AvailabilityService(

@@ -7,7 +7,7 @@ class BusinessIntegrationCreate(BaseModel):
     config: Dict[str, Any] | None = None
 
 class BusinessIntegrationUpdate(BaseModel):
-    config: Dict[str, Any]
+    config: Dict[str, Any] | None = None
 
 class BusinessIntegrationResponse(BaseModel):
     business_id: int
