@@ -1,19 +1,17 @@
 import re
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from src.models import Client
 from src.core import DataBaseDep
-from src.schemas import ClientCreate
 from src.repositories import ClientRepository
+from src.schemas import ClientCreate, ClientUpdate
 
 class ClientNotFoundError(Exception):
     pass
 
 class ClientAlreadyExistsError(Exception):
     pass
-
-def normalize_phone(phone: str) -> str:
-    return re.sub(r"\D", "", phone)
 
 class ClientService:
 
@@ -25,13 +23,57 @@ class ClientService:
         self.db = db
         self.client_repo = client_repo
 
-    def create_client(self, business_id: int, data: ClientCreate):
+    def _normalize_phone(self, phone: str):
+        phone = re.sub(r"\D", "", phone)
 
-        phone = normalize_phone(data.phone)
+        if phone.startswith("55") and len(phone) == 13:
+            return phone
 
-        existing = self.client_repo.get_by_phone(self.db, data.phone)
-        if existing and existing.business_id == business_id:
-            raise ClientAlreadyExistsError()
+        if len(phone) == 11:
+            return "55" + phone
+
+        if len(phone) == 10:
+            return "55" + phone[:2] + "9" + phone[2:]
+
+        return phone
+
+    def _get_valid(self, business_id: int, client_id: int):
+        client = self.client_repo.get_by_id(self.db, business_id, client_id)
+        if (
+            not client
+            or client.business_id != business_id
+        ):
+            raise ClientNotFoundError()
+
+        return client
+
+    def get_all(self, business_id: int):
+        result = self.client_repo.get_by_business(self.db, business_id)
+        if (
+            not result
+            or not all(item.business_id != business_id for item in result)
+        ):
+            raise ClientNotFoundError()
+
+        return result
+
+    def get_by_id(self, business_id: int, client_id: int):
+        return self._get_valid(business_id, client_id)
+
+    def get_by_phone(self, business_id: int, phone: str):
+        phone = self._normalize_phone(phone)
+
+        result = self.client_repo.get_by_phone(self.db, business_id, phone)
+        if (
+            not result 
+            or result.business_id != business_id
+        ):
+            raise ClientNotFoundError()
+
+        return result
+
+    def create(self, business_id: int, data: ClientCreate):
+        phone = self._normalize_phone(data.phone)
 
         client = Client(
             business_id = business_id,
@@ -41,52 +83,45 @@ class ClientService:
         )
 
         self.client_repo.add(self.db, client)
-        self.db.commit()
+
+        try:
+            self.db.commit()
+        except IntegrityError:
+            self.db.rollback()
+            raise ClientAlreadyExistsError()
+
         self.db.refresh(client)
 
         return client
 
-    def get_client(self, business_id: int, client_id: int | None = None, client_phone: str | None = None):
-        if client_id is None:
-            if client_phone is None:
-                return self.client_repo.get_by_business(self.db, business_id)
-            client = self.client_repo.get_by_phone(self.db, client_phone)
-        else:
-            client = self.client_repo.get_by_id(self.db, client_id)
-
-        if not client or client.business_id != business_id:
-            raise ClientNotFoundError()
-
-        return client
-
-    def update_client(self, business_id: int, client_id: int, data):
-        client = self.client_repo.get_by_id(self.db, client_id)
-        if not client or client.business_id != business_id:
-            raise ClientNotFoundError()
+    def update(self, business_id: int, client_id: int, data: ClientUpdate):
+        client = self._get_valid(business_id, client_id)
 
         update_data = data.model_dump(exclude_unset=True)
 
         if "phone" in update_data:
-            existing = self.client_repo.get_by_phone(self.db, update_data["phone"])
-            if existing and existing.business_id == business_id and existing.id != client.id:
-                raise ClientAlreadyExistsError()
+            update_data["phone"] = self._normalize_phone(update_data["phone"])
 
         for field, value in update_data.items():
             setattr(client, field, value)
 
-        self.db.commit()
+        try:
+            self.db.commit()
+        except IntegrityError:
+            self.db.rollback()
+            raise ClientAlreadyExistsError()
+
         self.db.refresh(client)
 
         return client
 
-    def delete_client(self, business_id: int, client_id: int):
-        client = self.client_repo.get_by_id(self.db, client_id)
-        if not client or client.business_id != business_id:
-            raise ClientNotFoundError()
+    def delete(self, business_id: int, client_id: int):
+        client = self._get_valid(business_id, client_id)
 
         self.client_repo.delete(self.db, client)
-
         self.db.commit()
+
+        return
 
 def get_client_service(db: DataBaseDep):
     return ClientService(

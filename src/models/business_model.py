@@ -1,9 +1,10 @@
 from datetime import datetime
-from typing import Optional, TYPE_CHECKING
-from sqlalchemy import func, DateTime
+from enum import Enum as PyEnum
+from typing import TYPE_CHECKING
+from sqlalchemy import Enum as SAEnum, func, DateTime
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
-from .base_model import Base, intpk
+from .base_model import Base, intpk, name_type
 
 if TYPE_CHECKING:
     from .user_model import User
@@ -14,14 +15,19 @@ if TYPE_CHECKING:
     from .professional_model import Professional
     from .business_integration_model import BusinessIntegration
 
+class BusinessType(str, PyEnum):
+    barbershop = "barbershop"
+    salon = "salon"
+    clinic = "clinic"
+
 class Business(Base):
     __tablename__ = "businesses"
 
     id: Mapped[intpk]
-    name: Mapped[str] = mapped_column(nullable=False)
-    type: Mapped[Optional[str]]
+    name: Mapped[name_type] = mapped_column(nullable=False, unique=True)
+    type: Mapped[BusinessType] = mapped_column(SAEnum(BusinessType, name="businesstype"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    timezone: Mapped[str] = mapped_column(nullable=False, index=True)
+    timezone: Mapped[str] = mapped_column(nullable=False)
     is_active: Mapped[bool] = mapped_column(nullable=False, default=True)
 
     appointments: Mapped[list["Appointment"]] = relationship(back_populates="business", cascade="all, delete-orphan")

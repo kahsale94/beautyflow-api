@@ -9,7 +9,7 @@ from .token import TokenManager
 from .oauth import oauth2_scheme
 from src.models import User, Integration, BusinessIntegration
 from .context import UserContext, IntegrationContext, BusinessIntegrationContext
-from src.core import get_db, ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS, INTEGRATION_TOKEN_EXPIRE_DAYS
+from src.core import get_db, ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS, INTEGRATION_TOKEN_EXPIRE_DAYS, BUSINESS_INTEGRATION_TOKEN_EXPIRE_MINUTES
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -63,7 +63,7 @@ class ActorSecurity:
             "business_id": business_id,
             "type": "business_integration",
             "token_type": "access",
-            "exp": datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+            "exp": datetime.now(timezone.utc) + timedelta(minutes=BUSINESS_INTEGRATION_TOKEN_EXPIRE_MINUTES),
         }
 
         return TokenManager.encode(payload)
@@ -85,8 +85,10 @@ class ActorSecurity:
                 raise HTTPException(status_code=401, detail="Token inválido")
 
             user = db.get(User, user_id)
-
-            if not user or not user.is_active:
+            if(
+                not user
+                or not user.is_active
+            ):
                 raise HTTPException(status_code=401, detail="Usuário não encontrado")
 
             return UserContext(
@@ -95,6 +97,7 @@ class ActorSecurity:
                 email = user.email,
                 role = user.role,
                 business_id = user.business_id,
+                is_active = user.is_active,
             )
         
         if actor_type == "integration":
@@ -113,7 +116,6 @@ class ActorSecurity:
             return IntegrationContext(
                 type = "integration",
                 id = integration_id,
-                token = token,
             )
         
         if actor_type == "business_integration":

@@ -1,5 +1,6 @@
 from datetime import time
 from typing import TYPE_CHECKING
+from sqlalchemy import CheckConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base_model import Base, professional_fk
@@ -9,6 +10,11 @@ if TYPE_CHECKING:
 
 class Availability(Base):
     __tablename__ = "availabilities"
+
+    __table_args__ = (
+        CheckConstraint("weekday >= 0 AND weekday <= 6", name="valid_weekday"),
+        CheckConstraint("start_time < end_time", name="valid_time_range"),
+    )
 
     professional_id: Mapped[professional_fk] = mapped_column(primary_key=True)
     weekday: Mapped[int] = mapped_column(primary_key=True)

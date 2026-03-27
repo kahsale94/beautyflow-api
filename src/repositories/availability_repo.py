@@ -11,15 +11,15 @@ class AvailabilityRepository:
     def delete(self, db: Session, availability: Availability):
         db.delete(availability)
 
-    def get_by_professional(self, db: Session, professional_id: int):
-        stmt = select(Availability).where(Availability.professional_id == professional_id)
-        return db.scalars(stmt).all()
-
     def get_by_professional_and_weekday(self, db: Session, professional_id: int, weekday: int):
-
         stmt = select(Availability).where(
             Availability.professional_id == professional_id,
             Availability.weekday == weekday,
         )
-
         return db.scalars(stmt).one_or_none()
+
+    def get_by_professional(self, db: Session, professional_id: int):
+        stmt = select(Availability).where(
+            Availability.professional_id == professional_id,
+        )
+        return db.scalars(stmt).all()

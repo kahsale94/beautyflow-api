@@ -2,7 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from src.core import DataBaseDep
-from src.models import User, Integration, BusinessIntegration
+from src.models import User, BusinessIntegration
 from src.security import ActorSecurity, RefreshRequest, TokenManager
 
 class InvalidCredentialError(Exception):
@@ -27,8 +27,7 @@ class AuthService:
 
     def login(self, email: str, password: str):
         stmt = select(User).where(User.email == email)
-        user = self.db.scalars(stmt).first()
-
+        user = self.db.scalars(stmt).one_or_none()
         if not user:
             raise InvalidCredentialError()
 
@@ -46,41 +45,40 @@ class AuthService:
         except Exception:
             raise InvalidTokenError()
 
-        if payload.get("token_type") != "refresh":
-            raise InvalidTokenError()
-
-        if payload.get("type") != "user":
-            raise InvalidTokenError()
-
         user_id = payload.get("sub")
+        token_type = payload.get("token_type")
+        request_type = payload.get("type")
 
         stmt = select(User).where(User.id == int(user_id))
-        user = self.db.scalars(stmt).first()
+        user = self.db.scalars(stmt).one_or_none()
 
-        if not user:
-            raise InvalidTokenError()
-
-        if not user.is_active:
+        if (
+            not user
+            or not user.is_active
+        ):
             raise DeactivatedUserError()
+
+        if (
+            token_type != "refresh"
+            or request_type != "user"
+        ):
+            raise InvalidTokenError()
 
         return ActorSecurity.create_user_access_token(user.id)
 
-    def get_business_integration_token(self, business_phone: str, integration_id: int, api_token: str):
+    def get_business_integration_token(self, business_phone: str, integration_id: int):
         stmt = select(BusinessIntegration).where(
             BusinessIntegration.integration_id == integration_id,
-            BusinessIntegration.config["n8n"]["phone"] == business_phone,
+            BusinessIntegration.config["n8n"]["phone"].astext == business_phone,
             BusinessIntegration.is_active == True,
         )
 
         business_integration = self.db.scalars(stmt).first()
 
         if not business_integration:
-            raise DeactivatedLinkError() 
+            raise DeactivatedLinkError()
 
-        if not ActorSecurity.verify_hash(api_token, business_integration.integration.api_token_hash):
-            raise InvalidCredentialError()
-
-        return ActorSecurity.create_business_integration_token(self.db. business.id, integration_id)
+        return ActorSecurity.create_business_integration_token(business_integration.business_id, integration_id)
         
 def get_auth_service(db: DataBaseDep):
     return AuthService(

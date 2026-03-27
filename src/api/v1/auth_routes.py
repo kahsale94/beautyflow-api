@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 
 from src.security import RefreshRequest
-from src.dependecies import AuthServiceDep, IntegrationDep, BusinessScopeDep
+from src.dependecies import AuthServiceDep, IntegrationDep, BusinessPhoneDep
 from src.services.auth_service import DeactivatedUserError, InvalidCredentialError, InvalidTokenError, DeactivatedLinkError
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -41,12 +41,11 @@ def refresh_token(data: RefreshRequest, service: AuthServiceDep):
         raise HTTPException(status_code=401, detail="Usuário desativado!")
     
 @router.post("/integration")
-def login_integration(business_phone: BusinessScopeDep, integration: IntegrationDep, service: AuthServiceDep):
+def login_integration(business_phone: BusinessPhoneDep, integration: IntegrationDep, service: AuthServiceDep):
     try:
         access_token = service.get_business_integration_token(
             business_phone = business_phone,
             integration_id = integration.id,
-            token = integration.token,
         )
 
         return {
@@ -56,6 +55,3 @@ def login_integration(business_phone: BusinessScopeDep, integration: Integration
     
     except DeactivatedLinkError:
         raise HTTPException(status_code=401, detail="Vínculo inválido!")
-    
-    except InvalidCredentialError:
-        raise HTTPException(status_code=401, detail="Token inválido!")
