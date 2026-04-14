@@ -3,17 +3,12 @@ services:
         build: .
         container_name: beautyflow-api-migrate
         restart: "no"
-        command: >
-            sh -c "until printf '' 2>>/dev/null >/dev/tcp/beautyflow_api/5432; do
-                     echo 'Aguardando o banco de dados...';
-                     sleep 1;
-                   done;
-                   alembic upgrade head"
+        command: alembic upgrade head
         environment:
             - DATABASE_URL=${DATABASE_URL}
         networks:
         - beautyflow-network
-        
+
     api:
         build: .
         expose:
