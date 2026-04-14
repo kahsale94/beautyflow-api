@@ -1,7 +1,9 @@
+from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from src.models import Appointment
+from src.schemas.appointment_schema import AppointmentStatus
 
 class AppointmentRepository:
 
@@ -10,6 +12,18 @@ class AppointmentRepository:
 
     def delete(self, db: Session, appointment: Appointment):
         db.delete(appointment)
+
+    def get_scheduled_by_professional_and_date(self, db: Session, business_id: int, professional_id: int, start_of_day: datetime, end_of_day: datetime):
+        stmt = (select(Appointment).where(
+            Appointment.business_id == business_id,
+            Appointment.professional_id == professional_id,
+            Appointment.status == AppointmentStatus.scheduled,
+            Appointment.start_datetime < end_of_day,
+            Appointment.end_datetime > start_of_day,
+        )
+            .order_by(Appointment.start_datetime)
+        )
+        return db.scalars(stmt).all()
 
     def get_by_id(self, db: Session, business_id: int, appointment_id: int):
         stmt = select(Appointment).where(

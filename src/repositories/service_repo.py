@@ -15,7 +15,7 @@ class ServiceRepository:
         stmt = select(Service).where(
             Service.is_active == True,
             Service.business_id == business_id,
-            Service.name == service_id,
+            Service.id == service_id,
         )
         return db.scalars(stmt).one_or_none()
     

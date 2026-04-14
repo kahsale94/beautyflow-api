@@ -4,24 +4,22 @@ from src.dependecies import ServiceServiceDep, BusinessScopeDep, AdminDep, Super
 from src.services.service_service import ServiceNotFoundError, ServiceAlreadyExistsError
 from src.schemas import ServiceCreate, ServiceUpdate, ServiceResponse
 
-router = APIRouter(prefix="/service", tags=["Services"])
+router = APIRouter(prefix="/services", tags=["Services"])
 
 @router.get("/", response_model=list[ServiceResponse])
-def get_all_services(business_id: BusinessScopeDep, service: ServiceServiceDep):
-    return service.get_all(business_id)
+def get_services(business_id: BusinessScopeDep, service: ServiceServiceDep, service_name: str | None = None):
+    try:
+        if service_name:
+            return service.get_by_name(business_id, service_name)
+        return service.get_all(business_id)
+    
+    except ServiceNotFoundError:
+        raise HTTPException(status_code=404, detail="Serviço(s) não encontrado(s)!")
 
 @router.get("/{service_id}", response_model=ServiceResponse)
 def get_service_by_id(service_id: int, business_id: BusinessScopeDep, service: ServiceServiceDep):
     try:
         return service.get_by_id(business_id, service_id)
-    
-    except ServiceNotFoundError:
-        raise HTTPException(status_code=404, detail="Serviço não encontrado!")
-    
-@router.get("/by-name/{service_name}", response_model=ServiceResponse)
-def get_service_by_name(service_name: str, business_id: BusinessScopeDep, service: ServiceServiceDep):
-    try:
-        return service.get_by_name(business_id, service_name)
     
     except ServiceNotFoundError:
         raise HTTPException(status_code=404, detail="Serviço não encontrado!")
@@ -50,8 +48,6 @@ def deactivate_service(service_id: int, business_id: BusinessScopeDep, service: 
     except ServiceNotFoundError:
         raise HTTPException(status_code=404, detail="Serviço não encontrado!")
 
-    return
-
 @router.delete("/{service_id}", status_code=204)
 def delete_service(service_id: int, business_id: BusinessScopeDep, service: ServiceServiceDep, super_admin: SuperAdminDep):
     try:
@@ -59,5 +55,3 @@ def delete_service(service_id: int, business_id: BusinessScopeDep, service: Serv
 
     except ServiceNotFoundError:
         raise HTTPException(status_code=404, detail="Serviço não encontrado!")
-    
-    return

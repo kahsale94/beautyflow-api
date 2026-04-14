@@ -32,7 +32,7 @@ class AppointmentAlreadyCanceledError(Exception):
     pass
 
 class AppointmentService:
-    APPOINTMENT_OVERLAP_CONSTRAINT = "ex_appointments_business_professional_time_conflict"
+    APPOINTMENT_OVERLAP_CONSTRAINT = "ex_appointments_professional_time_conflict"
 
     def __init__(
         self,
@@ -68,6 +68,18 @@ class AppointmentService:
 
             raise
 
+    def _validate_professional(self, business_id: int, professional_id: int):
+        professional = self.professional_repo.get_by_id(self.db, business_id, professional_id)
+        if (
+            not professional
+            or not professional.is_active
+            or professional.business_id != business_id
+        ):
+            raise ProfessionalNotAvailableError()
+
+        return professional
+        
+
     def _validate_appointment(self, business_id: int, client_id: int, professional_id: int, service_id: int, start_datetime: datetime) -> datetime:
         client = self.client_repo.get_by_id(self.db, business_id, client_id)
         if (
@@ -76,13 +88,7 @@ class AppointmentService:
         ):
             raise ClientNotFoundError()
 
-        professional = self.professional_repo.get_by_id(self.db, business_id, professional_id)
-        if (
-            not professional
-            or not professional.is_active
-            or professional.business_id != business_id
-        ):
-            raise ProfessionalNotAvailableError()
+        professional = self._validate_professional(business_id, professional_id)
 
         service = self.service_repo.get_by_id(self.db, business_id, service_id)
         if (
@@ -132,7 +138,9 @@ class AppointmentService:
         return result
 
     def get_by_professional(self, business_id: int, professional_id: int):
-        result = self.appointment_repo.get_by_professional(self.db, business_id, professional_id)
+        professional = self._validate_professional(business_id, professional_id)
+        
+        result = self.appointment_repo.get_by_professional(self.db, business_id, professional.id)
         if (
             not result
             or not all(item.professional_id == professional_id for item in result)

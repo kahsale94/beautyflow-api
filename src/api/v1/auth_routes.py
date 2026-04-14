@@ -25,7 +25,7 @@ def login_user(service: AuthServiceDep, form_data: OAuth2PasswordRequestForm = D
         raise HTTPException(status_code=401, detail="Email ou senha inválidos!")
 
 @router.post("/refresh")
-def refresh_token(data: RefreshRequest, service: AuthServiceDep):
+def refresh_user_token(data: RefreshRequest, service: AuthServiceDep):
     try:
         new_access_token = service.refresh(data)
 

@@ -1,8 +1,8 @@
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
-from src.core import DataBaseDep
 from src.models import Service
+from src.core import DataBaseDep
 from src.repositories import ServiceRepository
 from src.schemas import ServiceCreate, ServiceUpdate
 
@@ -23,7 +23,7 @@ class ServiceService:
         self.service_repo = service_repo
 
     def _get_valid(self, business_id: int, service_id: int):
-        service = self.service_repo.get_by_id(self.db, service_id)
+        service = self.service_repo.get_by_id(self.db, business_id, service_id)
         if (
             not service
             or not service.is_active
@@ -38,7 +38,7 @@ class ServiceService:
         if (
             not result
             or not all(item.is_active for item in result)
-            or not all(item.business_id != business_id for item in result)
+            or not all(item.business_id == business_id for item in result)
         ):
             raise ServiceNotFoundError()
 

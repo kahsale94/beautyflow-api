@@ -4,11 +4,14 @@ from src.schemas import AppointmentCreate, AppointmentResponse, AppointmentUpdat
 from src.dependecies import AppointmentServiceDep, BusinessScopeDep, SuperAdminDep
 from src.services.appointment_service import AppointmentAlreadyCanceledError, ProfessionalNotAvailableError, AppointmentTimeConflictError, AppointmentNotFoundError, AppointmentAlreadyCompletedError
 
-router = APIRouter(prefix="/appointment", tags=["Appointments"])
+router = APIRouter(prefix="/appointments", tags=["Appointments"])
 
 @router.get("/", response_model=list[AppointmentResponse])
-def get_all_appointments(business_id: BusinessScopeDep, service: AppointmentServiceDep):
+def get_all_appointments(business_id: BusinessScopeDep, service: AppointmentServiceDep, professional_id: int | None = None):
     try:
+        if professional_id:
+            return service.get_by_professional(business_id, professional_id)
+        
         return service.get_all(business_id)
     
     except AppointmentNotFoundError:
@@ -21,14 +24,6 @@ def get_appointment_by_id(appointment_id: int, business_id: BusinessScopeDep, se
 
     except AppointmentNotFoundError:
         raise HTTPException(status_code=404, detail="Agendamento não encontrado!")
-
-@router.get("/by-professional/{professional_id}", response_model=list[AppointmentResponse])
-def get_appointments_by_professional(professional_id: int, business_id: BusinessScopeDep, service: AppointmentServiceDep):
-    try:
-        return service.get_by_professional(business_id, professional_id)
-
-    except AppointmentNotFoundError:
-        raise HTTPException(status_code=404, detail="Nenhum agendamento não encontrado!")
 
 @router.post("/", status_code=201, response_model=AppointmentResponse)
 def create_appointment(data: AppointmentCreate, business_id: BusinessScopeDep, service: AppointmentServiceDep):
@@ -96,5 +91,3 @@ def delete_appointment(appointment_id: int, business_id: BusinessScopeDep, servi
 
     except AppointmentNotFoundError:
         raise HTTPException(status_code=404, detail="Agendamento não encontrado!")
-
-    return

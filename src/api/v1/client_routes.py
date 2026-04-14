@@ -4,24 +4,23 @@ from src.schemas import ClientCreate, ClientUpdate, ClientResponse
 from src.services.client_service import ClientNotFoundError, ClientAlreadyExistsError
 from src.dependecies import ClientServiceDep, BusinessScopeDep, SuperAdminDep, AdminDep
 
-router = APIRouter(prefix="/client", tags=["Clients"])
+router = APIRouter(prefix="/clients", tags=["Clients"])
 
 @router.get("/", response_model=list[ClientResponse])
-def get_all_clients(business_id: BusinessScopeDep, service: ClientServiceDep):
-    return service.get_all(business_id)
+def get_all_clients(business_id: BusinessScopeDep, service: ClientServiceDep, client_phone: str | None = None):
+    try:
+        if client_phone:
+            return service.get_by_phone(business_id, client_phone)
+        
+        return service.get_all(business_id)
+    
+    except ClientNotFoundError:
+        raise HTTPException(status_code=404, detail="Cliente(s) não encontrado(s)")
 
 @router.get("/{client_id}", response_model=ClientResponse)
 def get_client(client_id: int, business_id: BusinessScopeDep, service: ClientServiceDep):
     try:
         return service.get_by_id(business_id, client_id)
-    
-    except ClientNotFoundError:
-        raise HTTPException(status_code=404, detail="Cliente não encontrado!")
-    
-@router.get("/by-phone/{client_phone}", response_model=ClientResponse)
-def get_client_by_phone(client_phone: str, business_id: BusinessScopeDep, service: ClientServiceDep):
-    try:
-        return service.get_by_phone(business_id, client_phone)
     
     except ClientNotFoundError:
         raise HTTPException(status_code=404, detail="Cliente não encontrado!")
@@ -52,5 +51,3 @@ def delete_client(client_id: int, business_id: BusinessScopeDep, service: Client
 
     except ClientNotFoundError:
         raise HTTPException(status_code=404, detail="Cliente não encontrado!")
-    
-    return

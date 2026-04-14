@@ -1,27 +1,26 @@
 from fastapi import APIRouter, HTTPException
 
+from src.schemas import ProfessionalCreate, ProfessionalResponse, ProfessionalUpdate
 from src.dependecies import ProfessionalServiceDep, BusinessScopeDep, AdminDep, SuperAdminDep
 from src.services.professional_service import ProfessionalNotFoundError, ProfessionalAlreadyExistsError
-from src.schemas import ProfessionalCreate, ProfessionalResponse, ProfessionalUpdate
 
-router = APIRouter(prefix="/professional", tags=["Professionals"])
+router = APIRouter(prefix="/professionals", tags=["Professionals"])
 
 @router.get("/", response_model=list[ProfessionalResponse])
-def get_all_professionals(business_id: BusinessScopeDep, service: ProfessionalServiceDep):
-    return service.get_all(business_id)
+def get_professionals(business_id: BusinessScopeDep, service: ProfessionalServiceDep, professional_name: str | None = None):
+    try:
+        if professional_name:
+            return service.get_by_name(business_id, professional_name)
+        
+        return service.get_all(business_id)   
+     
+    except ProfessionalNotFoundError:
+        raise HTTPException(status_code=404, detail= "Profissional(is) não encontrado(s)!")
 
 @router.get("/{professional_id}", response_model=ProfessionalResponse)
 def get_professional_by_id(professional_id: int, business_id: BusinessScopeDep, service: ProfessionalServiceDep):
     try:
         return service.get_by_id(business_id, professional_id)
-    
-    except ProfessionalNotFoundError:
-        raise HTTPException(status_code=404, detail="Profissional não encontrado!")
-    
-@router.get("/by-name/{professional_name}", response_model=ProfessionalResponse)
-def get_professional_by_name(professional_name: str, business_id: BusinessScopeDep, service: ProfessionalServiceDep):
-    try:
-        return service.get_by_name(business_id, professional_name)
     
     except ProfessionalNotFoundError:
         raise HTTPException(status_code=404, detail="Profissional não encontrado!")
@@ -50,8 +49,6 @@ def deactivate_professional(professional_id: int, business_id: BusinessScopeDep,
     except ProfessionalNotFoundError:
         raise HTTPException(status_code=404, detail="Profissional não encontrado!")
 
-    return
-
 @router.delete("/{professional_id}", status_code=204)
 def delete_professional(professional_id: int, business_id: BusinessScopeDep, service: ProfessionalServiceDep, super_admin: SuperAdminDep):
     try:
@@ -59,5 +56,3 @@ def delete_professional(professional_id: int, business_id: BusinessScopeDep, ser
 
     except ProfessionalNotFoundError:
         raise HTTPException(status_code=404, detail="Profissional não encontrado!")
-    
-    return

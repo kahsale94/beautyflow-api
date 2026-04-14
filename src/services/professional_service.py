@@ -38,7 +38,7 @@ class ProfessionalService:
         if (
             not result
             or not all(item.is_active for item in result)
-            or not all(item.business_id != business_id for item in result)
+            or not all(item.business_id == business_id for item in result)
         ):
             raise ProfessionalNotFoundError()
 
@@ -56,7 +56,7 @@ class ProfessionalService:
         ):
             raise ProfessionalNotFoundError()
 
-        return result
+        return [result]
     
     def create(self, business_id: int, data: ProfessionalCreate):
         professional = Professional(

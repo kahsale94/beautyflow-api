@@ -4,28 +4,27 @@ from src.schemas import BusinessCreate, BusinessResponse, BusinessUpdate
 from src.dependecies import BusinessScopeDep, BusinessServiceDep, SuperAdminDep
 from src.services.business_service import BusinessNotFoundError, BusinessAlreadyExistsError
 
-router = APIRouter(prefix="/business", tags=["Businesses"])
+router = APIRouter(prefix="/businesses", tags=["Businesses"])
 
 @router.get("/me", response_model=BusinessResponse)
 def get_my_business(business_id: BusinessScopeDep, service: BusinessServiceDep):
     return service.get_by_id(business_id)
 
 @router.get("/", response_model=list[BusinessResponse])
-def get_all_business(service: BusinessServiceDep, super_admin: SuperAdminDep):
-    return service.get_all()
+def get_businesses(service: BusinessServiceDep, super_admin: SuperAdminDep, business_name: str | None = None):
+    try:
+        if business_name:
+            return service.get_by_name(business_name)
+        
+        return service.get_all()
+    
+    except BusinessNotFoundError:
+        raise HTTPException(status_code=404, detail="Empresa(s) não encontrada(s)!")
 
 @router.get("/{business_id}", response_model=BusinessResponse)
 def get_business_by_id(business_id: int, service: BusinessServiceDep, super_admin: SuperAdminDep):
     try:
         return service.get_by_id(business_id)
-
-    except BusinessNotFoundError:
-        raise HTTPException(status_code=404, detail="Empresa não encontrada!")
-
-@router.get("/by-name/{business_name}", response_model=BusinessResponse)
-def get_business_by_name(business_name: str, service: BusinessServiceDep, super_admin: SuperAdminDep):
-    try:
-        return service.get_by_name(business_name)
 
     except BusinessNotFoundError:
         raise HTTPException(status_code=404, detail="Empresa não encontrada!")
@@ -54,8 +53,6 @@ def deactivate_business(business_id: int, service: BusinessServiceDep, super_adm
     except BusinessNotFoundError:
         raise HTTPException(status_code=404, detail="Empresa não encontrada!")
 
-    return
-
 @router.delete("/{business_id}", status_code=204)
 def delete_business(business_id: int, service: BusinessServiceDep, super_admin: SuperAdminDep):
     try:
@@ -63,5 +60,3 @@ def delete_business(business_id: int, service: BusinessServiceDep, super_admin: 
 
     except BusinessNotFoundError:
         raise HTTPException(status_code=404, detail="Empresa não encontrada!")
-
-    return

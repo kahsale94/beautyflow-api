@@ -14,6 +14,6 @@ app.add_middleware(CORSMiddleware,
 )
 
 app.add_middleware(LoggingMiddleware)
-app.add_middleware(RateLimitMiddleware, max_requests=100, window=60)
+app.add_middleware(RateLimitMiddleware, max_requests=30, window=60)
 
 app.include_router(v1_router, prefix="/v1")

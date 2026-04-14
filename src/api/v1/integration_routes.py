@@ -4,27 +4,23 @@ from src.dependecies import IntegrationServiceDep, SuperAdminDep
 from src.services.integration_service import IntegrationNotFoundError, IntegrationAlreadyExistsError
 from src.schemas import IntegrationCreate, IntegrationResponse, IntegrationUpdate, IntegrationCreateResponse
 
-router = APIRouter(prefix="/integration", tags=["Integrations"])
+router = APIRouter(prefix="/integrations", tags=["Integrations"])
 
 @router.get("/", response_model=list[IntegrationResponse])
-def get_all_integrations(service: IntegrationServiceDep, super_admin: SuperAdminDep):
+def get_all_integrations(service: IntegrationServiceDep, super_admin: SuperAdminDep, integration_name: str | None = None):
     try:
+        if integration_name:
+            return service.get_by_name(integration_name)
+        
         return service.get_all()
+    
     except IntegrationNotFoundError:
-        raise HTTPException(status_code=404, detail="Nenhuma integração cadastrada!")
+        raise HTTPException(status_code=404, detail="Nenhuma integração encontrada!")
 
 @router.get("/{integration_id}", response_model=IntegrationResponse)
 def get_integration_by_id(integration_id: int, service: IntegrationServiceDep, super_admin: SuperAdminDep):
     try:
         return service.get_by_id(integration_id)
-    
-    except IntegrationNotFoundError:
-        raise HTTPException(status_code=404, detail="Integração não encontrada!")
-
-@router.get("/by-name/{integration_name}", response_model=IntegrationResponse)
-def get_integration_by_name(integration_name: str, service: IntegrationServiceDep, super_admin: SuperAdminDep):
-    try:
-        return service.get_by_name(integration_name)
     
     except IntegrationNotFoundError:
         raise HTTPException(status_code=404, detail="Integração não encontrada!")
@@ -53,8 +49,6 @@ def deactivate_integration(integration_id: int, service: IntegrationServiceDep, 
     except IntegrationNotFoundError:
         raise HTTPException(status_code=404, detail="Integração não encontrada!")
 
-    return
-
 @router.delete("/{integration_id}", status_code=204)
 def delete_integration(integration_id: int, service: IntegrationServiceDep, super_admin: SuperAdminDep):
     try:
@@ -62,5 +56,3 @@ def delete_integration(integration_id: int, service: IntegrationServiceDep, supe
 
     except IntegrationNotFoundError:
         raise HTTPException(status_code=404, detail="Integração não encontrada!")
-    
-    return

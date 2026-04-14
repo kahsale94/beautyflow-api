@@ -1,4 +1,4 @@
-from datetime import time
+from datetime import time, datetime
 from pydantic import BaseModel, ConfigDict, Field
 
 class AvailabilityCreate(BaseModel):
@@ -10,6 +10,9 @@ class AvailabilityCreate(BaseModel):
 class AvailabilityUpdate(BaseModel):
     start_time: time | None = None
     end_time: time | None = None
+
+class AvailabilitySlotsResponse(BaseModel):
+    slot_times: list[time]
 
 class AvailabilityResponse(BaseModel):
     professional_id: int

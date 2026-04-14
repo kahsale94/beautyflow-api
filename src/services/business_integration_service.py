@@ -84,16 +84,6 @@ class BusinessIntegrationService:
 
         return result
 
-    def update_key(self, business_id: int, integration_id: int):
-        self._get_valid(business_id, integration_id)
-
-        new_token = ActorSecurity.create_business_integration_token(
-            business_id,
-            integration_id
-        )
-
-        return new_token
-
     def deactivate(self, business_id: int, integration_id: int):
         result = self._get_valid(business_id, integration_id)
 
