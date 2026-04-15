@@ -24,6 +24,6 @@ class User(Base):
     email: Mapped[str] = mapped_column(nullable=False)
     password_hash: Mapped[str] = mapped_column(nullable=False)
     role: Mapped[UserRole] = mapped_column(SAEnum(UserRole, name="userrole"), nullable=False)
-    is_active: Mapped[bool] = mapped_column(nullable=False, default=True)
+    is_active: Mapped[bool] = mapped_column(nullable=False, default=True, server_default="true")
 
     business: Mapped["Business"] = relationship(back_populates="users")

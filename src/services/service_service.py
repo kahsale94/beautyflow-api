@@ -56,7 +56,7 @@ class ServiceService:
         ):
             raise ServiceNotFoundError()
 
-        return result
+        return [result]
 
     def create(self, business_id: int, data: ServiceCreate):
         service = Service(

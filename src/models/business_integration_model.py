@@ -17,8 +17,8 @@ class BusinessIntegration(Base):
     business_id: Mapped[business_fk] = mapped_column(primary_key=True)
     integration_id: Mapped[integration_fk] = mapped_column(primary_key=True)
     config: Mapped[Optional[dict[str, Any]]] = mapped_column(MutableDict.as_mutable(JSONB), default=dict)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    is_active: Mapped[bool] = mapped_column(nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    is_active: Mapped[bool] = mapped_column(nullable=False, default=True, server_default="true")
 
     business: Mapped["Business"] = relationship(back_populates="business_integrations")
     integration: Mapped["Integration"] = relationship(back_populates="business_integrations")

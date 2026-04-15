@@ -26,9 +26,9 @@ class Business(Base):
     id: Mapped[intpk]
     name: Mapped[name_type] = mapped_column(nullable=False, unique=True)
     type: Mapped[BusinessType] = mapped_column(SAEnum(BusinessType, name="businesstype"), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     timezone: Mapped[str] = mapped_column(nullable=False)
-    is_active: Mapped[bool] = mapped_column(nullable=False, default=True)
+    is_active: Mapped[bool] = mapped_column(nullable=False, default=True, server_default="true")
 
     appointments: Mapped[list["Appointment"]] = relationship(back_populates="business", cascade="all, delete-orphan")
     professionals: Mapped[list["Professional"]] = relationship(back_populates="business", cascade="all, delete-orphan")

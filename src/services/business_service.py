@@ -53,7 +53,7 @@ class BusinessService:
         ):
             raise BusinessNotFoundError()
 
-        return result
+        return [result]
 
     def create(self, data: BusinessCreate):
         business = Business(

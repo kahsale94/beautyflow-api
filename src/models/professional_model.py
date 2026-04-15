@@ -19,7 +19,7 @@ class Professional(Base):
     id: Mapped[intpk]
     business_id: Mapped[business_fk]
     name: Mapped[name_type] = mapped_column(nullable=False)
-    is_active: Mapped[bool] = mapped_column(nullable=False, default=True)
+    is_active: Mapped[bool] = mapped_column(nullable=False, default=True, server_default="true")
 
     business: Mapped["Business"] = relationship(back_populates="professionals")
     appointments: Mapped[list["Appointment"]] = relationship(back_populates="professional", cascade="all, delete-orphan")

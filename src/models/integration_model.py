@@ -19,9 +19,9 @@ class Integration(Base):
     id: Mapped[intpk]
     name: Mapped[name_type] = mapped_column(nullable=False, unique=True)
     type: Mapped[IntegrationType] = mapped_column(SAEnum(IntegrationType, name="integrationtype"), nullable=False)
-    api_token_hash: Mapped[str] = mapped_column(nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    is_active: Mapped[bool] = mapped_column(nullable=False, default=True)
+    api_token_hash: Mapped[str] = mapped_column(nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    is_active: Mapped[bool] = mapped_column(nullable=False, default=True, server_default="true")
 
     businesses: Mapped[list["Business"]] = relationship(secondary="business_integrations", viewonly=True)
     business_integrations: Mapped[list["BusinessIntegration"]] = relationship(back_populates="integration", cascade="all, delete-orphan")

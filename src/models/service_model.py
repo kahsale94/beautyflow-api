@@ -21,7 +21,7 @@ class Service(Base):
     name: Mapped[name_type] = mapped_column(nullable=False)
     duration_minutes: Mapped[int] = mapped_column(nullable=False)
     price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
-    is_active: Mapped[bool] = mapped_column(nullable=False, default=True)
+    is_active: Mapped[bool] = mapped_column(nullable=False, default=True, server_default="true")
 
     business: Mapped["Business"] = relationship(back_populates="services")
     appointments: Mapped[list["Appointment"]] = relationship(back_populates="service", cascade="all, delete-orphan")

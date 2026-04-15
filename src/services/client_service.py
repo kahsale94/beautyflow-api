@@ -70,7 +70,7 @@ class ClientService:
         ):
             raise ClientNotFoundError()
 
-        return result
+        return [result]
 
     def create(self, business_id: int, data: ClientCreate):
         phone = self._normalize_phone(data.phone)

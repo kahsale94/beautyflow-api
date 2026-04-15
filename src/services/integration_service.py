@@ -54,7 +54,7 @@ class IntegrationService:
         ):
             raise IntegrationNotFoundError()
 
-        return result
+        return [result]
 
     def create(self, data: IntegrationCreate):
         integration = Integration(

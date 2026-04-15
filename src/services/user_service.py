@@ -57,7 +57,7 @@ class UserService:
         ):
             raise UserNotFoundError()
 
-        return user
+        return [user]
 
     def create(self, business_id: int | None, data: UserCreate):
         user = User(
