@@ -1,5 +1,5 @@
 from zoneinfo import ZoneInfo
-from datetime import time, datetime, timedelta
+from datetime import time, date, timedelta, datetime
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
@@ -55,9 +55,10 @@ class AvailabilityService:
             or professional.business_id != business_id
         ):
             raise ProfessionalNotFoundError()
+        
         return professional
 
-    def _get_valid_service(self, business_id: int, service_id: int):
+    def _validate_service(self, business_id: int, service_id: int):
         service = self.service_repo.get_by_id(self.db, business_id, service_id)
         if (
             not service
@@ -65,14 +66,15 @@ class AvailabilityService:
             or service.business_id != business_id
         ):
             raise ServiceNotFoundError()
+        
         return service
 
     def _validate_time_range(self, start: time, end: time):
         if start >= end:
             raise InvalidTimeRangeError()
 
-    def _combine_date_time(self, date: datetime, t: time, tz: ZoneInfo):
-        return datetime.combine(date.date(), t).replace(tzinfo=tz)
+    def _combine_date_time(self, date: date, t: time, tz: ZoneInfo):
+        return datetime.combine(date, t).replace(tzinfo=tz)
 
     def _align_to_slot(self, dt: datetime):
         minute = dt.minute
@@ -82,6 +84,7 @@ class AvailabilityService:
             return dt.replace(second=0, microsecond=0)
 
         delta = self.SLOT_STEP_MINUTES - remainder
+
         return (dt + timedelta(minutes=delta)).replace(second=0, microsecond=0)
 
     def _build_gaps(self, start: datetime, end: datetime, appointments: list):
@@ -99,7 +102,7 @@ class AvailabilityService:
 
         return gaps
 
-    def _generate_slots(self, gap_start, gap_end, duration, now):
+    def _generate_slots(self, gap_start, gap_end, duration, minimum_start: datetime | None = None):
         slots = []
 
         current = self._align_to_slot(gap_start)
@@ -110,27 +113,12 @@ class AvailabilityService:
             if candidate_end > gap_end:
                 break
 
-            if current >= now:
+            if minimum_start is None or current >= minimum_start:
                 slots.append(current.time())
 
             current += timedelta(minutes=self.SLOT_STEP_MINUTES)
 
         return slots
-
-    def _validate_professional(self, business_id: int, professional_id: int):
-        professional = self.professional_repo.get_by_id(self.db, business_id, professional_id)
-        if (
-            not professional
-            or not professional.is_active
-            or professional.business_id != business_id
-        ):
-            raise ProfessionalNotFoundError()
-
-        return professional
-
-    def _validate_time_range(self, start: time, end: time):
-        if start >= end:
-            raise InvalidTimeRangeError()
 
     def get_all(self, business_id: int, professional_id: int):
         self._validate_professional(business_id, professional_id)
@@ -156,9 +144,9 @@ class AvailabilityService:
 
         return result
     
-    def get_slots(self, business_id: int, professional_id: int, service_id: int, date: datetime):
+    def get_slots(self, business_id: int, professional_id: int, service_id: int, date: date):
         professional = self._validate_professional(business_id, professional_id)
-        service = self._get_valid_service(business_id, service_id)
+        service = self._validate_service(business_id, service_id)
 
         tz = ZoneInfo(professional.business.timezone)
         now = datetime.now(tz)
@@ -194,7 +182,7 @@ class AvailabilityService:
                     gap_start,
                     gap_end,
                     service.duration_minutes,
-                    now if date.date() == now.date() else datetime.min.replace(tzinfo=tz),
+                    now if date == now.date() else None,
                 )
             )
 
@@ -205,7 +193,6 @@ class AvailabilityService:
 
     def create(self, business_id: int, data: AvailabilityCreate):
         self._validate_professional(business_id, data.professional_id)
-
         self._validate_time_range(data.start_time, data.end_time)
 
         availability = Availability(

@@ -32,6 +32,13 @@ class AppointmentRepository:
         )
         return db.scalars(stmt).one_or_none()
 
+    def get_by_client(self, db: Session, business_id: int, client_id: int):
+        stmt = select(Appointment).where(
+            Appointment.business_id == business_id,
+            Appointment.client_id == client_id,
+        )
+        return db.scalars(stmt).all()
+    
     def get_by_professional(self, db: Session, business_id: int, professional_id: int):
         stmt = select(Appointment).where(
             Appointment.business_id == business_id,

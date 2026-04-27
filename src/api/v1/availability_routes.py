@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date
 from fastapi import APIRouter, HTTPException
 
 from src.dependecies import AvailabilityServiceDep, BusinessScopeDep, SuperAdminDep
@@ -7,8 +7,8 @@ from src.services.availability_service import ProfessionalNotFoundError, Invalid
 
 router = APIRouter(prefix="/availabilities", tags=["Availabilities"])
 
-@router.get("/{professional_id}/slots-available", response_model=AvailabilitySlotsResponse)
-def get_availability_slots(professional_id: int, service_id: int, date: datetime, business_id: BusinessScopeDep, service: AvailabilityServiceDep):
+@router.get("/{professional_id}/slots-available", response_model=list[AvailabilitySlotsResponse])
+def get_availability_slots(professional_id: int, service_id: int, date: date, business_id: BusinessScopeDep, service: AvailabilityServiceDep):
     try:
         return service.get_slots(business_id, professional_id, service_id, date)
 
@@ -19,10 +19,10 @@ def get_availability_slots(professional_id: int, service_id: int, date: datetime
         raise HTTPException(status_code=404, detail="Serviço não encontrado!")
 
     except AvailabilityNotFoundError:
-        raise HTTPException(status_code=404, detail="Disponibilidade não encontrada!")
+        raise HTTPException(status_code=404, detail="Profissional não trabalha nesse dia!")
 
     except ProfessionalUnavailableError:
-        raise HTTPException(status_code=409, detail="Profissional indisponivel!")
+        raise HTTPException(status_code=404, detail="Profissional indisponivel!")
 
 @router.get("/{professional_id}", response_model=list[AvailabilityResponse])
 def get_availabilities(professional_id: int, business_id: BusinessScopeDep, service: AvailabilityServiceDep, weekday: int | None = None):

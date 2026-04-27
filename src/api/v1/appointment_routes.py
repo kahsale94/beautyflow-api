@@ -2,13 +2,17 @@ from fastapi import APIRouter, HTTPException
 
 from src.schemas import AppointmentCreate, AppointmentResponse, AppointmentUpdate
 from src.dependecies import AppointmentServiceDep, BusinessScopeDep, SuperAdminDep
-from src.services.appointment_service import AppointmentAlreadyCanceledError, ProfessionalNotAvailableError, AppointmentTimeConflictError, AppointmentNotFoundError, AppointmentAlreadyCompletedError
+from src.services.appointment_service import (AppointmentAlreadyCanceledError, ProfessionalNotAvailableError, AppointmentTimeConflictError,
+AppointmentNotFoundError, AppointmentAlreadyCompletedError, DatetimeFormatError)
 
 router = APIRouter(prefix="/appointments", tags=["Appointments"])
 
 @router.get("/", response_model=list[AppointmentResponse])
-def get_all_appointments(business_id: BusinessScopeDep, service: AppointmentServiceDep, professional_id: int | None = None):
+def get_all_appointments(business_id: BusinessScopeDep, service: AppointmentServiceDep, client_id: int | None = None, professional_id: int | None = None):
     try:
+        if client_id:
+            return service.get_by_professional(business_id, client_id)
+        
         if professional_id:
             return service.get_by_professional(business_id, professional_id)
         
@@ -36,6 +40,9 @@ def create_appointment(data: AppointmentCreate, business_id: BusinessScopeDep, s
     except AppointmentTimeConflictError:
         raise HTTPException(status_code=409, detail="Horário já ocupado!")
 
+    except DatetimeFormatError:
+        raise HTTPException(status_code=400, detail="Formato de data invalido! Envie no seguinte formato: 0000-00-00T00:00:00+-00:00")
+    
     except ValueError:
         raise HTTPException(status_code=400, detail="Intervalo inválido!")
 
@@ -62,7 +69,7 @@ def update_appointment(appointment_id: int, data: AppointmentUpdate, business_id
 @router.patch("/{appointment_id}/complete", status_code=204)
 def complete_appointment(appointment_id: int, business_id: BusinessScopeDep, service: AppointmentServiceDep):
     try:
-        return service.complete(business_id, appointment_id)
+        service.complete(business_id, appointment_id)
 
     except AppointmentNotFoundError:
         raise HTTPException(status_code=404, detail="Agendamento não encontrado!")
@@ -76,7 +83,7 @@ def complete_appointment(appointment_id: int, business_id: BusinessScopeDep, ser
 @router.patch("/{appointment_id}/cancel", status_code=204)
 def cancel_appointment(appointment_id: int, business_id: BusinessScopeDep, service: AppointmentServiceDep):
     try:
-        return service.cancel(business_id, appointment_id)
+        service.cancel(business_id, appointment_id)
 
     except AppointmentNotFoundError:
         raise HTTPException(status_code=404, detail="Agendamento não encontrado!")

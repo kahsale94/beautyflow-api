@@ -1,11 +1,10 @@
-from typing import Union
 from fastapi import Depends, Header, HTTPException
 
 from .actor_security import ActorSecurity
 from .authorization import require_integration
 from .context import UserContext, BusinessIntegrationContext, IntegrationContext
 
-def get_business_scope(actor: Union[UserContext, BusinessIntegrationContext] = Depends(ActorSecurity.get_current_actor),
+def get_business_scope(actor: UserContext | BusinessIntegrationContext = Depends(ActorSecurity.get_current_actor),
      x_business_id: int | None = Header(default = None, alias = "X-Business-ID")) -> int:
 
     if isinstance(actor, UserContext) and actor.role == "super_admin":

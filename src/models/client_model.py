@@ -15,7 +15,6 @@ class Client(Base):
 
     id: Mapped[intpk]
     name: Mapped[Optional[name_type]] = mapped_column(nullable=True)
-    name_wpp: Mapped[name_type] = mapped_column(nullable=False)
     phone: Mapped[phone_type] = mapped_column(nullable=False)
     business_id: Mapped[business_fk]
 

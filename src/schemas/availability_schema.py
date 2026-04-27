@@ -12,7 +12,7 @@ class AvailabilityUpdate(BaseModel):
     end_time: time | None = None
 
 class AvailabilitySlotsResponse(BaseModel):
-    slot_times: list[time]
+    slot_time: time
 
 class AvailabilityResponse(BaseModel):
     professional_id: int

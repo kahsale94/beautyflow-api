@@ -79,7 +79,6 @@ class ClientService:
             business_id = business_id,
             phone = phone,
             name = data.name,
-            name_wpp = data.name_wpp,
         )
 
         self.client_repo.add(self.db, client)
@@ -94,6 +93,21 @@ class ClientService:
 
         return client
 
+    def new_name(self, business_id: int, client_id: int, name: str):
+        client = self._get_valid(business_id, client_id)
+
+        client.name = name
+
+        try:
+            self.db.commit()
+        except IntegrityError:
+            self.db.rollback()
+            raise ClientAlreadyExistsError()
+
+        self.db.refresh(client)
+
+        return client
+    
     def update(self, business_id: int, client_id: int, data: ClientUpdate):
         client = self._get_valid(business_id, client_id)
 

@@ -6,9 +6,9 @@ from sqlalchemy.exc import IntegrityError
 
 from src.core import DataBaseDep
 from src.models import Appointment
-from src.schemas import AppointmentCreate, AppointmentUpdate
 from src.schemas.appointment_schema import AppointmentStatus
-from src.repositories import AppointmentRepository, ProfessionalRepository, ServiceRepository, AvailabilityRepository, ClientRepository
+from src.schemas import AppointmentCreate, AppointmentUpdate, AppointmentResponse
+from src.repositories import AppointmentRepository, ProfessionalRepository, ServiceRepository, AvailabilityRepository, ClientRepository, BusinessRepository
 
 class ProfessionalNotAvailableError(Exception):
     pass
@@ -31,8 +31,11 @@ class AppointmentAlreadyCompletedError(Exception):
 class AppointmentAlreadyCanceledError(Exception):
     pass
 
+class DatetimeFormatError(Exception):
+    pass
+
 class AppointmentService:
-    APPOINTMENT_OVERLAP_CONSTRAINT = "ex_appointments_professional_time_conflict"
+    APPOINTMENT_OVERLAP_CONSTRAINT = "ex_appointments_business_professional_time_conflict"
 
     def __init__(
         self,
@@ -42,6 +45,7 @@ class AppointmentService:
         service_repo: ServiceRepository,
         availability_repo: AvailabilityRepository,
         client_repo: ClientRepository,
+        business_repo: BusinessRepository,
     ):
         self.db = db
         self.appointment_repo = appointment_repo
@@ -49,11 +53,13 @@ class AppointmentService:
         self.service_repo = service_repo
         self.availability_repo = availability_repo
         self.client_repo = client_repo
+        self.business_repo = business_repo
 
     def _get_integrity_constraint_name(self, exc: IntegrityError) -> str | None:
-        orig = getattr(exc, "orig", None)
-        diag = getattr(orig, "diag", None)
-        return getattr(diag, "constraint_name", None)
+        try:
+            return exc.orig.diag.constraint_name
+        except Exception:
+            return None
 
     def _commit_or_raise_conflict(self) -> None:
         try:
@@ -62,11 +68,17 @@ class AppointmentService:
             self.db.rollback()
 
             constraint_name = self._get_integrity_constraint_name(exc)
-
             if constraint_name == self.APPOINTMENT_OVERLAP_CONSTRAINT:
                 raise AppointmentTimeConflictError() from exc
 
             raise
+
+    def _get_business_timezone(self, business_id: int) -> ZoneInfo:
+        business = self.business_repo.get_by_id(self.db, business_id)
+        if not business:
+            raise AppointmentNotFoundError()
+        
+        return ZoneInfo(business.timezone)
 
     def _validate_professional(self, business_id: int, professional_id: int):
         professional = self.professional_repo.get_by_id(self.db, business_id, professional_id)
@@ -78,9 +90,8 @@ class AppointmentService:
             raise ProfessionalNotAvailableError()
 
         return professional
-        
-
-    def _validate_appointment(self, business_id: int, client_id: int, professional_id: int, service_id: int, start_datetime: datetime) -> datetime:
+    
+    def _validate_client(self, business_id: int, client_id: int):
         client = self.client_repo.get_by_id(self.db, business_id, client_id)
         if (
             not client
@@ -88,7 +99,11 @@ class AppointmentService:
         ):
             raise ClientNotFoundError()
 
-        professional = self._validate_professional(business_id, professional_id)
+        return client
+
+    def _validate_appointment(self, business_id: int, client_id: int, professional_id: int, service_id: int, start_datetime: datetime) -> datetime:
+        self._validate_client(business_id, client_id)
+        self._validate_professional(business_id, professional_id)
 
         service = self.service_repo.get_by_id(self.db, business_id, service_id)
         if (
@@ -97,8 +112,12 @@ class AppointmentService:
             or service.business_id != business_id
         ):
             raise ServiceNotAvailableError()
-
-        now = datetime.now(ZoneInfo(professional.business.timezone))
+        
+        if start_datetime.tzinfo is None:
+            raise DatetimeFormatError()
+        
+        business_tz = self._get_business_timezone(business_id)
+        now = datetime.now(business_tz)
         if start_datetime < now:
             raise ValueError()
 
@@ -116,6 +135,35 @@ class AppointmentService:
             raise ProfessionalNotAvailableError()
 
         return end_datetime
+    
+    def _validate_return(self, appointment_or_list: Appointment | list[Appointment], business_tz: ZoneInfo) -> AppointmentResponse | list[AppointmentResponse]:
+        def _convert(appointment: Appointment):
+            return AppointmentResponse(
+                id = appointment.id,
+                client_id = appointment.client_id,
+                professional_id = appointment.professional_id,
+                service_id = appointment.service_id,
+                business_id = appointment.business_id,
+                start_datetime = appointment.start_datetime.astimezone(business_tz),
+                end_datetime = appointment.end_datetime.astimezone(business_tz),
+                created_at = appointment.created_at,
+                status = appointment.status,
+            )
+
+        if isinstance(appointment_or_list, list):
+            return [_convert(item) for item in appointment_or_list]
+
+        return _convert(appointment_or_list)
+    
+    def _get_appointment_or_raise(self, business_id: int, appointment_id: int) -> Appointment:
+        result = self.appointment_repo.get_by_id(self.db, business_id, appointment_id)
+        if (
+            not result
+            or result.business_id != business_id
+        ):
+            raise AppointmentNotFoundError()
+        
+        return result
 
     def get_all(self, business_id: int):
         result = self.appointment_repo.get_by_business(self.db, business_id)
@@ -125,7 +173,8 @@ class AppointmentService:
         ):
             raise AppointmentNotFoundError()
 
-        return result
+        business_tz = self._get_business_timezone(business_id)
+        return self._validate_return(result, business_tz)
 
     def get_by_id(self, business_id: int, appointment_id: int):
         result = self.appointment_repo.get_by_id(self.db, business_id, appointment_id)
@@ -135,12 +184,27 @@ class AppointmentService:
         ):
             raise AppointmentNotFoundError()
 
-        return result
+        business_tz = self._get_business_timezone(business_id)
+        return self._validate_return(result, business_tz)
 
-    def get_by_professional(self, business_id: int, professional_id: int):
-        professional = self._validate_professional(business_id, professional_id)
+    def get_by_client(self, business_id: int, client_id: int):
+        self._validate_client(business_id, client_id)
         
-        result = self.appointment_repo.get_by_professional(self.db, business_id, professional.id)
+        result = self.appointment_repo.get_by_client(self.db, business_id, client_id)
+        if (
+            not result
+            or not all(item.client_id == client_id for item in result)
+            or not all(item.business_id == business_id for item in result)
+        ):
+            raise AppointmentNotFoundError()
+
+        business_tz = self._get_business_timezone(business_id)
+        return self._validate_return(result, business_tz)
+    
+    def get_by_professional(self, business_id: int, professional_id: int):
+        self._validate_professional(business_id, professional_id)
+        
+        result = self.appointment_repo.get_by_professional(self.db, business_id, professional_id)
         if (
             not result
             or not all(item.professional_id == professional_id for item in result)
@@ -148,7 +212,8 @@ class AppointmentService:
         ):
             raise AppointmentNotFoundError()
 
-        return result
+        business_tz = self._get_business_timezone(business_id)
+        return self._validate_return(result, business_tz)
 
     def create(self, business_id: int, data: AppointmentCreate):
         end_datetime = self._validate_appointment(business_id, data.client_id, data.professional_id, data.service_id, data.start_datetime)
@@ -167,10 +232,11 @@ class AppointmentService:
         self._commit_or_raise_conflict()
         self.db.refresh(appointment)
 
-        return appointment
+        business_tz = self._get_business_timezone(business_id)
+        return self._validate_return(appointment, business_tz)
 
     def update(self, business_id: int, appointment_id: int, data: AppointmentUpdate):
-        appointment = self.get_by_id(business_id, appointment_id)
+        appointment = self._get_appointment_or_raise(business_id, appointment_id)
 
         if appointment.status == AppointmentStatus.canceled:
             raise AppointmentAlreadyCanceledError()
@@ -196,10 +262,11 @@ class AppointmentService:
         self._commit_or_raise_conflict()
         self.db.refresh(appointment)
 
-        return appointment
+        business_tz = self._get_business_timezone(business_id)
+        return self._validate_return(appointment, business_tz)
 
     def complete(self, business_id: int, appointment_id: int):
-        appointment = self.get_by_id(business_id, appointment_id)
+        appointment = self._get_appointment_or_raise(business_id, appointment_id)
 
         if appointment.status == AppointmentStatus.canceled:
             raise AppointmentAlreadyCanceledError()
@@ -213,7 +280,7 @@ class AppointmentService:
         return
 
     def cancel(self, business_id: int, appointment_id: int):
-        appointment = self.get_by_id(business_id, appointment_id)
+        appointment = self._get_appointment_or_raise(business_id, appointment_id)
 
         if appointment.status == AppointmentStatus.canceled:
             raise AppointmentAlreadyCanceledError()
@@ -224,7 +291,7 @@ class AppointmentService:
         return
 
     def delete(self, business_id: int, appointment_id: int):
-        appointment = self.get_by_id(business_id, appointment_id)
+        appointment = self._get_appointment_or_raise(business_id, appointment_id)
 
         self.appointment_repo.delete(self.db, appointment)
         self._commit_or_raise_conflict()
@@ -239,4 +306,5 @@ def get_appointment_service(db: DataBaseDep):
         ServiceRepository(),
         AvailabilityRepository(),
         ClientRepository(),
+        BusinessRepository(),
     )

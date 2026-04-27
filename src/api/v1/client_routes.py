@@ -26,13 +26,24 @@ def get_client(client_id: int, business_id: BusinessScopeDep, service: ClientSer
         raise HTTPException(status_code=404, detail="Cliente não encontrado!")
 
 @router.post("/", status_code=201, response_model=ClientResponse)
-def create_client(data: ClientCreate, business_id: BusinessScopeDep, service: ClientServiceDep, admin: AdminDep):
+def create_client(data: ClientCreate, business_id: BusinessScopeDep, service: ClientServiceDep):
     try:
         return service.create(business_id, data)
     
     except ClientAlreadyExistsError:
         raise HTTPException(status_code=409, detail="Cliente já cadastrado!")
 
+@router.patch("/{client_id}", response_model=ClientResponse)
+def update_client(client_id: int, name: str, business_id: BusinessScopeDep, service: ClientServiceDep):
+    try:
+        return service.new_name(business_id, client_id, name)
+    
+    except ClientNotFoundError:
+        raise HTTPException(status_code=404, detail="Cliente não encontrado!")
+    
+    except ClientAlreadyExistsError:
+        raise HTTPException(status_code=409, detail="Cliente já cadastrado!")
+    
 @router.put("/{client_id}", response_model=ClientResponse)
 def update_client(client_id: int, data: ClientUpdate, business_id: BusinessScopeDep, service: ClientServiceDep, admin: AdminDep):
     try:
