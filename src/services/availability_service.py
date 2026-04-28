@@ -5,7 +5,7 @@ from sqlalchemy.exc import IntegrityError
 
 from src.core import DataBaseDep
 from src.models import Availability
-from src.schemas import AvailabilityCreate, AvailabilityUpdate
+from src.schemas import AvailabilityCreate, AvailabilityUpdate, AvailabilitySlotsResponse
 from src.repositories import AvailabilityRepository, ProfessionalRepository, AppointmentRepository, ServiceRepository
 
 class ProfessionalNotFoundError(Exception):
@@ -189,7 +189,7 @@ class AvailabilityService:
         if not slot_times:
             raise ProfessionalUnavailableError()
 
-        return slot_times
+        return [AvailabilitySlotsResponse(slot_time=t) for t in slot_times]
 
     def create(self, business_id: int, data: AvailabilityCreate):
         self._validate_professional(business_id, data.professional_id)

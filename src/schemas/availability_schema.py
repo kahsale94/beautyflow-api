@@ -1,4 +1,4 @@
-from datetime import time, datetime
+from datetime import time
 from pydantic import BaseModel, ConfigDict, Field
 
 class AvailabilityCreate(BaseModel):

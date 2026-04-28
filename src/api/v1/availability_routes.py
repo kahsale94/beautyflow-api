@@ -7,7 +7,7 @@ from src.services.availability_service import ProfessionalNotFoundError, Invalid
 
 router = APIRouter(prefix="/availabilities", tags=["Availabilities"])
 
-@router.get("/{professional_id}/slots-available", response_model=list[AvailabilitySlotsResponse])
+@router.get("/", response_model=list[AvailabilitySlotsResponse])
 def get_availability_slots(professional_id: int, service_id: int, date: date, business_id: BusinessScopeDep, service: AvailabilityServiceDep):
     try:
         return service.get_slots(business_id, professional_id, service_id, date)
