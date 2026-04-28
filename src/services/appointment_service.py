@@ -288,8 +288,6 @@ class AppointmentService:
         appointment.status = AppointmentStatus.canceled
         self._commit_or_raise_conflict()
 
-        return
-
     def delete(self, business_id: int, appointment_id: int):
         appointment = self._get_appointment_or_raise(business_id, appointment_id)
 
