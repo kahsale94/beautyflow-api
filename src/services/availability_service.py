@@ -1,10 +1,11 @@
+from typing import Sequence
 from zoneinfo import ZoneInfo
 from datetime import time, date, timedelta, datetime
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
 from src.core import DataBaseDep
-from src.models import Availability
+from src.models import Availability, Appointment
 from src.schemas import AvailabilityCreate, AvailabilityUpdate, AvailabilitySlotsResponse
 from src.repositories import AvailabilityRepository, ProfessionalRepository, AppointmentRepository, ServiceRepository
 
@@ -21,9 +22,6 @@ class AvailabilityAlreadyExistsError(Exception):
     pass
 
 class AvailabilityNotFoundError(Exception):
-    pass
-
-class ProfessionalUnavailableError(Exception):
     pass
 
 class ServiceNotFoundError(Exception):
@@ -87,7 +85,7 @@ class AvailabilityService:
 
         return (dt + timedelta(minutes=delta)).replace(second=0, microsecond=0)
 
-    def _build_gaps(self, start: datetime, end: datetime, appointments: list):
+    def _build_gaps(self, start: datetime, end: datetime, appointments: Sequence[Appointment]):
         gaps = []
         cursor = start
 

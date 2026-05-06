@@ -34,7 +34,7 @@ def create_client(data: ClientCreate, business_id: BusinessScopeDep, service: Cl
         raise HTTPException(status_code=409, detail="Cliente já cadastrado!")
 
 @router.patch("/{client_id}", response_model=ClientResponse)
-def update_client(client_id: int, name: str, business_id: BusinessScopeDep, service: ClientServiceDep):
+def update_name(client_id: int, name: str, business_id: BusinessScopeDep, service: ClientServiceDep):
     try:
         return service.new_name(business_id, client_id, name)
     

@@ -1,6 +1,7 @@
 from zoneinfo import ZoneInfo
 from datetime import timedelta, datetime
 
+from typing import Sequence
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
@@ -57,7 +58,12 @@ class AppointmentService:
 
     def _get_integrity_constraint_name(self, exc: IntegrityError) -> str | None:
         try:
-            return exc.orig.diag.constraint_name
+            orig = exc.orig
+            if orig and hasattr(orig, 'diag'):
+                diag = getattr(orig, 'diag')
+                if diag and hasattr(diag, 'constraint_name'):
+                    return diag.constraint_name
+            return None
         except Exception:
             return None
 
@@ -136,7 +142,7 @@ class AppointmentService:
 
         return end_datetime
     
-    def _validate_return(self, appointment_or_list: Appointment | list[Appointment], business_tz: ZoneInfo) -> AppointmentResponse | list[AppointmentResponse]:
+    def _validate_return(self, appointment_or_list: Appointment | Sequence[Appointment], business_tz: ZoneInfo) -> list[AppointmentResponse] | AppointmentResponse:
         def _convert(appointment: Appointment):
             return AppointmentResponse(
                 id = appointment.id,
@@ -153,7 +159,7 @@ class AppointmentService:
         if isinstance(appointment_or_list, list):
             return [_convert(item) for item in appointment_or_list]
 
-        return _convert(appointment_or_list)
+        return _convert(appointment_or_list) # type: ignore
     
     def _get_appointment_or_raise(self, business_id: int, appointment_id: int) -> Appointment:
         result = self.appointment_repo.get_by_id(self.db, business_id, appointment_id)

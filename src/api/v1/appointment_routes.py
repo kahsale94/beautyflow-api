@@ -11,7 +11,7 @@ router = APIRouter(prefix="/appointments", tags=["Appointments"])
 def get_all_appointments(business_id: BusinessScopeDep, service: AppointmentServiceDep, client_id: int | None = None, professional_id: int | None = None):
     try:
         if client_id:
-            return service.get_by_professional(business_id, client_id)
+            return service.get_by_client(business_id, client_id)
         
         if professional_id:
             return service.get_by_professional(business_id, professional_id)
