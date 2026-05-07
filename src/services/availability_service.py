@@ -85,38 +85,41 @@ class AvailabilityService:
 
         return (dt + timedelta(minutes=delta)).replace(second=0, microsecond=0)
 
-    def _build_gaps(self, start: datetime, end: datetime, appointments: Sequence[Appointment]):
-        gaps = []
-        cursor = start
-
-        for appt in appointments:
-            if cursor < appt.start_datetime:
-                gaps.append((cursor, appt.start_datetime))
-
-            cursor = max(cursor, appt.end_datetime)
-
-        if cursor < end:
-            gaps.append((cursor, end))
-
-        return gaps
-
     def _generate_slots(self, gap_start, gap_end, duration, minimum_start: datetime | None = None):
         slots = []
-
+    
         current = self._align_to_slot(gap_start)
-
+    
         while True:
             candidate_end = current + timedelta(minutes=duration)
-
+    
             if candidate_end > gap_end:
                 break
-
+    
             if minimum_start is None or current >= minimum_start:
                 slots.append(current.time())
-
+    
             current += timedelta(minutes=self.SLOT_STEP_MINUTES)
-
+    
         return slots
+
+    def _build_gaps(self, start: datetime, end: datetime, appointments: Sequence[Appointment], tz: ZoneInfo):
+        gaps = []
+        cursor = start
+    
+        for appt in appointments:
+            appt_start = appt.start_datetime.astimezone(tz)
+            appt_end = appt.end_datetime.astimezone(tz)
+    
+            if cursor < appt_start:
+                gaps.append((cursor, appt_start))
+    
+            cursor = max(cursor, appt_end)
+    
+        if cursor < end:
+            gaps.append((cursor, end))
+    
+        return gaps
 
     def get_all(self, business_id: int, professional_id: int):
         self._validate_professional(business_id, professional_id)
@@ -152,8 +155,11 @@ class AvailabilityService:
         weekday = date.weekday()
 
         availability = self.availability_repo.get_by_professional_and_weekday(self.db, professional_id, weekday)
-
-        if not availability:
+        if (
+            not availability
+            or availability.professional_id != professional_id
+            or availability.weekday != weekday
+        ):
             raise AvailabilityNotFoundError()
 
         start_dt = self._combine_date_time(date, availability.start_time, tz)
@@ -170,7 +176,7 @@ class AvailabilityService:
             end_of_day,
         )
 
-        gaps = self._build_gaps(start_dt, end_dt, appointments)
+        gaps = self._build_gaps(start_dt, end_dt, appointments, tz)
 
         slot_times = []
 
