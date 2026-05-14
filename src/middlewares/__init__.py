@@ -1,1 +1,1 @@
-from .auth_middleware import LoggingMiddleware, RateLimitMiddleware
+from .logging_middleware import LoggingMiddleware, RateLimitMiddleware

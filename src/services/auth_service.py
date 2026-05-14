@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from src.core import DataBaseDep
 from src.models import User, BusinessIntegration
-from src.security import ActorSecurity, RefreshRequest, TokenManager
+from src.security import RefreshRequest, TokenManager, verify_hash, create_user_access_token, create_user_refresh_token, create_business_integration_token
 
 class InvalidCredentialError(Exception):
     pass
@@ -31,11 +31,11 @@ class AuthService:
         if not user:
             raise InvalidCredentialError()
 
-        if not ActorSecurity.verify_hash(password, user.password_hash):
+        if not verify_hash(password, user.password_hash):
             raise InvalidCredentialError()
 
-        access_token = ActorSecurity.create_user_access_token(user.id)
-        refresh_token = ActorSecurity.create_user_refresh_token(user.id)
+        access_token = create_user_access_token(user.id)
+        refresh_token = create_user_refresh_token(user.id)
 
         return access_token, refresh_token
     
@@ -64,7 +64,7 @@ class AuthService:
         ):
             raise InvalidTokenError()
 
-        return ActorSecurity.create_user_access_token(user.id)
+        return create_user_access_token(user.id)
 
     def get_business_integration_token(self, business_phone: str, integration_id: int):
         stmt = select(BusinessIntegration).where(
@@ -78,7 +78,7 @@ class AuthService:
         if not business_integration:
             raise DeactivatedLinkError()
 
-        return ActorSecurity.create_business_integration_token(business_integration.business_id, integration_id)
+        return create_business_integration_token(business_integration.business_id, integration_id)
         
 def get_auth_service(db: DataBaseDep):
     return AuthService(

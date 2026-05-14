@@ -1,14 +1,14 @@
 from fastapi import APIRouter, HTTPException
 
 from src.schemas import AppointmentCreate, AppointmentResponse, AppointmentUpdate
-from src.dependecies import AppointmentServiceDep, BusinessScopeDep, SuperAdminDep
+from src.dependecies import AppointmentServiceDep, BusinessScopeDep, SuperAdminDep, UserOrBusinessIntegrationDep
 from src.services.appointment_service import (AppointmentAlreadyCanceledError, ProfessionalNotAvailableError, AppointmentTimeConflictError,
 AppointmentNotFoundError, AppointmentAlreadyCompletedError, DatetimeFormatError)
 
 router = APIRouter(prefix="/appointments", tags=["Appointments"])
 
 @router.get("/", response_model=list[AppointmentResponse])
-def get_all_appointments(business_id: BusinessScopeDep, service: AppointmentServiceDep, client_id: int | None = None, professional_id: int | None = None):
+def get_all_appointments(business_id: BusinessScopeDep, service: AppointmentServiceDep, actor: UserOrBusinessIntegrationDep, client_id: int | None = None, professional_id: int | None = None):
     try:
         if client_id:
             return service.get_by_client(business_id, client_id)
@@ -22,7 +22,7 @@ def get_all_appointments(business_id: BusinessScopeDep, service: AppointmentServ
         raise HTTPException(status_code=404, detail="Nenhum agendamento encontrado!")
 
 @router.get("/{appointment_id}", response_model=AppointmentResponse)
-def get_appointment_by_id(appointment_id: int, business_id: BusinessScopeDep, service: AppointmentServiceDep):
+def get_appointment_by_id(appointment_id: int, business_id: BusinessScopeDep, service: AppointmentServiceDep, actor: UserOrBusinessIntegrationDep):
     try:
         return service.get_by_id(business_id, appointment_id)
 
@@ -30,7 +30,7 @@ def get_appointment_by_id(appointment_id: int, business_id: BusinessScopeDep, se
         raise HTTPException(status_code=404, detail="Agendamento não encontrado!")
 
 @router.post("/", status_code=201, response_model=AppointmentResponse)
-def create_appointment(data: AppointmentCreate, business_id: BusinessScopeDep, service: AppointmentServiceDep):
+def create_appointment(data: AppointmentCreate, business_id: BusinessScopeDep, service: AppointmentServiceDep, actor: UserOrBusinessIntegrationDep):
     try:
         return service.create(business_id, data)
 
@@ -47,7 +47,7 @@ def create_appointment(data: AppointmentCreate, business_id: BusinessScopeDep, s
         raise HTTPException(status_code=400, detail="Intervalo inválido!")
 
 @router.put("/{appointment_id}", response_model=AppointmentResponse)
-def update_appointment(appointment_id: int, data: AppointmentUpdate, business_id: BusinessScopeDep, service: AppointmentServiceDep):
+def update_appointment(appointment_id: int, data: AppointmentUpdate, business_id: BusinessScopeDep, service: AppointmentServiceDep, actor: UserOrBusinessIntegrationDep):
     try:
         return service.update(business_id, appointment_id, data)
 
@@ -67,7 +67,7 @@ def update_appointment(appointment_id: int, data: AppointmentUpdate, business_id
         raise HTTPException(status_code=400, detail="Intervalo inválido!")
 
 @router.patch("/{appointment_id}/complete", status_code=204)
-def complete_appointment(appointment_id: int, business_id: BusinessScopeDep, service: AppointmentServiceDep):
+def complete_appointment(appointment_id: int, business_id: BusinessScopeDep, service: AppointmentServiceDep, actor: UserOrBusinessIntegrationDep):
     try:
         service.complete(business_id, appointment_id)
 
@@ -81,7 +81,7 @@ def complete_appointment(appointment_id: int, business_id: BusinessScopeDep, ser
         raise HTTPException(status_code=409, detail="Agendamento já cancelado!")
 
 @router.patch("/{appointment_id}/cancel", status_code=204)
-def cancel_appointment(appointment_id: int, business_id: BusinessScopeDep, service: AppointmentServiceDep):
+def cancel_appointment(appointment_id: int, business_id: BusinessScopeDep, service: AppointmentServiceDep, actor: UserOrBusinessIntegrationDep):
     try:
         service.cancel(business_id, appointment_id)
 

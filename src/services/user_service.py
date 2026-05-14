@@ -2,8 +2,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
 from src.models import User
+from src.security import hash
 from src.core import DataBaseDep
-from src.security import ActorSecurity
 from src.repositories import UserRepository
 from src.schemas import UserCreate, UserUpdate
 
@@ -23,7 +23,7 @@ class UserService:
         self.db = db
         self.user_repo = user_repo
 
-    def _get_valid(self, business_id: int, user_id: int):
+    def _get_valid(self, business_id: int, user_id: int) -> User:
         user = self.user_repo.get_by_id(self.db, business_id, user_id)
         if (
             not user
@@ -62,7 +62,7 @@ class UserService:
     def create(self, business_id: int | None, data: UserCreate):
         user = User(
             email = data.email,
-            password_hash = ActorSecurity.hash(data.password),
+            password_hash = hash(data.password),
             role = data.role,
             business_id = business_id,
         )
@@ -85,7 +85,7 @@ class UserService:
         update_data = data.model_dump(exclude_unset=True)
 
         if "password" in update_data:
-            user.password_hash = ActorSecurity.hash(update_data.pop("password"))
+            user.password_hash = hash(update_data.pop("password"))
 
         for field, value in update_data.items():
             setattr(user, field, value)

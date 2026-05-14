@@ -2,12 +2,12 @@ from fastapi import APIRouter, HTTPException
 
 from src.schemas import ClientCreate, ClientUpdate, ClientResponse
 from src.services.client_service import ClientNotFoundError, ClientAlreadyExistsError
-from src.dependecies import ClientServiceDep, BusinessScopeDep, SuperAdminDep, AdminDep
+from src.dependecies import ClientServiceDep, BusinessScopeDep, SuperAdminDep, AdminDep, UserOrBusinessIntegrationDep
 
 router = APIRouter(prefix="/clients", tags=["Clients"])
 
 @router.get("/", response_model=list[ClientResponse])
-def get_all_clients(business_id: BusinessScopeDep, service: ClientServiceDep, client_phone: str | None = None):
+def get_all_clients(business_id: BusinessScopeDep, service: ClientServiceDep, actor: UserOrBusinessIntegrationDep, client_phone: str | None = None):
     try:
         if client_phone:
             return service.get_by_phone(business_id, client_phone)
@@ -18,7 +18,7 @@ def get_all_clients(business_id: BusinessScopeDep, service: ClientServiceDep, cl
         raise HTTPException(status_code=404, detail="Cliente(s) não encontrado(s)")
 
 @router.get("/{client_id}", response_model=ClientResponse)
-def get_client(client_id: int, business_id: BusinessScopeDep, service: ClientServiceDep):
+def get_client(client_id: int, business_id: BusinessScopeDep, service: ClientServiceDep, actor: UserOrBusinessIntegrationDep):
     try:
         return service.get_by_id(business_id, client_id)
     
@@ -26,7 +26,7 @@ def get_client(client_id: int, business_id: BusinessScopeDep, service: ClientSer
         raise HTTPException(status_code=404, detail="Cliente não encontrado!")
 
 @router.post("/", status_code=201, response_model=ClientResponse)
-def create_client(data: ClientCreate, business_id: BusinessScopeDep, service: ClientServiceDep):
+def create_client(data: ClientCreate, business_id: BusinessScopeDep, service: ClientServiceDep, actor: UserOrBusinessIntegrationDep):
     try:
         return service.create(business_id, data)
     
@@ -34,7 +34,7 @@ def create_client(data: ClientCreate, business_id: BusinessScopeDep, service: Cl
         raise HTTPException(status_code=409, detail="Cliente já cadastrado!")
 
 @router.patch("/{client_id}", response_model=ClientResponse)
-def update_name(client_id: int, name: str, business_id: BusinessScopeDep, service: ClientServiceDep):
+def update_name(client_id: int, name: str, business_id: BusinessScopeDep, service: ClientServiceDep, actor: UserOrBusinessIntegrationDep):
     try:
         return service.new_name(business_id, client_id, name)
     

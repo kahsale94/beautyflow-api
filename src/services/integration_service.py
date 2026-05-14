@@ -3,8 +3,8 @@ from sqlalchemy.exc import IntegrityError
 
 from src.core import DataBaseDep
 from src.models import Integration
-from src.security import ActorSecurity
 from src.repositories import IntegrationRepository
+from src.security import create_integration_token, hash
 from src.schemas import IntegrationCreate, IntegrationUpdate, IntegrationCreateResponse
 
 class IntegrationNotFoundError(Exception):
@@ -65,8 +65,8 @@ class IntegrationService:
         self.integration_repo.add(self.db, integration)
         self.db.flush()
 
-        api_token = ActorSecurity.create_integration_token(integration.id)
-        integration.api_token_hash = ActorSecurity.hash(api_token)
+        api_token = create_integration_token(integration.id)
+        integration.api_token_hash = hash(api_token)
 
         try:
             self.db.commit()

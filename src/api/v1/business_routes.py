@@ -1,13 +1,13 @@
 from fastapi import APIRouter, HTTPException
 
 from src.schemas import BusinessCreate, BusinessResponse, BusinessUpdate
-from src.dependecies import BusinessScopeDep, BusinessServiceDep, SuperAdminDep
 from src.services.business_service import BusinessNotFoundError, BusinessAlreadyExistsError
+from src.dependecies import BusinessScopeDep, BusinessServiceDep, SuperAdminDep, UserOrBusinessIntegrationDep
 
 router = APIRouter(prefix="/businesses", tags=["Businesses"])
 
 @router.get("/me", response_model=BusinessResponse)
-def get_my_business(business_id: BusinessScopeDep, service: BusinessServiceDep):
+def get_my_business(business_id: BusinessScopeDep, service: BusinessServiceDep, actor: UserOrBusinessIntegrationDep):
     return service.get_by_id(business_id)
 
 @router.get("/", response_model=list[BusinessResponse])

@@ -1,24 +1,73 @@
 services:
-    migrate:
+    db-postgres:
+        image: postgres:16-alpine
+        restart: unless-stopped
+        environment:
+            - POSTGRES_USER=${POSTGRES_USER}
+            - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+            - POSTGRES_DB=${POSTGRES_DB}
+        volumes:
+            - postgres_data:/var/lib/postgresql/data
+        healthcheck:
+            test: [ "CMD-SHELL", 'pg_isready -U "$${POSTGRES_USER:-postgres}" -d "$${POSTGRES_DB:-postgres}" -h localhost || exit 1' ]
+            interval: 30s
+            timeout: 10s
+            retries: 5
+            start_period: 10s
+        networks:
+            beautyflow-network:
+                aliases:
+                    - postgres
+
+    db-redis:
+        image: redis:7.2-alpine
+        restart: unless-stopped
+        environment:
+            - REDIS_PASSWORD=${REDIS_PASSWORD}
+        command: >
+            redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes --appendfsync everysec
+        healthcheck:
+            test: [ "CMD-SHELL", 'redis-cli -a "$$REDIS_PASSWORD" ping | grep PONG' ]
+            interval: 10s
+            timeout: 5s
+            retries: 3
+            start_period: 5s
+        volumes:
+            - redis_data:/data
+        networks:
+            beautyflow-network:
+                aliases:
+                    - redis
+
+    db-migrate:
         build: .
-        container_name: beautyflow-api-migrate
         restart: "no"
+        exclude_from_hc: true
         command: alembic upgrade head
+        depends_on:
+            db-postgres:
+                condition: service_healthy
         environment:
             - DATABASE_URL=${DATABASE_URL}
         networks:
-        - beautyflow-network
+            beautyflow-network:
+                aliases:
+                    - migrate
 
-    api:
+    backend:
         build: .
         expose:
-            - '8000'
-        container_name: beautyflow-api
-        restart: 'always'
+            - "8000"
+        restart: always
         depends_on:
-            migrate:
+            db-postgres:
+                condition: service_healthy
+            db-redis:
+                condition: service_healthy
+            db-migrate:
                 condition: service_completed_successfully
         environment:
+            - ENVIRONMENT=${ENVIRONMENT}
             - DATABASE_URL=${DATABASE_URL}
             - ALGORITHM=${ALGORITHM}
             - USER_SECRET_KEY=${USER_SECRET_KEY}
@@ -31,14 +80,17 @@ services:
         networks:
             beautyflow-network:
                 aliases:
-                - beautyflow-api
+                    - backend
             n8n-network:
                 aliases:
-                - beautyflow-api
+                    - beautyflow_backend
+
+volumes:
+    postgres_data:
+    redis_data:
 
 networks:
     beautyflow-network:
         external: true
-
     n8n-network:
         external: true

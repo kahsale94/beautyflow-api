@@ -12,7 +12,7 @@ from src.services.availability_service import AvailabilityService, get_availabil
 from src.services.professional_service import ProfessionalService, get_professional_service
 from src.services.business_integration_service import BusinessIntegrationService, get_business_integration_service
 from src.security import (require_user, require_super_admin, UserContext, get_business_scope, require_admin, IntegrationContext, 
-require_integration, get_business_phone, require_business_integration, BusinessIntegrationContext)
+require_integration, get_business_phone, require_business_integration, BusinessIntegrationContext, require_user_or_business_integration)
 
 BusinessScopeDep = Annotated[int, Depends(get_business_scope)]
 BusinessPhoneDep = Annotated[str, Depends(get_business_phone)]
@@ -20,7 +20,9 @@ BusinessPhoneDep = Annotated[str, Depends(get_business_phone)]
 IntegrationDep = Annotated[IntegrationContext, Depends(require_integration)]
 BusinessIntegrationDep = Annotated[BusinessIntegrationContext, Depends(require_business_integration)]
 
-CurrentUserDep = Annotated[UserContext, Depends(require_user)]
+UserOrBusinessIntegrationDep = Annotated[UserContext | BusinessIntegrationContext, Depends(require_user_or_business_integration)]
+
+UserDep = Annotated[UserContext, Depends(require_user)]
 AdminDep = Annotated[UserContext, Depends(require_admin)]
 SuperAdminDep = Annotated[UserContext, Depends(require_super_admin)]
 

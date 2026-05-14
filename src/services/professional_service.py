@@ -3,6 +3,7 @@ from sqlalchemy.exc import IntegrityError
 
 from src.core import DataBaseDep
 from src.models import Professional
+from src.utils import normalize_text
 from src.repositories import ProfessionalRepository
 from src.schemas import ProfessionalCreate, ProfessionalUpdate
 
@@ -22,7 +23,7 @@ class ProfessionalService:
         self.db = db
         self.professional_repo = professional_repo
 
-    def _get_valid(self, business_id: int, professional_id: int):
+    def _get_valid(self, business_id: int, professional_id: int) -> Professional:
         professional = self.professional_repo.get_by_id(self.db, business_id, professional_id)
         if (
             not professional
@@ -46,22 +47,25 @@ class ProfessionalService:
 
     def get_by_id(self, business_id: int, professional_id: int):
         return self._get_valid(business_id, professional_id)
-    
-    def get_by_name(self, business_id: int, professional_name: int):
-        result = self.professional_repo.get_by_name(self.db, business_id, professional_name)
+
+    def get_by_name(self, business_id: int, professional_name: str):
+        normalized_name = normalize_text(professional_name)
+
+        result = self.professional_repo.get_by_name(self.db, business_id, normalized_name)
         if (
             not result
-            or not result.is_active
-            or result.business_id != business_id
+            or not all(item.is_active for item in result)
+            or not all(item.business_id == business_id for item in result)
         ):
             raise ProfessionalNotFoundError()
 
-        return [result]
-    
+        return result
+
     def create(self, business_id: int, data: ProfessionalCreate):
         professional = Professional(
-            business_id = business_id,
-            name = data.name,
+            business_id=business_id,
+            name=data.name,
+            normalized_name=normalize_text(data.name),
         )
 
         self.professional_repo.add(self.db, professional)
@@ -84,16 +88,19 @@ class ProfessionalService:
         for field, value in update_data.items():
             setattr(professional, field, value)
 
+        if "name" in update_data:
+            professional.normalized_name = normalize_text(update_data["name"])
+
         try:
             self.db.commit()
         except IntegrityError:
             self.db.rollback()
             raise ProfessionalAlreadyExistsError()
-        
+
         self.db.refresh(professional)
 
         return professional
-    
+
     def deactivate(self, business_id: int, professional_id: int):
         professional = self._get_valid(business_id, professional_id)
 
@@ -110,6 +117,7 @@ class ProfessionalService:
         self.db.commit()
 
         return
+
 
 def get_professional_service(db: DataBaseDep):
     return ProfessionalService(

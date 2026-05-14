@@ -1,13 +1,13 @@
 from fastapi import APIRouter, HTTPException
 
-from src.dependecies import ServiceServiceDep, BusinessScopeDep, AdminDep, SuperAdminDep
-from src.services.service_service import ServiceNotFoundError, ServiceAlreadyExistsError
 from src.schemas import ServiceCreate, ServiceUpdate, ServiceResponse
+from src.services.service_service import ServiceNotFoundError, ServiceAlreadyExistsError
+from src.dependecies import ServiceServiceDep, BusinessScopeDep, AdminDep, SuperAdminDep, UserOrBusinessIntegrationDep
 
 router = APIRouter(prefix="/services", tags=["Services"])
 
 @router.get("/", response_model=list[ServiceResponse])
-def get_services(business_id: BusinessScopeDep, service: ServiceServiceDep, service_name: str | None = None):
+def get_services(business_id: BusinessScopeDep, service: ServiceServiceDep, actor: UserOrBusinessIntegrationDep, service_name: str | None = None):
     try:
         if service_name:
             return service.get_by_name(business_id, service_name)
@@ -17,7 +17,7 @@ def get_services(business_id: BusinessScopeDep, service: ServiceServiceDep, serv
         raise HTTPException(status_code=404, detail="Serviço(s) não encontrado(s)!")
 
 @router.get("/{service_id}", response_model=ServiceResponse)
-def get_service_by_id(service_id: int, business_id: BusinessScopeDep, service: ServiceServiceDep):
+def get_service_by_id(service_id: int, business_id: BusinessScopeDep, service: ServiceServiceDep, actor: UserOrBusinessIntegrationDep):
     try:
         return service.get_by_id(business_id, service_id)
     

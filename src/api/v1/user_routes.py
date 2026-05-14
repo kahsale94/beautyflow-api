@@ -1,13 +1,13 @@
 from fastapi import APIRouter, HTTPException
 
-from src.dependecies import UserServiceDep, CurrentUserDep, SuperAdminDep, AdminDep, BusinessScopeDep
-from src.services.user_service import UserAlreadyExistsError, UserNotFoundError
 from src.schemas import UserCreate, UserResponse, UserUpdate
+from src.services.user_service import UserAlreadyExistsError, UserNotFoundError
+from src.dependecies import UserServiceDep, UserDep, SuperAdminDep, AdminDep, BusinessScopeDep
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
 @router.get("/me", response_model=UserResponse)
-def get_me(current_user: CurrentUserDep):
+def get_me(current_user: UserDep):
     return current_user
 
 @router.get("/", response_model=list[UserResponse])

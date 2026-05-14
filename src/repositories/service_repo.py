@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
 from src.models import Service
@@ -20,12 +20,21 @@ class ServiceRepository:
         return db.scalars(stmt).one_or_none()
     
     def get_by_name(self, db: Session, business_id: int, service_name: str):
-        stmt = select(Service).where(
+        similarity_score = func.similarity(Service.normalized_name, service_name)
+
+        stmt = (select(Service).where(
             Service.is_active == True,
             Service.business_id == business_id,
-            Service.name == service_name,
+            (
+                Service.normalized_name.ilike(f"%{service_name}%")
+                | (similarity_score > 0.4)
+            ),
         )
-        return db.scalars(stmt).one_or_none()
+        .order_by(similarity_score.desc())
+        .limit(20)
+        )
+
+        return db.scalars(stmt).all()
     
     def get_by_business(self, db: Session, business_id: int):
         stmt = select(Service).where(

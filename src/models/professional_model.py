@@ -1,5 +1,5 @@
 from typing import TYPE_CHECKING
-from sqlalchemy import UniqueConstraint
+from sqlalchemy import UniqueConstraint, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base_model import Base, intpk, business_fk, name_type
@@ -14,11 +14,23 @@ if TYPE_CHECKING:
 class Professional(Base):
     __tablename__ = "professionals"
 
-    __table_args__ = (UniqueConstraint("business_id", "name", name="uq_professional_business_name"),)
+    __table_args__ = (
+        UniqueConstraint("business_id", "name", name="uq_professional_business_name"),
+        Index(
+            "idx_professionals_normalized_name_trgm",
+            "normalized_name",
+            postgresql_using="gin",
+            postgresql_ops={
+                "normalized_name": "gin_trgm_ops",
+            },
+        ),
+    )
 
     id: Mapped[intpk]
     business_id: Mapped[business_fk]
+    email: Mapped[str] = mapped_column(nullable=False) 
     name: Mapped[name_type] = mapped_column(nullable=False)
+    normalized_name: Mapped[name_type] = mapped_column(nullable=False)
     is_active: Mapped[bool] = mapped_column(nullable=False, default=True, server_default="true")
 
     business: Mapped["Business"] = relationship(back_populates="professionals")

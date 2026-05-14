@@ -3,6 +3,7 @@ from sqlalchemy.exc import IntegrityError
 
 from src.models import Service
 from src.core import DataBaseDep
+from src.utils import normalize_text
 from src.repositories import ServiceRepository
 from src.schemas import ServiceCreate, ServiceUpdate
 
@@ -22,7 +23,7 @@ class ServiceService:
         self.db = db
         self.service_repo = service_repo
 
-    def _get_valid(self, business_id: int, service_id: int):
+    def _get_valid(self, business_id: int, service_id: int) -> Service:
         service = self.service_repo.get_by_id(self.db, business_id, service_id)
         if (
             not service
@@ -48,20 +49,23 @@ class ServiceService:
         return self._get_valid(business_id, service_id)
     
     def get_by_name(self, business_id: int, service_name: str):
-        result = self.service_repo.get_by_name(self.db, business_id, service_name)
+        normalized_name = normalize_text(service_name)
+
+        result = self.service_repo.get_by_name(self.db, business_id, normalized_name)
         if (
             not result
-            or not result.is_active
-            or result.business_id != business_id
+            or not all(item.is_active for item in result)
+            or not all(item.business_id == business_id for item in result)
         ):
             raise ServiceNotFoundError()
 
-        return [result]
+        return result
 
     def create(self, business_id: int, data: ServiceCreate):
         service = Service(
             business_id = business_id,
             name = data.name,
+            normalized_name = normalize_text(data.name),
             duration_minutes = data.duration_minutes,
             price = data.price,
         )
@@ -85,6 +89,9 @@ class ServiceService:
 
         for field, value in update_data.items():
             setattr(service, field, value)
+
+        if "name" in update_data:
+            service.normalized_name = normalize_text(update_data["name"])
 
         try:
             self.db.commit()

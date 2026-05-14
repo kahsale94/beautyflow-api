@@ -3,7 +3,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 ALGORITHM = os.getenv("ALGORITHM")
+ENVIRONMENT = os.getenv("ENVIRONMENT")
 DATABASE_URL = os.getenv("DATABASE_URL")
+
 
 USER_SECRET_KEY = os.getenv("USER_SECRET_KEY")
 INTEGRATION_SECRET_KEY = os.getenv("INTEGRATION_SECRET_KEY")

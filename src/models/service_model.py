@@ -1,6 +1,6 @@
 from decimal import Decimal
 from typing import TYPE_CHECKING
-from sqlalchemy import Numeric, UniqueConstraint
+from sqlalchemy import Numeric, UniqueConstraint, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base_model import Base, intpk, business_fk, name_type
@@ -14,11 +14,22 @@ if TYPE_CHECKING:
 class Service(Base):
     __tablename__ = "services"
 
-    __table_args__ = (UniqueConstraint("business_id", "name", name="uq_service_business_name"),)
+    __table_args__ = (
+        UniqueConstraint("business_id", "name", name="uq_service_business_name"),
+        Index(
+            "idx_services_normalized_name_trgm",
+            "normalized_name",
+            postgresql_using="gin",
+            postgresql_ops={
+                "normalized_name": "gin_trgm_ops",
+            },
+        ),
+    )
 
     id: Mapped[intpk]
     business_id: Mapped[business_fk]
     name: Mapped[name_type] = mapped_column(nullable=False)
+    normalized_name: Mapped[name_type] = mapped_column(nullable=False)
     duration_minutes: Mapped[int] = mapped_column(nullable=False)
     price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     is_active: Mapped[bool] = mapped_column(nullable=False, default=True, server_default="true")

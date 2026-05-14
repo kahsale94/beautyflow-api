@@ -2,7 +2,6 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
 from src.core import DataBaseDep
-from src.security import ActorSecurity
 from src.models import BusinessIntegration
 from src.repositories import BusinessIntegrationRepository
 from src.schemas import BusinessIntegrationCreate, BusinessIntegrationUpdate
