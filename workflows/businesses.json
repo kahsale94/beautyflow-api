@@ -1,0 +1,393 @@
+{
+  "name": "businesses",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "business_phone"
+            },
+            {
+              "name": "api",
+              "type": "object"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -640,
+        0
+      ],
+      "id": "ab229015-f3a5-40a8-965e-2bb21c7988b8",
+      "name": "webhook"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('data handler').item.json.api.url }}/business-integrations/config",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $('data handler').item.json.api.token }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        400,
+        176
+      ],
+      "id": "9429a6df-fbaf-49ab-9eb8-748c69cdf215",
+      "name": "get business",
+      "retryOnFail": false,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "errorType": "errorObject",
+        "errorObject": "={\n  \"error\": {\n    \"execution\": \"{{ $execution.id }}\",\n    \"type\": \"internal api\",\n    \"node\": \"{{ $prevNode.name }}\",\n    \"code\": \"{{ $json.error.status }}\",\n    \"description\": \"{{\n(() => {\n  try {\n    const part = $json.error.message.split(' - ')[1];\n    return JSON.parse(JSON.parse(part)).detail;\n  } catch (e) {\n    return $json.error.message;\n  }\n})()\n}}\"\n  },\n  \"business\": {\n    \"phone\": \"{{ $('data handler').item.json.business.phone }}\"\n  }\n}"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        608,
+        304
+      ],
+      "id": "fee46dc5-8f91-4c25-8db4-eb385b4381ee",
+      "name": "error report 1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3b649161-22ac-4fac-a3ce-aafbd6d8ab3a",
+              "name": "id",
+              "value": "={{ $json.business_id }}",
+              "type": "number"
+            },
+            {
+              "id": "17ac875d-ad5d-4f3c-9e56-e217777b2a66",
+              "name": "bot_name",
+              "value": "={{ $json.config.n8n.bot_name }}",
+              "type": "string"
+            },
+            {
+              "id": "325d1166-031f-4ba6-aa53-0bad94564dcf",
+              "name": "name",
+              "value": "={{ $json.config.n8n.business_name }}",
+              "type": "string"
+            },
+            {
+              "id": "23d967af-d74b-4fe8-98c2-fb7629ae95ec",
+              "name": "phone",
+              "value": "={{ $json.config.n8n.phone }}",
+              "type": "string"
+            },
+            {
+              "id": "556492ec-43e9-41a5-89aa-0362575fd027",
+              "name": "opening_hours",
+              "value": "={{ $json.config.n8n.opening_hours }}",
+              "type": "string"
+            },
+            {
+              "id": "9b80a842-09d6-40a8-811f-365e97a7d4ea",
+              "name": "payment_methods",
+              "value": "={{ $json.config.n8n.payment_methods }}",
+              "type": "string"
+            },
+            {
+              "id": "133f951b-0a79-40a8-8889-08fb1c10170c",
+              "name": "address",
+              "value": "={{ $json.config.n8n.address }}",
+              "type": "string"
+            },
+            {
+              "id": "b843ba8a-25b6-4a4c-8791-768cc517fe72",
+              "name": "cancellation_policies",
+              "value": "={{ $json.config.n8n.cancellation_policies }}",
+              "type": "string"
+            },
+            {
+              "id": "8e402fc3-0d3c-4541-b3ce-f313ad0cda50",
+              "name": "policies_delay",
+              "value": "={{ $json.config.n8n.policies_delay }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        928,
+        -16
+      ],
+      "id": "06ef012b-1862-4bb3-b84f-6e82d4865768",
+      "name": "business context"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "401916f0-cc5c-483f-9967-cb0c969e7775",
+              "name": "api",
+              "value": "={{ $json.api }}",
+              "type": "object"
+            },
+            {
+              "id": "5ec35bf1-e6d9-4621-b9a2-0069105703d9",
+              "name": "business.phone",
+              "value": "={{ $json.business_phone }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -432,
+        0
+      ],
+      "id": "1c16b8f5-2447-4092-a225-758bc63d9a1a",
+      "name": "data handler"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c4e5d140-889f-451a-ada6-7fc14c1a90e7",
+              "leftValue": "={{ $('get context').item.json.business }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -16,
+        0
+      ],
+      "id": "bdea41f9-7ff0-43ed-92ed-1e29371421b6",
+      "name": "has data?"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "propertyName": "business",
+        "key": "=beautyflow_bot.{{ $('data handler').item.json.business.phone }}.business_context",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -224,
+        0
+      ],
+      "id": "6cd8081d-89a7-46c2-b65a-67a2846232e4",
+      "name": "get context",
+      "credentials": {
+        "redis": {
+          "id": "nOvNVY4Hbhe1hTxw",
+          "name": "N8N - Test DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst output = [];\n\nfor (const item of items) {\n  const businesses = item.json.business || [];\n\n  for (const businessString of businesses) {\n    const business = JSON.parse(businessString);\n\n    output.push({\n      json: {\n        business_id: business.id,\n        config: business.config,\n      },\n    });\n  }\n}\n\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        -16
+      ],
+      "id": "f53a1a98-0b15-4e02-a6c1-a039a9e4b8f2",
+      "name": "convert"
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "=beautyflow_bot.{{ $('data handler').item.json.business.phone }}.business_context",
+        "value": "={{ JSON.stringify({\n  id: $('get business').item.json.business_id,\n  config: {\n    n8n: $('get business').item.json.config.n8n\n  } \n}) }}",
+        "keyType": "string"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        608,
+        160
+      ],
+      "id": "8c35ab70-fa9d-4962-a578-2aa733d2a1dd",
+      "name": "push context",
+      "credentials": {
+        "redis": {
+          "id": "nOvNVY4Hbhe1hTxw",
+          "name": "N8N - Test DB"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "webhook": [
+      {
+        "json": {
+          "url": "http://beautyflow-api:8000/v1",
+          "token": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwiYnVzaW5lc3NfaWQiOjMsInR5cGUiOiJidXNpbmVzc19pbnRlZ3JhdGlvbiIsInRva2VuX3R5cGUiOiJhY2Nlc3MiLCJleHAiOjE3Nzg1OTY2OTN9.x62y80xSs6A25_oPmnnqdZZfhP9Y3ZWMENyc8IkUOJo",
+          "business_phone": "5511991549118"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "get business": {
+      "main": [
+        [
+          {
+            "node": "push context",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "error report 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "webhook": {
+      "main": [
+        [
+          {
+            "node": "data handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "data handler": {
+      "main": [
+        [
+          {
+            "node": "get context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "has data?": {
+      "main": [
+        [
+          {
+            "node": "convert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "get business",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get context": {
+      "main": [
+        [
+          {
+            "node": "has data?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "convert": {
+      "main": [
+        [
+          {
+            "node": "business context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "push context": {
+      "main": [
+        [
+          {
+            "node": "business context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "bWdz3xBVwmycvfwW",
+    "timezone": "America/Sao_Paulo",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "7b855ac7-b4e5-4b6e-ba15-b5b6c8612529",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b304e3d5690d6187ef909ae7d9f59e9b1a1652d2a6e2167896375e495fa017bf"
+  },
+  "id": "fI4FYgDFzKREs8oI",
+  "tags": [
+    {
+      "updatedAt": "2025-06-26T00:38:55.999Z",
+      "createdAt": "2025-06-26T00:38:55.999Z",
+      "id": "bUwJA43QdWA1hja2",
+      "name": "Kaiky"
+    },
+    {
+      "updatedAt": "2026-02-25T19:58:55.694Z",
+      "createdAt": "2026-02-25T19:58:55.694Z",
+      "id": "f0nNVqFB5MvVr1Zx",
+      "name": "beautyflow-api"
+    }
+  ]
+}

@@ -1,0 +1,1024 @@
+{
+  "name": "services",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "action"
+            },
+            {
+              "name": "business",
+              "type": "object"
+            },
+            {
+              "name": "service",
+              "type": "object"
+            },
+            {
+              "name": "api",
+              "type": "object"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        304,
+        5456
+      ],
+      "id": "46f855f5-d422-43de-a65c-35d3c272c0f9",
+      "name": "webhook"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "bccd3750-dfb9-40e6-a88d-1c5d12d857b4",
+              "name": "action",
+              "value": "={{ $json.action }}",
+              "type": "string"
+            },
+            {
+              "id": "1ad73721-9117-496f-911d-85833c00b386",
+              "name": "business",
+              "value": "={{ $json.business }}",
+              "type": "object"
+            },
+            {
+              "id": "afcf3dc6-ac01-49f1-8423-32e554ff77c7",
+              "name": "service",
+              "value": "={{ $json.service }}",
+              "type": "object"
+            },
+            {
+              "id": "1cb79adc-6592-4d1f-93c1-fe8d78d54465",
+              "name": "api",
+              "value": "={{ {\n  ...$json.api,\n  url: $json.api.url + '/services'\n} }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        496,
+        5456
+      ],
+      "id": "19539fb4-66f8-4efe-ad6e-fe33dd6b158e",
+      "name": "data handler"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('data handler').item.json.api.url }}/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $('data handler').item.json.api.token }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1120,
+        4768
+      ],
+      "id": "77b7f8ea-444b-4f56-a2f0-77d6ff41c6a8",
+      "name": "get all",
+      "alwaysOutputData": false,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "804a7f04-c007-4045-a9f5-34b606a6eea1",
+              "name": "sucess",
+              "value": "=true",
+              "type": "boolean"
+            },
+            {
+              "id": "7748568d-748f-4ac6-ab88-fb32197f0806",
+              "name": "services",
+              "value": "={{ $json.services }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2480,
+        4576
+      ],
+      "id": "c47b9b35-8a22-42ad-bb5a-659ecb83ad5f",
+      "name": "sucess"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "d1d07cfb-5acf-4eb2-acf3-9772a1c028d7",
+                    "leftValue": "={{ $('data handler').item.json.action }}",
+                    "rightValue": "list",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "LIST"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "515c42e0-1cc3-474f-b8bd-94312e698da1",
+                    "leftValue": "={{ $('data handler').item.json.action }}",
+                    "rightValue": "get",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "GET"
+            }
+          ]
+        },
+        "options": {
+          "allMatchingOutputs": false
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        704,
+        5456
+      ],
+      "id": "10c0c6c1-bfc5-4e8b-ac0f-c311f94efe7c",
+      "name": "action"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('data handler').item.json.service.id }}",
+                    "rightValue": "id",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    },
+                    "id": "602d3e0e-c549-4dba-bda6-0780ec28e31b"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "ID"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "c56f2523-14b9-42ea-ac7e-f26401f92f7b",
+                    "leftValue": "={{ $('data handler').item.json.service.name }}",
+                    "rightValue": "name",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "NAME"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        912,
+        5472
+      ],
+      "id": "c7d41547-b1b6-4fc9-b824-7bba1d1bc03d",
+      "name": "get"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('data handler').item.json.api.url }}/",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "service_name",
+              "value": "={{ $('data handler').item.json.service.name }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $('data handler').item.json.api.token }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1536,
+        5632
+      ],
+      "id": "3f228433-850b-4278-860a-63f3f30f66cf",
+      "name": "get by name",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "services",
+        "include": "specifiedFields",
+        "fieldsToInclude": "id, name, price, duration_minutes",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1328,
+        4576
+      ],
+      "id": "300fc023-ecd5-40f4-b123-5d0fa6305e48",
+      "name": "aggregate"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('data handler').item.json.api.url }}/{{ $('data handler').item.json.service.id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $('data handler').item.json.api.token }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1536,
+        5248
+      ],
+      "id": "25920458-99e2-4098-99c4-02a775873e7d",
+      "name": "get by id",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "errorType": "errorObject",
+        "errorObject": "={\n  \"error\": {\n    \"execution\": \"{{ $execution.id }}\",\n    \"type\": \"internal api\",\n    \"node\": \"{{ $prevNode.name }}\",\n    \"code\": \"{{ $json.error.status }}\",\n    \"description\": \"{{\n(() => {\n  try {\n    const part = $json.error.message.split(' - ')[1];\n    return JSON.parse(JSON.parse(part)).detail;\n  } catch (e) {\n    return $json.error.message;\n  }\n})()\n}}\"\n  },\n  \"business\": {\n    \"id\": \"{{ $('data handler').item.json.business.id }}\",\n    \"name\": \"{{ $('data handler').item.json.business.name }}\"\n  }\n}"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        1328,
+        4912
+      ],
+      "id": "b7ae2ace-337a-432b-bb34-cb50bcccc1f8",
+      "name": "error report"
+    },
+    {
+      "parameters": {
+        "operation": "keys",
+        "keyPattern": "beautyflow_bot.*.*.service_context"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        1328,
+        4752
+      ],
+      "id": "29bf52af-80f3-485f-88d0-71805fae121b",
+      "name": "get context",
+      "credentials": {
+        "redis": {
+          "id": "nOvNVY4Hbhe1hTxw",
+          "name": "N8N - Test DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "keys",
+        "keyPattern": "=beautyflow_bot.{{ $('data handler').item.json.service.id }}.*.service_context"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        5104
+      ],
+      "id": "a1d9d829-c1ad-4985-81d2-f8f9ed21902f",
+      "name": "get context 1",
+      "credentials": {
+        "redis": {
+          "id": "nOvNVY4Hbhe1hTxw",
+          "name": "N8N - Test DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c4e5d140-889f-451a-ada6-7fc14c1a90e7",
+              "leftValue": "={{ $('get context 1').item.json }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1328,
+        5104
+      ],
+      "id": "b9eec892-b70d-4025-816a-2cd15262acd4",
+      "name": "has data? 1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c4e5d140-889f-451a-ada6-7fc14c1a90e7",
+              "leftValue": "={{ $('get context 2').item.json }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1328,
+        5488
+      ],
+      "id": "d267e270-8498-4af9-a2ef-cb670512dba2",
+      "name": "has data? 2"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "services",
+        "include": "specifiedFields",
+        "fieldsToInclude": "id, name, price, duration_minutes",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1952,
+        5088
+      ],
+      "id": "da5e94b0-d371-452b-8203-2b43d000f38e",
+      "name": "aggregate 1"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "services",
+        "include": "specifiedFields",
+        "fieldsToInclude": "id, name, price, duration_minutes",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1952,
+        5472
+      ],
+      "id": "8bb5eab8-c7a4-4384-8d3d-c200921110ff",
+      "name": "aggregate 2"
+    },
+    {
+      "parameters": {
+        "errorType": "errorObject",
+        "errorObject": "={\n  \"error\": {\n    \"execution\": \"{{ $execution.id }}\",\n    \"type\": \"internal api\",\n    \"node\": \"{{ $prevNode.name }}\",\n    \"code\": \"{{ $json.error.status }}\",\n    \"description\": \"{{\n(() => {\n  try {\n    const part = $json.error.message.split(' - ')[1];\n    return JSON.parse(JSON.parse(part)).detail;\n  } catch (e) {\n    return $json.error.message;\n  }\n})()\n}}\"\n  },\n  \"business\": {\n    \"id\": \"{{ $('data handler').item.json.business.id }}\",\n    \"name\": \"{{ $('data handler').item.json.business.name }}\"\n  }\n}"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        1744,
+        5328
+      ],
+      "id": "f5be3f33-0f93-49de-9f2c-0c029b37f5d7",
+      "name": "error report 1"
+    },
+    {
+      "parameters": {
+        "errorType": "errorObject",
+        "errorObject": "={\n  \"error\": {\n    \"execution\": \"{{ $execution.id }}\",\n    \"type\": \"internal api\",\n    \"node\": \"{{ $prevNode.name }}\",\n    \"code\": \"{{ $json.error.status }}\",\n    \"description\": \"{{\n(() => {\n  try {\n    const part = $json.error.message.split(' - ')[1];\n    return JSON.parse(JSON.parse(part)).detail;\n  } catch (e) {\n    return $json.error.message;\n  }\n})()\n}}\"\n  },\n  \"business\": {\n    \"id\": \"{{ $('data handler').item.json.business.id }}\",\n    \"name\": \"{{ $('data handler').item.json.business.name }}\"\n  }\n}"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        1744,
+        5712
+      ],
+      "id": "4aec6be9-fa13-4141-9dbb-277623437d8e",
+      "name": "error report 2"
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "=beautyflow_bot.{{ $('loop').item.json.id }}.{{ $('loop').item.json.name }}.service_context",
+        "value": "={{ JSON.stringify({\n  id: $('loop').item.json.id,\n  name: $('loop').item.json.name,\n  price: $('loop').item.json.price,\n  duration_minutes: $('loop').item.json.duration_minutes\n}) }}",
+        "keyType": "string"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        1952,
+        4768
+      ],
+      "id": "0aee0b6c-b9ea-47e3-b8aa-a447e659fb98",
+      "name": "push context",
+      "credentials": {
+        "redis": {
+          "id": "nOvNVY4Hbhe1hTxw",
+          "name": "N8N - Test DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "=beautyflow_bot.{{ $('get by id').item.json.id }}.{{ $('get by id').item.json.name }}.service_context",
+        "value": "={{ JSON.stringify({\n  id: $('get by id').item.json.id,\n  name: $('get by id').item.json.name,\n  price: $('get by id').item.json.price,\n  duration_minutes: $('get by id').item.json.duration_minutes\n}) }}",
+        "keyType": "string"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        1744,
+        5168
+      ],
+      "id": "9a359978-3774-4d84-810f-d0d28f4fc916",
+      "name": "push context 1",
+      "credentials": {
+        "redis": {
+          "id": "nOvNVY4Hbhe1hTxw",
+          "name": "N8N - Test DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "=beautyflow_bot.{{ $('get by name').item.json.id }}.{{ $('get by name').item.json.name }}.service_context",
+        "value": "={{ JSON.stringify({\n  id: $('get by name').item.json.id,\n  name: $('get by name').item.json.name,\n  price: $('get by name').item.json.price,\n  duration_minutes: $('get by name').item.json.duration_minutes\n}) }}",
+        "keyType": "string"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        1744,
+        5552
+      ],
+      "id": "1cadf296-4261-4adb-b05f-1ba50c193e93",
+      "name": "push context 2",
+      "alwaysOutputData": false,
+      "credentials": {
+        "redis": {
+          "id": "nOvNVY4Hbhe1hTxw",
+          "name": "N8N - Test DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1744,
+        4752
+      ],
+      "id": "a8423948-0be0-465f-a69b-0a4146bae59c",
+      "name": "loop"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst output = [];\n\nfor (const item of items) {\n  for (const [key, value] of Object.entries(item.json)) {\n    if (!value) continue;\n\n    const service = JSON.parse(value);\n\n    output.push({\n      json: {\n        id: service.id,\n        name: service.name,\n        price: service.price,\n        duration_minutes: service.duration_minutes,\n      },\n    });\n  }\n}\n\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1536,
+        5088
+      ],
+      "id": "c22423a6-d8da-4cf9-a5e6-5e50834a2325",
+      "name": "convert 1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst output = [];\n\nfor (const item of items) {\n  for (const [key, value] of Object.entries(item.json)) {\n    if (!value) continue;\n\n    const service = JSON.parse(value);\n\n    output.push({\n      json: {\n        id: service.id,\n        name: service.name,\n        price: service.price,\n        duration_minutes: service.duration_minutes,\n      },\n    });\n  }\n}\n\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1536,
+        5472
+      ],
+      "id": "bc9841dd-5ebf-4d59-a4ec-9da1ea60358a",
+      "name": "convert 2"
+    },
+    {
+      "parameters": {
+        "operation": "keys",
+        "keyPattern": "=beautyflow_bot.*.{{ $('data handler').item.json.service.name }}.service_context"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        5488
+      ],
+      "id": "15f5c1d7-3729-4968-b5ca-3830465810c9",
+      "name": "get context 2",
+      "credentials": {
+        "redis": {
+          "id": "nOvNVY4Hbhe1hTxw",
+          "name": "N8N - Test DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const httpItems = $('get all').all();\nconst redisItems = $('get context').all();\n\nconst redisIds = new Set();\n\nfor (const item of redisItems) {\n  for (const value of Object.values(item.json)) {\n    const service = JSON.parse(value);\n    redisIds.add(String(service.id));\n  }\n}\n\nreturn httpItems\n  .filter(item => !redisIds.has(String(item.json.id)))\n  .map(item => ({\n    json: {\n      id: item.json.id,\n      name: item.json.name,\n      price: item.json.price,\n      duration_minutes: item.json.duration_minutes,\n    },\n  }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1536,
+        4752
+      ],
+      "id": "e0f9c52f-751b-4870-aec7-466f831f1338",
+      "name": "compare"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1952,
+        4640
+      ],
+      "id": "33a75c59-1f17-4c03-98bf-0b7e0b1be1d9",
+      "name": "end"
+    }
+  ],
+  "pinData": {
+    "webhook": [
+      {
+        "json": {
+          "action": "get",
+          "service": {
+            "name": "Corte na Tesoura"
+          },
+          "api": {
+            "url": "http://beautyflow-api:8000/v1",
+            "token": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwiYnVzaW5lc3NfaWQiOjMsInR5cGUiOiJidXNpbmVzc19pbnRlZ3JhdGlvbiIsInRva2VuX3R5cGUiOiJhY2Nlc3MiLCJleHAiOjE3Nzg2MDg0OTl9.IkovbAvIF8OoDAkhKeLrA-gt2Yy3HuWCqdH5OtgCChQ"
+          }
+        }
+      }
+    ]
+  },
+  "connections": {
+    "webhook": {
+      "main": [
+        [
+          {
+            "node": "data handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "data handler": {
+      "main": [
+        [
+          {
+            "node": "action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get all": {
+      "main": [
+        [
+          {
+            "node": "get context",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "error report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "action": {
+      "main": [
+        [
+          {
+            "node": "get all",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "get",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get": {
+      "main": [
+        [
+          {
+            "node": "get context 1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "get context 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get by name": {
+      "main": [
+        [
+          {
+            "node": "push context 2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "error report 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "aggregate": {
+      "main": [
+        [
+          {
+            "node": "sucess",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get by id": {
+      "main": [
+        [
+          {
+            "node": "push context 1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "error report 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get context": {
+      "main": [
+        [
+          {
+            "node": "compare",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get context 1": {
+      "main": [
+        [
+          {
+            "node": "has data? 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "has data? 1": {
+      "main": [
+        [
+          {
+            "node": "convert 1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "get by id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "has data? 2": {
+      "main": [
+        [
+          {
+            "node": "convert 2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "get by name",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "aggregate 1": {
+      "main": [
+        [
+          {
+            "node": "sucess",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "aggregate 2": {
+      "main": [
+        [
+          {
+            "node": "sucess",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "push context": {
+      "main": [
+        [
+          {
+            "node": "loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "push context 1": {
+      "main": [
+        [
+          {
+            "node": "aggregate 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "push context 2": {
+      "main": [
+        [
+          {
+            "node": "aggregate 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "loop": {
+      "main": [
+        [
+          {
+            "node": "end",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "push context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "convert 1": {
+      "main": [
+        [
+          {
+            "node": "aggregate 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "convert 2": {
+      "main": [
+        [
+          {
+            "node": "aggregate 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get context 2": {
+      "main": [
+        [
+          {
+            "node": "has data? 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "compare": {
+      "main": [
+        [
+          {
+            "node": "loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "58a1942d-c224-4511-8476-8a6eabdd26d8",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b304e3d5690d6187ef909ae7d9f59e9b1a1652d2a6e2167896375e495fa017bf"
+  },
+  "id": "JUmgL8OgChZeJAWe",
+  "tags": [
+    {
+      "updatedAt": "2025-06-26T00:38:55.999Z",
+      "createdAt": "2025-06-26T00:38:55.999Z",
+      "id": "bUwJA43QdWA1hja2",
+      "name": "Kaiky"
+    },
+    {
+      "updatedAt": "2026-02-25T19:58:55.694Z",
+      "createdAt": "2026-02-25T19:58:55.694Z",
+      "id": "f0nNVqFB5MvVr1Zx",
+      "name": "beautyflow-api"
+    }
+  ]
+}

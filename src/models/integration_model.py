@@ -1,6 +1,7 @@
 from datetime import datetime
 from enum import Enum as PyEnum
 from typing import TYPE_CHECKING
+
 from sqlalchemy import func, DateTime, Enum as SAEnum
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 

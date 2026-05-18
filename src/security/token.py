@@ -1,5 +1,6 @@
 from jose import jwt, JWTError
 from fastapi import HTTPException
+
 from src.core import ALGORITHM, USER_SECRET_KEY, INTEGRATION_SECRET_KEY, BUSINESS_INTEGRATION_SECRET_KEY
 
 class TokenManager:

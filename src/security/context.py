@@ -1,4 +1,5 @@
 from typing import Literal
+
 from pydantic import BaseModel, EmailStr
 
 from src.models.user_model import UserRole

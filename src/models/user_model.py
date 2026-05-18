@@ -1,5 +1,6 @@
 from enum import Enum as PyEnum
 from typing import TYPE_CHECKING
+
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy import UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -10,9 +11,9 @@ if TYPE_CHECKING:
     from .business_model import Business
 
 class UserRole(str, PyEnum):
-    SUPER_ADMIN = "super_admin"
-    ADMIN = "admin"
-    USER = "user"
+    super_admin = "super_admin"
+    admin = "admin"
+    user = "user"
 
 class User(Base):
     __tablename__ = "users"

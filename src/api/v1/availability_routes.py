@@ -1,4 +1,5 @@
 from datetime import date
+
 from fastapi import APIRouter, HTTPException
 
 from src.schemas import AvailabilityCreate, AvailabilityUpdate, AvailabilityResponse, AvailabilitySlotsResponse

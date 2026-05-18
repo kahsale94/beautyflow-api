@@ -1,5 +1,6 @@
 from decimal import Decimal
 from typing import TYPE_CHECKING
+
 from sqlalchemy import Numeric, UniqueConstraint, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 

@@ -1,0 +1,281 @@
+{
+  "name": "availabilities",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "business",
+              "type": "object"
+            },
+            {
+              "name": "service_id",
+              "type": "any"
+            },
+            {
+              "name": "professional_id",
+              "type": "any"
+            },
+            {
+              "name": "date",
+              "type": "any"
+            },
+            {
+              "name": "api",
+              "type": "object"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -848,
+        2768
+      ],
+      "id": "05f456ca-03f8-467f-be9b-f547a823d0a4",
+      "name": "webhook"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "47280dde-f574-420a-aad5-2f0ab42abf9a",
+              "name": "sucess",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "efa277d9-3e4a-4938-a6c4-86420ebd2152",
+              "name": "slots",
+              "value": "={{ $('aggregate').item.json.slots }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        48,
+        2640
+      ],
+      "id": "39bbd04b-9ce7-4a65-b74a-2cff1bc51e1f",
+      "name": "sucess"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('data handler').item.json.api.url }}/",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "professional_id",
+              "value": "={{ $('data handler').item.json.data.professional_id }}"
+            },
+            {
+              "name": "service_id",
+              "value": "={{ $('data handler').item.json.data.service_id }}"
+            },
+            {
+              "name": "date",
+              "value": "={{ $('data handler').item.json.data.date }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $('data handler').item.json.api.token }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -432,
+        2768
+      ],
+      "id": "2dc5bbf3-aa36-4987-b488-52d4d7d826f5",
+      "name": "get slots",
+      "alwaysOutputData": false,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "bccd3750-dfb9-40e6-a88d-1c5d12d857b4",
+              "name": "data.professional_id",
+              "value": "={{ $json.professional_id }}",
+              "type": "string"
+            },
+            {
+              "id": "93d4851d-2f2f-4717-98c2-9927bf04763a",
+              "name": "data.service_id",
+              "value": "={{ $json.service_id }}",
+              "type": "string"
+            },
+            {
+              "id": "afcf3dc6-ac01-49f1-8423-32e554ff77c7",
+              "name": "data.date",
+              "value": "={{ $json.date }}",
+              "type": "string"
+            },
+            {
+              "id": "c58fb11c-cc59-45e3-a817-2fa06e3a5c53",
+              "name": "api",
+              "value": "={{ {\n  ...$json.api,\n  url: $json.api.url + '/availabilities'\n} }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -640,
+        2768
+      ],
+      "id": "41c9f878-2af1-4f51-bd20-d53791ef086a",
+      "name": "data handler"
+    },
+    {
+      "parameters": {
+        "errorType": "errorObject",
+        "errorObject": "={\n  \"error\": {\n    \"execution\": \"{{ $execution.id }}\",\n    \"type\": \"internal api\",\n    \"node\": \"{{ $prevNode.name }}\",\n    \"code\": \"{{ $json.error.status }}\",\n    \"description\": \"{{\n(() => {\n  try {\n    const part = $json.error.message.split(' - ')[1];\n    return JSON.parse(JSON.parse(part)).detail;\n  } catch (e) {\n    return $json.error.message;\n  }\n})()\n}}\"\n  },\n  \"business\": {\n    \"id\": \"{{ $('data handler').item.json.business.id }}\",\n    \"name\": \"{{ $('data handler').item.json.business.name }}\"\n  },\n  \"api\": {\n    \"evo_instance\": \"{{ $('data handler').item.json.business.evo_instance }}\"\n  }\n}"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        -160,
+        2864
+      ],
+      "id": "ca5c6f7f-c264-4a9a-ae8e-73259796ca42",
+      "name": "error report"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "slots",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        -176,
+        2640
+      ],
+      "id": "7969d58a-6eb2-4c02-bf93-65ab21567833",
+      "name": "aggregate"
+    }
+  ],
+  "pinData": {
+    "webhook": [
+      {
+        "json": {
+          "business": {
+            "id": 3,
+            "name": "Barbearia do Kaiky"
+          },
+          "service_id": "1",
+          "professional_id": "2",
+          "date": "2026-05-11",
+          "api": {
+            "url": "http://beautyflow-api:8000/v1",
+            "token": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwiYnVzaW5lc3NfaWQiOjMsInR5cGUiOiJidXNpbmVzc19pbnRlZ3JhdGlvbiIsInRva2VuX3R5cGUiOiJhY2Nlc3MiLCJleHAiOjE3NzgxNzY5ODl9.6FoKA-TiUgxb2_JN9M5CiV3n4jiKDm87ANaSHDE11QY",
+            "evo_instance": "sale_instance"
+          }
+        }
+      }
+    ]
+  },
+  "connections": {
+    "webhook": {
+      "main": [
+        [
+          {
+            "node": "data handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get slots": {
+      "main": [
+        [
+          {
+            "node": "aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "error report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "data handler": {
+      "main": [
+        [
+          {
+            "node": "get slots",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "aggregate": {
+      "main": [
+        [
+          {
+            "node": "sucess",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "b2c57033-55ab-4f9e-ac6e-ca5a4cbe4741",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b304e3d5690d6187ef909ae7d9f59e9b1a1652d2a6e2167896375e495fa017bf"
+  },
+  "id": "Mt6dV4M7Z3aoPihh",
+  "tags": [
+    {
+      "updatedAt": "2025-06-26T00:38:55.999Z",
+      "createdAt": "2025-06-26T00:38:55.999Z",
+      "id": "bUwJA43QdWA1hja2",
+      "name": "Kaiky"
+    },
+    {
+      "updatedAt": "2026-02-25T19:58:55.694Z",
+      "createdAt": "2026-02-25T19:58:55.694Z",
+      "id": "f0nNVqFB5MvVr1Zx",
+      "name": "beautyflow-api"
+    }
+  ]
+}

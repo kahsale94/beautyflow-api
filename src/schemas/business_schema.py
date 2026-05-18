@@ -1,5 +1,6 @@
 from datetime import datetime
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
 from pydantic import BaseModel, ConfigDict, field_validator, Field
 
 from .base_schema import name_type

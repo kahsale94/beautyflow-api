@@ -1,4 +1,5 @@
 from typing import Annotated
+
 from sqlalchemy import ForeignKey, String
 from sqlalchemy.orm import DeclarativeBase, mapped_column
 

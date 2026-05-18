@@ -10,10 +10,7 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 @router.post("/login")
 def login_user(service: AuthServiceDep, form_data: OAuth2PasswordRequestForm = Depends()):
     try:
-        access_token, refresh_token = service.login(
-            email = form_data.username,
-            password = form_data.password,
-        )
+        access_token, refresh_token = service.login(form_data.username, form_data.password)
 
         return {
             "access_token": access_token,
@@ -43,10 +40,7 @@ def refresh_user_token(data: RefreshRequest, service: AuthServiceDep):
 @router.post("/integration")
 def login_integration(business_phone: BusinessPhoneDep, integration: IntegrationDep, service: AuthServiceDep):
     try:
-        access_token = service.get_business_integration_token(
-            business_phone = business_phone,
-            integration_id = integration.id,
-        )
+        access_token = service.get_business_integration_token(business_phone, integration.id)
 
         return {
             "access_token": access_token,
