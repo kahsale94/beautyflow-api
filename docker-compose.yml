@@ -14,6 +14,10 @@ services:
             timeout: 10s
             retries: 5
             start_period: 10s
+        networks:
+            beautyflow-network:
+                aliases:
+                    - postgres
 
     db-redis:
         image: redis:7.2-alpine
@@ -33,6 +37,9 @@ services:
         networks:
             beautyflow-network:
                 aliases:
+                    - redis
+            beautyflow-network-ext:
+                aliases:
                     - beautyflow_redis
 
     db-migrate:
@@ -45,6 +52,10 @@ services:
                 condition: service_healthy
         environment:
             - DATABASE_URL=${DATABASE_URL}
+        networks:
+            beautyflow-network:
+                aliases:
+                    - migrate
 
     backend:
         build: .
@@ -72,6 +83,9 @@ services:
         networks:
             beautyflow-network:
                 aliases:
+                    - backend
+            beautyflow-network-ext:
+                aliases:
                     - beautyflow_backend
 
 volumes:
@@ -80,4 +94,6 @@ volumes:
 
 networks:
     beautyflow-network:
+        external: true
+    beautyflow-network-ext:
         external: true
