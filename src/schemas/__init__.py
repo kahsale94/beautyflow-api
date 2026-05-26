@@ -4,6 +4,7 @@ from .service_schema import ServiceCreate, ServiceResponse, ServiceUpdate
 from .business_schema import BusinessCreate, BusinessResponse, BusinessUpdate
 from .appointment_schema import AppointmentCreate, AppointmentResponse, AppointmentUpdate
 from .professional_schema import ProfessionalCreate, ProfessionalResponse, ProfessionalUpdate
+from .professional_service_schema import ProfessionalServiceCreate, ProfessionalServiceResponse
 from .integration_schema import IntegrationCreate, IntegrationResponse, IntegrationUpdate, IntegrationCreateResponse
 from .availability_schema import AvailabilityCreate, AvailabilityResponse, AvailabilityUpdate, AvailabilitySlotsResponse
 from .business_integration_schma import BusinessIntegrationResponse, BusinessIntegrationCreate, BusinessIntegrationUpdate

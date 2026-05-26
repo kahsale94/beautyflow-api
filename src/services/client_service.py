@@ -51,8 +51,7 @@ class ClientService:
     def get_all(self, business_id: int):
         result = self.client_repo.get_by_business(self.db, business_id)
         if (
-            not result
-            or not all(item.business_id == business_id for item in result)
+            not all(item.business_id == business_id for item in result)
         ):
             raise ClientNotFoundError()
 

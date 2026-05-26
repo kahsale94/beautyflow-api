@@ -37,8 +37,7 @@ class UserService:
     def get_all(self, business_id: int):
         result = self.user_repo.get_by_business(self.db, business_id)
         if (
-            not result
-            or not all(item.is_active for item in result)
+            not all(item.is_active for item in result)
             or not all(item.business_id == business_id for item in result)
         ):
             raise UserNotFoundError()
@@ -61,7 +60,7 @@ class UserService:
 
     def create(self, business_id: int | None, data: UserCreate):
         user = User(
-            email = data.email,
+            email = str(data.email),
             password_hash = hash(data.password),
             role = data.role,
             business_id = business_id,
@@ -83,6 +82,9 @@ class UserService:
         user = self._get_valid(business_id, user_id)
 
         update_data = data.model_dump(exclude_unset=True)
+
+        if "email" in update_data and update_data["email"] is not None:
+            update_data["email"] = str(update_data["email"])
 
         if "password" in update_data:
             user.password_hash = hash(update_data.pop("password"))

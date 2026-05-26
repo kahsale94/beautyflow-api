@@ -37,8 +37,7 @@ class ServiceService:
     def get_all(self, business_id: int):
         result = self.service_repo.get_by_business(self.db, business_id)
         if (
-            not result
-            or not all(item.is_active for item in result)
+            not all(item.is_active for item in result)
             or not all(item.business_id == business_id for item in result)
         ):
             raise ServiceNotFoundError()
@@ -53,8 +52,7 @@ class ServiceService:
 
         result = self.service_repo.get_by_name(self.db, business_id, normalized_name)
         if (
-            not result
-            or not all(item.is_active for item in result)
+            not all(item.is_active for item in result)
             or not all(item.business_id == business_id for item in result)
         ):
             raise ServiceNotFoundError()

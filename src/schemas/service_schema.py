@@ -6,12 +6,12 @@ from .base_schema import name_type
 
 class ServiceCreate(BaseModel):
     name: name_type
-    duration_minutes: int = Field(gt=0, examples=[60])
+    duration_minutes: int = Field(gt=0, le=1440, examples=[60])
     price: Decimal = Field(gt=0, examples=[Decimal("99.90")])
 
 class ServiceUpdate(BaseModel):
     name: name_type | None = None
-    duration_minutes: int | None = Field(gt=0, default=None, examples=[60])
+    duration_minutes: int | None = Field(gt=0, le=1440, default=None, examples=[60])
     price: Decimal | None = Field(gt=0, default=None, examples=[Decimal("99.90")])
 
 class ServiceResponse(BaseModel):

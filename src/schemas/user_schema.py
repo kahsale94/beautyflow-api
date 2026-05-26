@@ -1,15 +1,15 @@
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from src.models.user_model import UserRole
 
 class UserCreate(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(min_length=8)
     role: UserRole
 
 class UserUpdate(BaseModel):
     email: EmailStr | None = None
-    password: str | None = None
+    password: str | None = Field(default=None, min_length=8)
     role: UserRole | None = None
 
 class UserResponse(BaseModel):

@@ -37,8 +37,7 @@ class ProfessionalService:
     def get_all(self, business_id: int):
         result = self.professional_repo.get_by_business(self.db, business_id)
         if (
-            not result
-            or not all(item.is_active for item in result)
+            not all(item.is_active for item in result)
             or not all(item.business_id == business_id for item in result)
         ):
             raise ProfessionalNotFoundError()
@@ -53,8 +52,7 @@ class ProfessionalService:
 
         result = self.professional_repo.get_by_name(self.db, business_id, normalized_name)
         if (
-            not result
-            or not all(item.is_active for item in result)
+            not all(item.is_active for item in result)
             or not all(item.business_id == business_id for item in result)
         ):
             raise ProfessionalNotFoundError()
@@ -65,6 +63,7 @@ class ProfessionalService:
         professional = Professional(
             business_id=business_id,
             name=data.name,
+            email=str(data.email),
             normalized_name=normalize_text(data.name),
         )
 
@@ -84,6 +83,9 @@ class ProfessionalService:
         professional = self._get_valid(business_id, professional_id)
 
         update_data = data.model_dump(exclude_unset=True)
+
+        if "email" in update_data and update_data["email"] is not None:
+            update_data["email"] = str(update_data["email"])
 
         for field, value in update_data.items():
             setattr(professional, field, value)

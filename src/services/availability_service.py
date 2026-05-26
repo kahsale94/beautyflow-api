@@ -8,7 +8,9 @@ from sqlalchemy.exc import IntegrityError
 from src.core import DataBaseDep
 from src.models import Availability, Appointment
 from src.schemas import AvailabilityCreate, AvailabilityUpdate, AvailabilitySlotsResponse
-from src.repositories import AvailabilityRepository, ProfessionalRepository, AppointmentRepository, ServiceRepository
+from src.repositories import (AvailabilityRepository, ProfessionalRepository, AppointmentRepository,
+    ServiceRepository, ProfessionalServiceRepository
+)
 
 class ProfessionalNotFoundError(Exception):
     pass
@@ -28,6 +30,9 @@ class AvailabilityNotFoundError(Exception):
 class ServiceNotFoundError(Exception):
     pass
 
+class ProfessionalServiceMismatchError(Exception):
+    pass
+
 class AvailabilityService:
 
     SLOT_STEP_MINUTES = 15
@@ -39,12 +44,14 @@ class AvailabilityService:
         professional_repo: ProfessionalRepository,
         appointment_repo: AppointmentRepository,
         service_repo: ServiceRepository,
+        professional_service_repo: ProfessionalServiceRepository,
     ):
         self.db = db
         self.availability_repo = availability_repo
         self.professional_repo = professional_repo
         self.appointment_repo = appointment_repo
         self.service_repo = service_repo
+        self.professional_service_repo = professional_service_repo
 
     def _validate_professional(self, business_id: int, professional_id: int):
         professional = self.professional_repo.get_by_id(self.db, business_id, professional_id)
@@ -75,21 +82,21 @@ class AvailabilityService:
     def _combine_date_time(self, date: date, t: time, tz: ZoneInfo):
         return datetime.combine(date, t).replace(tzinfo=tz)
 
-    def _align_to_slot(self, dt: datetime):
+    def _align_to_slot(self, dt: datetime, slot_step_minutes: int):
         minute = dt.minute
-        remainder = minute % self.SLOT_STEP_MINUTES
+        remainder = minute % slot_step_minutes
 
         if remainder == 0:
             return dt.replace(second=0, microsecond=0)
 
-        delta = self.SLOT_STEP_MINUTES - remainder
+        delta = slot_step_minutes - remainder
 
         return (dt + timedelta(minutes=delta)).replace(second=0, microsecond=0)
 
-    def _generate_slots(self, gap_start, gap_end, duration, minimum_start: datetime | None = None):
+    def _generate_slots(self, gap_start, gap_end, duration, slot_step_minutes: int, minimum_start: datetime | None = None):
         slots = []
     
-        current = self._align_to_slot(gap_start)
+        current = self._align_to_slot(gap_start, slot_step_minutes)
     
         while True:
             candidate_end = current + timedelta(minutes=duration)
@@ -100,7 +107,7 @@ class AvailabilityService:
             if minimum_start is None or current >= minimum_start:
                 slots.append(current.time())
     
-            current += timedelta(minutes=self.SLOT_STEP_MINUTES)
+            current += timedelta(minutes=slot_step_minutes)
     
         return slots
 
@@ -126,10 +133,7 @@ class AvailabilityService:
         self._validate_professional(business_id, professional_id)
 
         result = self.availability_repo.get_by_professional(self.db, professional_id)
-        if (
-            not result
-            or not all(item.professional_id == professional_id for item in result)
-        ):
+        if not all(item.professional_id == professional_id for item in result):
             raise AvailabilityNotFoundError()
 
         return result
@@ -150,8 +154,19 @@ class AvailabilityService:
         professional = self._validate_professional(business_id, professional_id)
         service = self._validate_service(business_id, service_id)
 
+        professional_service = self.professional_service_repo.get_by_ids(self.db, professional_id, service_id)
+
+        if not professional_service:
+            raise ProfessionalServiceMismatchError()
+
         tz = ZoneInfo(professional.business.timezone)
         now = datetime.now(tz)
+
+        max_days = professional.business.maximum_schedule_days or 30
+        max_date = now.date() + timedelta(days=max_days)
+
+        if date > max_date:
+            raise AvailabilityNotFoundError()
 
         weekday = date.weekday()
 
@@ -169,15 +184,13 @@ class AvailabilityService:
         start_of_day = start_dt.replace(hour=0, minute=0, second=0, microsecond=0)
         end_of_day = start_of_day + timedelta(days=1)
 
-        appointments = self.appointment_repo.get_scheduled_by_professional_and_date(
-            self.db,
-            business_id,
-            professional_id,
-            start_of_day,
-            end_of_day,
-        )
+        appointments = self.appointment_repo.get_scheduled_by_professional_and_date(self.db, business_id, professional_id, start_of_day, end_of_day)
 
         gaps = self._build_gaps(start_dt, end_dt, appointments, tz)
+
+        slot_step_minutes = professional.business.slot_interval_minutes or self.SLOT_STEP_MINUTES
+        minimum_notice_minutes = professional.business.minimum_notice_minutes or 0
+        minimum_start = now + timedelta(minutes=minimum_notice_minutes)
 
         slot_times = []
 
@@ -187,7 +200,8 @@ class AvailabilityService:
                     gap_start,
                     gap_end,
                     service.duration_minutes,
-                    now if date == now.date() else None,
+                    slot_step_minutes,
+                    minimum_start if date == now.date() else None,
                 )
             )
 
@@ -260,5 +274,6 @@ def get_availability_service(db: DataBaseDep):
         AvailabilityRepository(),
         ProfessionalRepository(),
         AppointmentRepository(),
-        ServiceRepository()
+        ServiceRepository(),
+        ProfessionalServiceRepository(),
     )

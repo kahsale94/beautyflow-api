@@ -52,3 +52,18 @@ class AppointmentRepository:
             Appointment.business_id == business_id,
         )
         return db.scalars(stmt).all()
+
+    def get_by_business_period(self, db: Session, business_id: int, start_datetime: datetime,
+        end_datetime: datetime,      professional_id: int | None = None):
+        stmt = select(Appointment).where(
+            Appointment.business_id == business_id,
+            Appointment.start_datetime < end_datetime,
+            Appointment.end_datetime > start_datetime,
+        )
+
+        if professional_id is not None:
+            stmt = stmt.where(Appointment.professional_id == professional_id)
+
+        stmt = stmt.order_by(Appointment.start_datetime)
+
+        return db.scalars(stmt).all()

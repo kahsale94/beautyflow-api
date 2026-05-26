@@ -3,16 +3,27 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
-ALGORITHM = os.getenv("ALGORITHM")
-ENVIRONMENT = os.getenv("ENVIRONMENT")
-DATABASE_URL = os.getenv("DATABASE_URL")
 
+def get_required_env(name: str) -> str:
+    value = os.getenv(name)
+    if value is None or value == "":
+        raise RuntimeError(f"Variável de ambiente obrigatória ausente: {name}")
+    return value
 
-USER_SECRET_KEY = os.getenv("USER_SECRET_KEY")
-INTEGRATION_SECRET_KEY = os.getenv("INTEGRATION_SECRET_KEY")
-BUSINESS_INTEGRATION_SECRET_KEY = os.getenv("BUSINESS_INTEGRATION_SECRET_KEY")
+def get_required_int_env(name: str) -> int:
+    return int(get_required_env(name))
 
-USER_ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("USER_ACCESS_TOKEN_EXPIRE_MINUTES"))
-USER_REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("USER_REFRESH_TOKEN_EXPIRE_DAYS"))
-INTEGRATION_TOKEN_EXPIRE_DAYS = int(os.getenv("INTEGRATION_TOKEN_EXPIRE_DAYS"))
-BUSINESS_INTEGRATION_TOKEN_EXPIRE_MINUTES = int(os.getenv("BUSINESS_INTEGRATION_TOKEN_EXPIRE_MINUTES"))
+ALGORITHM = get_required_env("ALGORITHM")
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+DATABASE_URL = get_required_env("DATABASE_URL")
+
+USER_SECRET_KEY = get_required_env("USER_SECRET_KEY")
+INTEGRATION_SECRET_KEY = get_required_env("INTEGRATION_SECRET_KEY")
+BUSINESS_INTEGRATION_SECRET_KEY = get_required_env("BUSINESS_INTEGRATION_SECRET_KEY")
+
+USER_ACCESS_TOKEN_EXPIRE_MINUTES = get_required_int_env("USER_ACCESS_TOKEN_EXPIRE_MINUTES")
+USER_REFRESH_TOKEN_EXPIRE_DAYS = get_required_int_env("USER_REFRESH_TOKEN_EXPIRE_DAYS")
+INTEGRATION_TOKEN_EXPIRE_DAYS = get_required_int_env("INTEGRATION_TOKEN_EXPIRE_DAYS")
+BUSINESS_INTEGRATION_TOKEN_EXPIRE_MINUTES = get_required_int_env("BUSINESS_INTEGRATION_TOKEN_EXPIRE_MINUTES")
+
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "").split(",") if os.getenv("CORS_ORIGINS") else []

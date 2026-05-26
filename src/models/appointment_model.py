@@ -28,7 +28,7 @@ class Appointment(Base):
         ExcludeConstraint(("business_id", "="),("professional_id", "="),(text("tstzrange(start_datetime, end_datetime, '[)')"),"&&",),
             where=text("status = 'scheduled'"),
             using="gist",
-            name="ex_appointments_professional_time_conflict",
+            name="ex_appointments_business_professional_time_conflict",
         ),
     )
 

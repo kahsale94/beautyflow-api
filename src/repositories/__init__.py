@@ -6,4 +6,5 @@ from .integration_repo import IntegrationRepository
 from .appointment_repo import AppointmentRepository
 from .availability_repo import AvailabilityRepository
 from .professional_repo import ProfessionalRepository
+from .professional_service_repo import ProfessionalServiceRepository
 from .business_integration_repo import BusinessIntegrationRepository

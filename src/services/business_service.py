@@ -34,10 +34,7 @@ class BusinessService:
 
     def get_all(self):
         result = self.business_repo.get_all(self.db)
-        if (
-            not result
-            or not all(item.is_active for item in result)
-        ):
+        if not all(item.is_active for item in result):
             raise BusinessNotFoundError()
 
         return result
@@ -57,9 +54,23 @@ class BusinessService:
 
     def create(self, data: BusinessCreate):
         business = Business(
-            name = data.name,
-            type = data.type,
-            timezone = data.timezone,
+            name=data.name,
+            slug=data.slug,
+            type=data.type,
+            timezone=data.timezone,
+            phone=data.phone,
+            email=str(data.email) if data.email else None,
+            address=data.address,
+            city=data.city,
+            state=data.state,
+            description=data.description,
+            booking_enabled=data.booking_enabled,
+            slot_interval_minutes=data.slot_interval_minutes,
+            minimum_notice_minutes=data.minimum_notice_minutes,
+            maximum_schedule_days=data.maximum_schedule_days,
+            allow_client_cancel=data.allow_client_cancel,
+            cancel_limit_hours=data.cancel_limit_hours,
+            appointment_confirmation_required=data.appointment_confirmation_required,
         )
 
         self.business_repo.add(self.db, business)
@@ -78,6 +89,9 @@ class BusinessService:
         business = self._get_valid(business_id)
 
         update_data = data.model_dump(exclude_unset=True)
+
+        if "email" in update_data and update_data["email"] is not None:
+            update_data["email"] = str(update_data["email"])
 
         for field, value in update_data.items():
             setattr(business, field, value)

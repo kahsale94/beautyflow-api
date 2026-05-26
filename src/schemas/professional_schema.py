@@ -1,19 +1,19 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, EmailStr
 
 from .base_schema import name_type
 
 class ProfessionalCreate(BaseModel):
     name: name_type
-    email: str
+    email: EmailStr
 
 class ProfessionalUpdate(BaseModel):
     name: name_type | None = None
-    email: str | None = None
+    email: EmailStr | None = None
 
 class ProfessionalResponse(BaseModel):
     id: int
     name: name_type
-    email: str
+    email: EmailStr
     business_id: int
     is_active: bool
 

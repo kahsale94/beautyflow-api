@@ -9,7 +9,15 @@ from src.core import DataBaseDep
 from src.models import Appointment
 from src.schemas.appointment_schema import AppointmentStatus
 from src.schemas import AppointmentCreate, AppointmentUpdate, AppointmentResponse
-from src.repositories import AppointmentRepository, ProfessionalRepository, ServiceRepository, AvailabilityRepository, ClientRepository, BusinessRepository
+from src.repositories import (
+    AppointmentRepository,
+    ProfessionalRepository,
+    ServiceRepository,
+    AvailabilityRepository,
+    ClientRepository,
+    BusinessRepository,
+    ProfessionalServiceRepository,
+)
 
 class ProfessionalNotAvailableError(Exception):
     pass
@@ -18,6 +26,9 @@ class ServiceNotAvailableError(Exception):
     pass
 
 class ClientNotFoundError(Exception):
+    pass
+
+class ProfessionalServiceMismatchError(Exception):
     pass
 
 class AppointmentTimeConflictError(Exception):
@@ -47,6 +58,7 @@ class AppointmentService:
         availability_repo: AvailabilityRepository,
         client_repo: ClientRepository,
         business_repo: BusinessRepository,
+        professional_service_repo: ProfessionalServiceRepository,
     ):
         self.db = db
         self.appointment_repo = appointment_repo
@@ -55,6 +67,7 @@ class AppointmentService:
         self.availability_repo = availability_repo
         self.client_repo = client_repo
         self.business_repo = business_repo
+        self.professional_service_repo = professional_service_repo
 
     def _get_integrity_constraint_name(self, exc: IntegrityError) -> str | None:
         try:
@@ -107,7 +120,7 @@ class AppointmentService:
 
         return client
 
-    def _validate_appointment(self, business_id: int, client_id: int, professional_id: int, service_id: int, start_datetime: datetime) -> datetime:
+    def _validate_appointment(self, business_id: int, client_id: int, professional_id: int, service_id: int, start_datetime: datetime) -> tuple[datetime, datetime]:
         self._validate_client(business_id, client_id)
         self._validate_professional(business_id, professional_id)
 
@@ -118,12 +131,23 @@ class AppointmentService:
             or service.business_id != business_id
         ):
             raise ServiceNotAvailableError()
+
+        professional_service = self.professional_service_repo.get_by_ids(
+            self.db,
+            professional_id,
+            service_id,
+        )
+
+        if not professional_service:
+            raise ProfessionalServiceMismatchError()
         
         if start_datetime.tzinfo is None:
             raise DatetimeFormatError()
         
         business_tz = self._get_business_timezone(business_id)
         now = datetime.now(business_tz)
+        start_datetime = start_datetime.astimezone(business_tz)
+
         if start_datetime < now:
             raise ValueError()
 
@@ -137,10 +161,13 @@ class AppointmentService:
         start_time = start_datetime.time()
         end_time = end_datetime.time()
 
+        if end_datetime.date() != start_datetime.date():
+            raise ProfessionalNotAvailableError()
+
         if not (availability.start_time <= start_time and end_time <= availability.end_time):
             raise ProfessionalNotAvailableError()
 
-        return end_datetime
+        return start_datetime, end_datetime
     
     def _validate_return(self, appointment_or_list: Appointment | Sequence[Appointment], business_tz: ZoneInfo) -> list[AppointmentResponse] | AppointmentResponse:
         def _convert(appointment: Appointment):
@@ -173,10 +200,7 @@ class AppointmentService:
 
     def get_all(self, business_id: int):
         result = self.appointment_repo.get_by_business(self.db, business_id)
-        if (
-            not result
-            or not all(item.business_id == business_id for item in result)
-        ):
+        if not all(item.business_id == business_id for item in result):
             raise AppointmentNotFoundError()
 
         business_tz = self._get_business_timezone(business_id)
@@ -198,8 +222,7 @@ class AppointmentService:
         
         result = self.appointment_repo.get_by_client(self.db, business_id, client_id)
         if (
-            not result
-            or not all(item.client_id == client_id for item in result)
+            not all(item.client_id == client_id for item in result)
             or not all(item.business_id == business_id for item in result)
         ):
             raise AppointmentNotFoundError()
@@ -212,8 +235,7 @@ class AppointmentService:
         
         result = self.appointment_repo.get_by_professional(self.db, business_id, professional_id)
         if (
-            not result
-            or not all(item.professional_id == professional_id for item in result)
+            not all(item.professional_id == professional_id for item in result)
             or not all(item.business_id == business_id for item in result)
         ):
             raise AppointmentNotFoundError()
@@ -221,15 +243,36 @@ class AppointmentService:
         business_tz = self._get_business_timezone(business_id)
         return self._validate_return(result, business_tz)
 
+    def get_by_period(self, business_id: int, start_datetime: datetime, end_datetime: datetime, professional_id: int | None = None):
+        if start_datetime.tzinfo is None or end_datetime.tzinfo is None:
+            raise DatetimeFormatError()
+
+        if start_datetime >= end_datetime:
+            raise ValueError()
+
+        if professional_id is not None:
+            self._validate_professional(business_id, professional_id)
+
+        result = self.appointment_repo.get_by_business_period(
+            self.db,
+            business_id,
+            start_datetime,
+            end_datetime,
+            professional_id,
+        )
+
+        business_tz = self._get_business_timezone(business_id)
+        return self._validate_return(result, business_tz)
+
     def create(self, business_id: int, data: AppointmentCreate):
-        end_datetime = self._validate_appointment(business_id, data.client_id, data.professional_id, data.service_id, data.start_datetime)
+        start_datetime, end_datetime = self._validate_appointment(business_id, data.client_id, data.professional_id, data.service_id, data.start_datetime)
 
         appointment = Appointment(
             business_id = business_id,
             client_id = data.client_id,
             professional_id = data.professional_id,
             service_id = data.service_id,
-            start_datetime = data.start_datetime,
+            start_datetime = start_datetime,
             end_datetime = end_datetime,
             status = AppointmentStatus.scheduled,
         )
@@ -257,12 +300,12 @@ class AppointmentService:
         final_service = update_data.get("service_id", appointment.service_id)
         final_start = update_data.get("start_datetime", appointment.start_datetime)
 
-        end_datetime = self._validate_appointment(business_id, final_client, final_professional, final_service, final_start)
+        start_datetime, end_datetime = self._validate_appointment(business_id, final_client, final_professional, final_service, final_start)
 
         appointment.client_id = final_client
         appointment.professional_id = final_professional
         appointment.service_id = final_service
-        appointment.start_datetime = final_start
+        appointment.start_datetime = start_datetime
         appointment.end_datetime = end_datetime
 
         self._commit_or_raise_conflict()
@@ -311,4 +354,5 @@ def get_appointment_service(db: DataBaseDep):
         AvailabilityRepository(),
         ClientRepository(),
         BusinessRepository(),
+        ProfessionalServiceRepository(),
     )

@@ -28,7 +28,7 @@ class AuthService:
     def login(self, email: str, password: str):
         stmt = select(User).where(User.email == email)
         user = self.db.scalars(stmt).one_or_none()
-        if not user:
+        if not user or not user.is_active:
             raise InvalidCredentialError()
 
         if not verify_hash(password, user.password_hash):
