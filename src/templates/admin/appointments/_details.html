@@ -1,0 +1,68 @@
+<h2>Agendamento #{{ appointment.id }}</h2>
+<div class="details-list">
+    <p>
+        <strong>Status:</strong>
+        <span class="badge {{ appointment.status.value }}">{{ appointment.status.value }}</span>
+    </p>
+    <p>
+        <strong>Cliente:</strong> {{ client.name if client and client.name else client.phone if client else '-' }}
+    </p>
+    <p>
+        <strong>Profissional:</strong> {{ professional.name if professional else '-'}}
+    </p>
+    <p>
+        <strong>Serviço:</strong> {{ service.name if service else '-' }}
+    </p>
+    <p>
+        <strong>Horário:</strong> {{ appointment.start_datetime.strftime('%d/%m/%Y%H:%M') }} - {{
+        appointment.end_datetime.strftime('%H:%M') }}
+    </p>
+</div>
+
+<form method="post" action="/admin/appointments/{{ appointment.id }}" class="stack compact-form">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
+    <label>Cliente
+        <select name="client_id" required>
+            {% for item in clients %}
+            <option value="{{ item.id }}" {%if item.id == appointment.client_id %}selected{%endif%}>
+                {{ item.name or item.phone }} — {{ item.phone }}
+            </option>
+            {% endfor %}
+        </select>
+    </label>
+    <label>Profissional
+        <select name="professional_id" required>
+            {% for item in professionals %}
+            <option value="{{ item.id }}" {%if item.id == appointment.professional_id %}selected{%endif%}>
+                {{ item.name }}
+            </option>
+            {% endfor %}
+        </select>
+    </label>
+    <label>Serviço
+        <select name="service_id" required>
+            {% for item in services %}
+            <option value="{{ item.id }}" {%if item.id == appointment.service_id %}selected{%endif%}>
+                {{ item.name }}
+            </option>
+            {% endfor %}
+        </select>
+    </label>
+    <label>Data e hora
+        <input name="start_datetime" type="datetime-local" required
+            value="{{ appointment.start_datetime.strftime('%Y-%m-%dT%H:%M') }}" />
+    </label>
+    <button class="button primary" type="submit">Salvar alterações</button>
+</form>
+
+<div class="modal-actions">
+    <form method="post" action="/admin/appointments/{{ appointment.id }}/complete">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
+        <button class="button" type="submit">Concluir</button>
+    </form>
+    <form method="post" action="/admin/appointments/{{ appointment.id }}/cancel"
+        data-confirm="Cancelar este agendamento?">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
+        <button class="button danger" type="submit">Cancelar</button>
+    </form>
+</div>

@@ -162,6 +162,9 @@ class AvailabilityService:
         tz = ZoneInfo(professional.business.timezone)
         now = datetime.now(tz)
 
+        if date < now.date():
+            raise ProfessionalUnavailableError()
+
         max_days = professional.business.maximum_schedule_days or 30
         max_date = now.date() + timedelta(days=max_days)
 

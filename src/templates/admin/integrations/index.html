@@ -1,0 +1,45 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Integrações - BeautyflowAdmin{% endblock %}
+
+{% block content %}
+<header class="page-header">
+    <div>
+        <h1>Integrações</h1>
+        <p class="muted">Vínculos de integração da empresa.</p>
+    </div>
+</header>
+
+<section class="card">
+    {% if integrations %}
+    <div class="cards-grid">
+        {% for item in integrations %}
+        <article class="mini-card">
+            <h2>Integração #{{ item.integration_id }}</h2>
+            <h2>{{ item.integration.name }}</h2>
+            <p>
+                Status:
+                <span class="badge {{ 'scheduled' if item.is_active else 'canceled' }}">{{ 'ativa' if item.is_active
+                    else 'inativa' }}</span>
+            </p>
+            <p class="muted">Criada em {{ item.created_at.strftime('%d/%m/%Y') }}</p>
+            <details>
+                <summary>Configuração</summary>
+                {% if session.is_super_admin %}
+                <form method="post" action="/admin/integrations/{{ item.integration_id }}/config" class="stack">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
+                    <textarea name="config" rows="8">{{ (item.config or {}) | tojson(indent=2) }}</textarea>
+                    <button class="button small" type="submit">Salvar JSON</button>
+                </form>
+                {% else %}
+                <pre>{{ (item.config or {}) | tojson(indent=2) }}</pre>
+                {% endif %}
+            </details>
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="empty">Nenhuma integração vinculada.</p>
+    {% endif %}
+</section>
+{% endblock %}

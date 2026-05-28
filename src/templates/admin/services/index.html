@@ -1,0 +1,80 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Serviços - Beautyflow Admin{%endblock %}
+
+{% block content %}
+<header class="page-header">
+    <div>
+        <h1>Serviços</h1>
+        <p class="muted">Cadastre os serviços vendidos pela empresa.</p>
+    </div>
+</header>
+
+<section class="card">
+    <form method="post" action="/admin/services" class="form-grid">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
+        <label>Nome <input name="name" required minlength="3" maxlength="50" /></label>
+        <label>Duração em minutos
+            <input name="duration_minutes" required type="number" min="1" max="1440" value="60" /></label>
+        <label>Preço
+            <input name="price" required type="number" min="0.01" step="0.01" value="99.90" /></label>
+        <button class="button primary align-end" type="submit">
+            Criar serviço
+        </button>
+    </form>
+</section>
+
+<section class="card">
+    <div class="card-header">
+        <h2>Serviços ativos</h2>
+    </div>
+    {% if services %} {% for item in services %}
+    <form id="service-form-{{ item.id }}" method="post" action="/admin/services/{{ item.id }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
+    </form>
+    {% endfor %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nome</th>
+                <th>Duração</th>
+                <th>Preço</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in services %}
+            <tr>
+                <td>#{{ item.id }}</td>
+                <td>
+                    <input form="service-form-{{ item.id }}" name="name" required value="{{ item.name }}" minlength="3"
+                        maxlength="50" />
+                </td>
+                <td>
+                    <input form="service-form-{{ item.id }}" name="duration_minutes" required type="number" min="1"
+                        max="1440" value="{{ item.duration_minutes }}" />
+                </td>
+                <td>
+                    <input form="service-form-{{ item.id }}" name="price" required type="number" min="0.01" step="0.01"
+                        value="{{ item.price }}" />
+                </td>
+                <td class="actions">
+                    <button form="service-form-{{ item.id }}" class="button small" type="submit">
+                        Salvar
+                    </button>
+                    <form method="post" action="/admin/services/{{ item.id }}/deactivate"
+                        data-confirm="Desativar este serviço?">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
+                        <button class="button danger small" type="submit">Desativar</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty">Nenhum serviço ativo.</p>
+    {% endif %}
+</section>
+{% endblock %}

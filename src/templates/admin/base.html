@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}Beautyflow Admin{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='admin/css/admin.css') }}" />
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    {% block head %}{% endblock %}
+</head>
+
+<body>
+    {% if session %}
+    <aside class="sidebar">
+        <a class="brand" href="/admin">Beautyflow</a>
+        <nav class="nav">
+            <a class="nav-link {{ 'active' if active == 'dashboard' else '' }}" href="/admin">Dashboard</a>
+            <a class="nav-link {{ 'active' if active == 'appointments' else '' }}"
+                href="/admin/appointments">Calendário</a>
+            <a class="nav-link {{ 'active' if active == 'clients' else '' }}" href="/admin/clients">Clientes</a>
+            <a class="nav-link {{ 'active' if active == 'services' else '' }}" href="/admin/services">Serviços</a>
+            <a class="nav-link {{ 'active' if active == 'professionals' else '' }}"
+                href="/admin/professionals">Profissionais</a>
+            <a class="nav-link {{ 'active' if active == 'business' else '' }}" href="/admin/business">Empresa</a>
+            <a class="nav-link {{ 'active' if active == 'users' else '' }}" href="/admin/users">Usuários</a>
+            <a class="nav-link {{ 'active' if active == 'integrations' else '' }}"
+                href="/admin/integrations">Integrações</a>
+            {% if session.is_super_admin %}
+            <a class="nav-link {{ 'active' if active == 'businesses' else '' }}" href="/admin/businesses">Selecionar
+                empresa</a>
+            {% endif %}
+        </nav>
+        <form method="post" action="/admin/logout" class="logout-form">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
+            <button class="button ghost" type="submit">Sair</button>
+        </form>
+    </aside>
+    {% endif %}
+
+    <main class="main {{ 'with-sidebar' if session else 'auth-main' }}">
+        {% if flash %}
+        <div class="flash {{ flash.category }}">{{ flash.message }}</div>
+        {% endif %} {% block content %}{% endblock %}
+    </main>
+
+    <div id="modal" class="modal" hidden>
+        <div class="modal-backdrop" data-close-modal></div>
+        <section class="modal-card">
+            <button type="button" class="modal-close" data-close-modal>×</button>
+            <div id="modal-content"></div>
+        </section>
+    </div>
+
+    <script src="{{ url_for('static', path='admin/js/admin.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+
+</html>

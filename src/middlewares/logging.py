@@ -1,6 +1,6 @@
 import time
-from collections import defaultdict
-from fastapi import Request, HTTPException
+
+from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 
 class LoggingMiddleware(BaseHTTPMiddleware):
@@ -27,30 +27,4 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             f"User-Agent: {ua}\n"
         )
 
-        return response
-
-class RateLimitMiddleware(BaseHTTPMiddleware):
-
-    def __init__(self, app, max_requests: int = 30, window: int = 60):
-        super().__init__(app)
-        self.max_requests = max_requests
-        self.window = window
-        self.clients = defaultdict(list)
-
-    async def dispatch(self, request: Request, call_next):
-        client_ip = request.client.host
-        current_time = time.time()
-
-        request_times = self.clients[client_ip]
-
-        self.clients[client_ip] = [
-            t for t in request_times if current_time - t < self.window
-        ]
-
-        if len(self.clients[client_ip]) >= self.max_requests:
-            raise HTTPException(status_code=429, detail="Too many requests")
-
-        self.clients[client_ip].append(current_time)
-
-        response = await call_next(request)
         return response

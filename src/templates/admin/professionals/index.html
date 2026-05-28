@@ -1,0 +1,60 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Profissionais - BeautyflowAdmin{% endblock %}
+
+{% block content %}
+<header class="page-header">
+    <div>
+        <h1>Profissionais</h1>
+        <p class="muted">Cadastre profissionais e configure serviços/horários.</p>
+    </div>
+</header>
+
+<section class="card">
+    <form method="post" action="/admin/professionals" class="form-grid">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
+        <label>Nome <input name="name" required minlength="3" maxlength="50" /></label>
+        <label>Email <input name="email" required type="email" /></label>
+        <button class="button primary align-end" type="submit">
+            Criar profissional
+        </button>
+    </form>
+</section>
+
+<section class="card">
+    <div class="card-header">
+        <h2>Profissionais ativos</h2>
+    </div>
+    {% if professionals %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nome</th>
+                <th>Email</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for professional in professionals %}
+            <tr>
+                <td>#{{ professional.id }}</td>
+                <td>{{ professional.name }}</td>
+                <td>{{ professional.email }}</td>
+                <td class="actions">
+                    <a class="button small" href="/admin/professionals/{{ professional.id }}">Configurar</a>
+                    <form method="post" action="/admin/professionals/{{ professional.id }}/deactivate"
+                        data-confirm="Desativar este profissional?">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
+                        <button class="button danger small" type="submit">Desativar</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty">Nenhum profissional ativo.</p>
+    {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ professional.name }} - Beautyflow Admin{% endblock %}
+
+{% block content %}
+<header class="page-header">
+    <div>
+        <h1>{{ professional.name }}</h1>
+        <p class="muted">Dados, serviços e disponibilidade do profissional.</p>
+    </div>
+    <a class="button" href="/admin/professionals">Voltar</a>
+</header>
+
+<section class="card">
+    <h2>Dados do profissional</h2>
+    <form method="post" action="/admin/professionals/{{ professional.id }}" class="form-grid">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
+        <label>Nome
+            <input name="name" required minlength="3" maxlength="50" value="{{ professional.name }}" /></label>
+        <label>Email
+            <input name="email" required type="email" value="{{ professional.email }}" /></label>
+        <button class="button primary align-end" type="submit">Salvar dados</button>
+    </form>
+</section>
+
+<section class="card">
+    <h2>Serviços atendidos</h2>
+    <form method="post" action="/admin/professionals/{{ professional.id }}/services" class="checkbox-grid">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
+        {% for service in services %}
+        <label class="check-card">
+            <input type="checkbox" name="service_ids" value="{{ service.id }}" {% if service.id in linked_service_ids
+                %}checked{% endif %} />
+            <span><strong>{{ service.name }}</strong><small>{{ service.duration_minutes }} min · R$ {{ service.price
+                    }}</small></span>
+        </label>
+        {% endfor %}
+        <button class="button primary" type="submit">Salvar serviços</button>
+    </form>
+</section>
+
+<section class="card">
+    <h2>Disponibilidade semanal</h2>
+    <form method="post" action="/admin/professionals/{{ professional.id }}/availability" class="stack">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
+        <div class="availability-grid">
+            {% for weekday, label in weekdays %} {% set item =
+            availability_by_weekday.get(weekday) %}
+            <div class="availability-row">
+                <label class="availability-enabled">
+                    <input type="checkbox" name="weekday_{{ weekday }}_enabled" {% if item %}checked{% endif %} />
+                    {{ label }}
+                </label>
+                <input type="time" name="weekday_{{ weekday }}_start"
+                    value="{{ item.start_time.strftime('%H:%M') if item else '09:00' }}" />
+                <input type="time" name="weekday_{{ weekday }}_end"
+                    value="{{ item.end_time.strftime('%H:%M') if item else '18:00' }}" />
+            </div>
+            {% endfor %}
+        </div>
+        <button class="button primary" type="submit">Salvar disponibilidade</button>
+    </form>
+</section>
+{% endblock %}

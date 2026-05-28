@@ -1,0 +1,76 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Empresa - Beautyflow Admin{%endblock %}
+
+{% block content %}
+<header class="page-header">
+    <div>
+        <h1>Dados da empresa</h1>
+        <p class="muted">Informações públicas e regras de agendamento.</p>
+    </div>
+</header>
+
+<form method="post" action="/admin/business" class="stack">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
+    <section class="card">
+        <h2>Informações gerais</h2>
+        <div class="form-grid">
+            <label>Nome
+                <input name="name" required minlength="3" maxlength="50" value="{{ business.name }}" /></label>
+            <label>Slug
+                <input name="slug" pattern="[a-z0-9]+(-[a-z0-9]+)*" value="{{ business.slug or '' }}" /></label>
+            <label>Tipo
+                <select name="type" required>
+                    {% for type in business_types %}
+                    <option value="{{ type.value }}" {% if type == business.type %}selected{% endif %}>
+                        {{ type.value }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>Timezone
+                <input name="timezone" required value="{{ business.timezone }}" /></label>
+            <label>Telefone <input name="phone" value="{{ business.phone or '' }}" /></label>
+            <label>Email
+                <input name="email" type="email" value="{{ business.email or '' }}" /></label>
+            <label>Endereço <input name="address" value="{{ business.address or '' }}" /></label>
+            <label>Cidade <input name="city" value="{{ business.city or '' }}" /></label>
+            <label>Estado <input name="state" value="{{ business.state or '' }}" /></label>
+        </div>
+        <label>Descrição
+            <textarea name="description" rows="4">
+{{ business.description or '' }}</textarea>
+        </label>
+    </section>
+
+    <section class="card">
+        <h2>Configurações de agendamento</h2>
+        <div class="form-grid">
+            <label>Intervalo dos slots em minutos
+                <input name="slot_interval_minutes" type="number" min="1" max="240"
+                    value="{{ business.slot_interval_minutes }}" /></label>
+            <label>Antecedência mínima em minutos
+                <input name="minimum_notice_minutes" type="number" min="0"
+                    value="{{ business.minimum_notice_minutes }}" /></label>
+            <label>Dias máximos para agendar
+                <input name="maximum_schedule_days" type="number" min="1" max="365"
+                    value="{{ business.maximum_schedule_days }}" /></label>
+            <label>Limite de cancelamento em horas
+                <input name="cancel_limit_hours" type="number" min="0"
+                    value="{{ business.cancel_limit_hours }}" /></label>
+        </div>
+        <div class="checkbox-grid">
+            <label class="check-card"><input type="checkbox" name="booking_enabled" {% if business.booking_enabled
+                    %}checked{% endif %} />
+                <span>Agenda pública ativa</span></label>
+            <label class="check-card"><input type="checkbox" name="allow_client_cancel" {% if
+                    business.allow_client_cancel %}checked{% endif %} />
+                <span>Permitir cancelamento pelo cliente</span></label>
+            <label class="check-card"><input type="checkbox" name="appointment_confirmation_required" {% if
+                    business.appointment_confirmation_required %}checked{% endif %} />
+                <span>Exigir confirmação manual</span></label>
+        </div>
+        <button class="button primary" type="submit">Salvar empresa</button>
+    </section>
+</form>
+{% endblock %}

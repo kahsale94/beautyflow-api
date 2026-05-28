@@ -1,0 +1,73 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Clientes - Beautyflow Admin{%endblock %}
+
+{% block content %}
+<header class="page-header">
+    <div>
+        <h1>Clientes</h1>
+        <p class="muted">Visualize e edite clientes da empresa.</p>
+    </div>
+</header>
+
+<section class="grid two-columns">
+    <form method="post" action="/admin/clients" class="card stack">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
+        <h2>Novo cliente</h2>
+        <label>Nome <input name="name" minlength="3" maxlength="50" /></label>
+        <label>Telefone
+            <input name="phone" required minlength="9" maxlength="13" placeholder="5511999999999" /></label>
+        <button class="button primary" type="submit">Cadastrar</button>
+    </form>
+
+    <form method="get" action="/admin/clients" class="card stack">
+        <h2>Buscar</h2>
+        <label>Nome ou telefone <input name="q" value="{{ q }}" /></label>
+        <button class="button" type="submit">Filtrar</button>
+    </form>
+</section>
+
+<section class="card">
+    <div class="card-header">
+        <h2>Clientes cadastrados</h2>
+    </div>
+    {% if clients %} {% for client in clients %}
+    <form id="client-form-{{ client.id }}" method="post" action="/admin/clients/{{ client.id }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
+    </form>
+    {% endfor %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nome</th>
+                <th>Telefone</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for client in clients %}
+            <tr>
+                <td>#{{ client.id }}</td>
+                <td>
+                    <input form="client-form-{{ client.id }}" name="name" value="{{ client.name or '' }}" minlength="3"
+                        maxlength="50" />
+                </td>
+                <td>
+                    <input form="client-form-{{ client.id }}" name="phone" value="{{ client.phone }}" required
+                        minlength="9" maxlength="13" />
+                </td>
+                <td>
+                    <button form="client-form-{{ client.id }}" class="button small" type="submit">
+                        Salvar
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty">Nenhum cliente encontrado.</p>
+    {% endif %}
+</section>
+{% endblock %}

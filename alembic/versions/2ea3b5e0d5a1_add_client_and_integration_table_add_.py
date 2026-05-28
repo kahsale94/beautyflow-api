@@ -67,9 +67,9 @@ def upgrade() -> None:
     op.add_column('users', sa.Column('business_id', sa.Integer(), nullable=True))
     op.add_column('users', sa.Column('is_active', sa.Boolean(), nullable=False))
     userrole_enum = postgresql.ENUM(
-        'SUPER_ADMIN',
-        'ADMIN',
-        'USER',
+        'super_admin',
+        'admin',
+        'user',
         name='userrole'
     )
     userrole_enum.create(op.get_bind(), checkfirst=True)
@@ -87,7 +87,7 @@ def downgrade() -> None:
     op.drop_constraint('uq_user_business_email', 'users', type_='unique')
     op.create_unique_constraint(op.f('users_email_key'), 'users', ['email'], postgresql_nulls_not_distinct=False)
     op.alter_column('users', 'role',
-               existing_type=sa.Enum('SUPER_ADMIN', 'ADMIN', 'USER', name='userrole'),
+               existing_type=sa.Enum('super_admin', 'admin', 'user', name='userrole'),
                type_=sa.VARCHAR(),
                existing_nullable=False)
     op.drop_column('users', 'is_active')

@@ -1,0 +1,65 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Dashboard - Beautyflow Admin{%endblock %}
+
+{% block content %}
+<header class="page-header">
+    <div>
+        <h1>Dashboard</h1>
+        <p class="muted">Visão geral de {{ business.name }}.</p>
+    </div>
+</header>
+
+<section class="stats-grid">
+    <article class="stat-card">
+        <strong>{{ clients_count }}</strong><span>Clientes</span>
+    </article>
+    <article class="stat-card">
+        <strong>{{ services_count }}</strong><span>Serviços</span>
+    </article>
+    <article class="stat-card">
+        <strong>{{ professionals_count }}</strong><span>Profissionais</span>
+    </article>
+    <article class="stat-card">
+        <strong>{{ today_appointments|length }}</strong><span>Agendamentos hoje</span>
+    </article>
+</section>
+
+<section class="card">
+    <div class="card-header">
+        <h2>Agendamentos de hoje</h2>
+        <a class="button small" href="/admin/appointments">Abrir calendário</a>
+    </div>
+    {% if today_appointments %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Horário</th>
+                <th>Status</th>
+                <th>Cliente</th>
+                <th>Profissional</th>
+                <th>Serviço</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for appointment in today_appointments %}
+            <tr>
+                <td>
+                    {{ appointment.start_datetime.strftime('%H:%M') }} - {{
+                    appointment.end_datetime.strftime('%H:%M') }}
+                </td>
+                <td>
+                    <span class="badge {{ appointment.status.value }}">{{ appointment.status.value }}</span>
+                </td>
+                <td>#{{ appointment.client_id }}</td>
+                <td>#{{ appointment.professional_id }}</td>
+                <td>#{{ appointment.service_id }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty">Nenhum agendamento para hoje.</p>
+    {% endif %}
+</section>
+{% endblock %}

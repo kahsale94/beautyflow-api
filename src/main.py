@@ -1,7 +1,9 @@
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
-from .api.v1 import router as v1_router
+from .api import router as user_router
+from .admin import router as admin_router
 from .middlewares import LoggingMiddleware, RateLimitMiddleware
 from .core import ENVIRONMENT, CORS_ORIGINS
 
@@ -29,6 +31,9 @@ app.add_middleware(
 )
 
 app.add_middleware(LoggingMiddleware)
-app.add_middleware(RateLimitMiddleware, max_requests=30, window=60)
+app.add_middleware(RateLimitMiddleware)
 
-app.include_router(v1_router, prefix="/v1")
+app.mount("/static", StaticFiles(directory="src/static"), name="static")
+
+app.include_router(admin_router)
+app.include_router(user_router)

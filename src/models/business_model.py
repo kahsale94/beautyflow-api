@@ -43,7 +43,7 @@ class Business(Base):
     maximum_schedule_days: Mapped[int] = mapped_column(Integer, nullable=False, default=30, server_default="30")
     allow_client_cancel: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
     cancel_limit_hours: Mapped[int] = mapped_column(Integer, nullable=False, default=24, server_default="24")
-    appointment_confirmation_required: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="true")
+    appointment_confirmation_required: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     is_active: Mapped[bool] = mapped_column(nullable=False, default=True, server_default="true")

@@ -1,0 +1,22 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Selecionar empresa - BeautyflowAdmin{% endblock %}
+
+{% block content %}
+<header class="page-header">
+    <h1>Selecionar empresa</h1>
+</header>
+<section class="card">
+    <form method="post" action="/admin/businesses/select" class="inline-form">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
+        <select name="business_id" required>
+            {% for business in businesses %}
+            <option value="{{ business.id }}">
+                {{ business.name }} — #{{ business.id }}
+            </option>
+            {% endfor %}
+        </select>
+        <button class="button primary" type="submit">Usar empresa</button>
+    </form>
+</section>
+{% endblock %}
