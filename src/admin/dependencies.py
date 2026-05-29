@@ -9,14 +9,16 @@ from sqlalchemy.orm import Session
 
 from src.models import User
 from src.models.user_model import UserRole
-from src.security import TokenManager, UserContext
-from src.core import get_db, USER_SECRET_KEY, USER_SECRET_KEY, ADMIN_ACCESS_COOKIE, ADMIN_CSRF_COOKIE, ADMIN_BUSINESS_COOKIE
+from src.security import RefreshRequest, TokenManager, UserContext
+from src.services.auth_service import AuthService, DeactivatedUserError, InvalidTokenError
+from src.core import ADMIN_ACCESS_COOKIE, ADMIN_BUSINESS_COOKIE, ADMIN_CSRF_COOKIE, ADMIN_REFRESH_COOKIE, USER_SECRET_KEY, get_db
 
 @dataclass(frozen=True)
 class AdminSession:
     user: UserContext
     business_id: int
     csrf_token: str
+    refreshed_access_token: str | None = None
 
     @property
     def is_super_admin(self) -> bool:
@@ -60,6 +62,19 @@ async def validate_csrf(request: Request) -> None:
     if str(form_token) != cookie_token or not is_valid_csrf_token(cookie_token):
         raise HTTPException(status_code=403, detail="CSRF token inválido.")
 
+def _refresh_admin_access_token(request: Request, db: Session) -> str:
+    refresh_token = request.cookies.get(ADMIN_REFRESH_COOKIE)
+    if not refresh_token:
+        _redirect("/admin/login")
+
+    try:
+        access_token = AuthService(db).refresh(RefreshRequest(refresh_token=refresh_token))
+    except (InvalidTokenError, DeactivatedUserError, ValueError, TypeError):
+        _redirect("/admin/login")
+
+    request.state.admin_refreshed_access_token = access_token
+    return access_token
+
 def get_current_admin_session(request: Request, db: Session = Depends(get_db)) -> AdminSession:
     token = request.cookies.get(ADMIN_ACCESS_COOKIE)
     if not token:
@@ -68,7 +83,11 @@ def get_current_admin_session(request: Request, db: Session = Depends(get_db)) -
     try:
         payload = TokenManager.decode(token)  # type: ignore[arg-type]
     except Exception:
-        _redirect("/admin/login")
+        token = _refresh_admin_access_token(request, db)
+        try:
+            payload = TokenManager.decode(token)
+        except Exception:
+            _redirect("/admin/login")
 
     if payload.get("type") != "user" or payload.get("token_type") != "access":
         _redirect("/admin/login")
@@ -107,6 +126,8 @@ def get_current_admin_session(request: Request, db: Session = Depends(get_db)) -
             raise HTTPException(status_code=403, detail="Usuário sem empresa vinculada.")
         business_id = user.business_id
 
+    refreshed_access_token = getattr(request.state, "admin_refreshed_access_token", None)
+
     return AdminSession(
         user=UserContext(
             type="user",
@@ -118,6 +139,7 @@ def get_current_admin_session(request: Request, db: Session = Depends(get_db)) -
         ),
         business_id=business_id,
         csrf_token=csrf_token,
+        refreshed_access_token=refreshed_access_token,
     )
 
 def require_super_admin_session(session: AdminSession = Depends(get_current_admin_session)) -> AdminSession:

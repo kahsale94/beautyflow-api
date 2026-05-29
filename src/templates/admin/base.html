@@ -40,7 +40,7 @@
 
     <main class="main {{ 'with-sidebar' if session else 'auth-main' }}">
         {% if flash %}
-        <div class="flash {{ flash.category }}">{{ flash.message }}</div>
+        <div class="flash {{ flash.category }}" role="status" aria-live="polite">{{ flash.message }}</div>
         {% endif %} {% block content %}{% endblock %}
     </main>
 

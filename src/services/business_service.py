@@ -3,6 +3,7 @@ from sqlalchemy.exc import IntegrityError
 
 from src.models import Business
 from src.core import DataBaseDep
+from src.utils import normalize_phone
 from src.repositories import BusinessRepository
 from src.schemas import BusinessCreate, BusinessUpdate
 
@@ -53,24 +54,26 @@ class BusinessService:
         return [result]
 
     def create(self, data: BusinessCreate):
+        phone = normalize_phone(data.phone)
+
         business = Business(
-            name=data.name,
-            slug=data.slug,
-            type=data.type,
-            timezone=data.timezone,
-            phone=data.phone,
-            email=str(data.email) if data.email else None,
-            address=data.address,
-            city=data.city,
-            state=data.state,
-            description=data.description,
-            booking_enabled=data.booking_enabled,
-            slot_interval_minutes=data.slot_interval_minutes,
-            minimum_notice_minutes=data.minimum_notice_minutes,
-            maximum_schedule_days=data.maximum_schedule_days,
-            allow_client_cancel=data.allow_client_cancel,
-            cancel_limit_hours=data.cancel_limit_hours,
-            appointment_confirmation_required=data.appointment_confirmation_required,
+            name = data.name,
+            slug = data.slug,
+            type = data.type,
+            timezone = data.timezone,
+            phone = phone,
+            email = str(data.email) if data.email else None,
+            address = data.address,
+            city = data.city,
+            state = data.state,
+            description = data.description,
+            booking_enabled = data.booking_enabled,
+            slot_interval_minutes = data.slot_interval_minutes,
+            minimum_notice_minutes = data.minimum_notice_minutes,
+            maximum_schedule_days = data.maximum_schedule_days,
+            allow_client_cancel = data.allow_client_cancel,
+            cancel_limit_hours = data.cancel_limit_hours,
+            appointment_confirmation_required = data.appointment_confirmation_required,
         )
 
         self.business_repo.add(self.db, business)
@@ -92,6 +95,9 @@ class BusinessService:
 
         if "email" in update_data and update_data["email"] is not None:
             update_data["email"] = str(update_data["email"])
+
+        if "phone" in update_data:
+            update_data["phone"] = normalize_phone(update_data["phone"])
 
         for field, value in update_data.items():
             setattr(business, field, value)

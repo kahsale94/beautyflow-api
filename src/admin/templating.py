@@ -1,4 +1,6 @@
 import json
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from urllib.parse import quote, unquote
 
 from fastapi import Request
@@ -6,7 +8,11 @@ from fastapi.templating import Jinja2Templates
 from fastapi.responses import RedirectResponse, Response
 
 from .dependencies import AdminSession
-from src.core import ADMIN_CSRF_COOKIE, ADMIN_FLASH_COOKIE, ADMIN_BUSINESS_COOKIE, ADMIN_COOKIE_SECURE, ADMIN_COOKIE_SAMESITE, ADMIN_COOKIE_PATH
+from src.core import (ADMIN_ACCESS_COOKIE, ADMIN_BUSINESS_COOKIE, ADMIN_COOKIE_PATH,
+    ADMIN_COOKIE_SAMESITE, ADMIN_COOKIE_SECURE, ADMIN_CSRF_COOKIE, ADMIN_FLASH_COOKIE
+)
+
+DEFAULT_ADMIN_TIMEZONE = "America/Sao_Paulo"
 
 WEEKDAYS = [
     (0, "Segunda-feira"),
@@ -20,6 +26,46 @@ WEEKDAYS = [
 
 templates = Jinja2Templates(directory="src/templates")
 
+def safe_timezone(timezone_name: str | None):
+    try:
+        return ZoneInfo(timezone_name or DEFAULT_ADMIN_TIMEZONE)
+    except Exception:
+        return ZoneInfo(DEFAULT_ADMIN_TIMEZONE)
+
+def _coerce_datetime(value, timezone_name: str | None = None) -> datetime | None:
+    if value is None:
+        return None
+
+    if isinstance(value, str):
+        try:
+            value = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+
+    if not isinstance(value, datetime):
+        return None
+
+    tz = safe_timezone(timezone_name)
+    if value.tzinfo is None:
+        return value.replace(tzinfo=tz)
+    return value.astimezone(tz)
+
+def datetime_br(value, timezone_name: str | None = None) -> str:
+    parsed = _coerce_datetime(value, timezone_name)
+    return parsed.strftime("%d/%m/%Y %H:%M") if parsed else ""
+
+def datetime_time(value, timezone_name: str | None = None) -> str:
+    parsed = _coerce_datetime(value, timezone_name)
+    return parsed.strftime("%H:%M") if parsed else ""
+
+def datetime_input(value, timezone_name: str | None = None) -> str:
+    parsed = _coerce_datetime(value, timezone_name)
+    return parsed.strftime("%Y-%m-%dT%H:%M") if parsed else ""
+
+templates.env.filters["datetime_br"] = datetime_br
+templates.env.filters["datetime_time"] = datetime_time
+templates.env.filters["datetime_input"] = datetime_input
+
 def attach_csrf_cookie(response: Response, csrf_token: str) -> None:
     response.set_cookie(
         ADMIN_CSRF_COOKIE,
@@ -28,6 +74,16 @@ def attach_csrf_cookie(response: Response, csrf_token: str) -> None:
         secure=ADMIN_COOKIE_SECURE,
         samesite=ADMIN_COOKIE_SAMESITE,
         path=ADMIN_COOKIE_PATH,
+    )
+
+def attach_admin_access_cookie(response: Response, access_token: str) -> None:
+    response.set_cookie(
+        ADMIN_ACCESS_COOKIE,
+        access_token,
+        httponly=True,
+        secure=ADMIN_COOKIE_SECURE,
+        samesite=ADMIN_COOKIE_SAMESITE,
+        path=ADMIN_COOKIE_PATH or "/admin",
     )
 
 def set_business_cookie(response: Response, business_id: int) -> None:
@@ -56,10 +112,9 @@ def pop_flash(request: Request) -> dict | None:
     raw = request.cookies.get(ADMIN_FLASH_COOKIE)
     if not raw:
         return None
-    
+
     try:
         return json.loads(unquote(raw))
-    
     except Exception:
         return None
 
@@ -77,10 +132,15 @@ def render(request: Request, template_name: str, context: dict | None = None, *,
     )
     response = templates.TemplateResponse(template_name, context, status_code=status_code)
     response.delete_cookie(ADMIN_FLASH_COOKIE, path="/admin")
+
     if session:
         attach_csrf_cookie(response, session.csrf_token)
     elif context.get("csrf_token"):
         attach_csrf_cookie(response, context["csrf_token"])
+
+    refreshed_token = getattr(request.state, "admin_refreshed_access_token", None)
+    if refreshed_token:
+        attach_admin_access_cookie(response, refreshed_token)
 
     return response
 

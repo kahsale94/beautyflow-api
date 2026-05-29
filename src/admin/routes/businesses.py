@@ -8,7 +8,7 @@ from ..templating import render, redirect_with_flash, set_business_cookie
 
 router = APIRouter(prefix="/businesses")
 
-@router.get("/")
+@router.get("")
 def businesses_page(request: Request, business_service: BusinessServiceDep, session: SuperAdminSessionDep):
     businesses = business_service.get_all()
 

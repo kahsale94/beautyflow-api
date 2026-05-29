@@ -5,6 +5,7 @@ from sqlalchemy.exc import IntegrityError
 
 from src.models import Client
 from src.core import DataBaseDep
+from src.utils import normalize_phone
 from src.repositories import ClientRepository
 from src.schemas import ClientCreate, ClientUpdate
 
@@ -23,20 +24,6 @@ class ClientService:
     ):
         self.db = db
         self.client_repo = client_repo
-
-    def _normalize_phone(self, phone: str):
-        phone = re.sub(r"\D", "", phone)
-
-        if phone.startswith("55") and len(phone) == 13:
-            return phone
-
-        if len(phone) == 11:
-            return "55" + phone
-
-        if len(phone) == 10:
-            return "55" + phone[:2] + "9" + phone[2:]
-
-        return phone
 
     def _get_valid(self, business_id: int, client_id: int):
         client = self.client_repo.get_by_id(self.db, business_id, client_id)
@@ -61,7 +48,7 @@ class ClientService:
         return self._get_valid(business_id, client_id)
 
     def get_by_phone(self, business_id: int, phone: str):
-        phone = self._normalize_phone(phone)
+        phone = normalize_phone(phone)
 
         result = self.client_repo.get_by_phone(self.db, business_id, phone)
         if (
@@ -73,7 +60,7 @@ class ClientService:
         return [result]
 
     def create(self, business_id: int, data: ClientCreate):
-        phone = self._normalize_phone(data.phone)
+        phone = normalize_phone(data.phone)
 
         client = Client(
             business_id = business_id,
@@ -114,7 +101,7 @@ class ClientService:
         update_data = data.model_dump(exclude_unset=True)
 
         if "phone" in update_data:
-            update_data["phone"] = self._normalize_phone(update_data["phone"])
+            update_data["phone"] = normalize_phone(update_data["phone"])
 
         for field, value in update_data.items():
             setattr(client, field, value)

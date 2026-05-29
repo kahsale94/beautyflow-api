@@ -3,8 +3,8 @@ from sqlalchemy.exc import IntegrityError
 
 from src.core import DataBaseDep
 from src.models import Professional
-from src.utils import normalize_text
 from src.repositories import ProfessionalRepository
+from src.utils import normalize_text, normalize_phone
 from src.schemas import ProfessionalCreate, ProfessionalUpdate
 
 class ProfessionalNotFoundError(Exception):
@@ -60,11 +60,15 @@ class ProfessionalService:
         return result
 
     def create(self, business_id: int, data: ProfessionalCreate):
+        phone = normalize_phone(data.phone)
+        name = normalize_text(data.name)
+
         professional = Professional(
-            business_id=business_id,
-            name=data.name,
-            email=str(data.email),
-            normalized_name=normalize_text(data.name),
+            business_id = business_id,
+            name = data.name,
+            email = str(data.email),
+            phone = phone,
+            normalized_name = name,
         )
 
         self.professional_repo.add(self.db, professional)
@@ -87,6 +91,9 @@ class ProfessionalService:
         if "email" in update_data and update_data["email"] is not None:
             update_data["email"] = str(update_data["email"])
 
+        if "phone" in update_data:
+            update_data["phone"] = normalize_phone(update_data["phone"])
+            
         for field, value in update_data.items():
             setattr(professional, field, value)
 

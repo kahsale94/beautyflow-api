@@ -12,7 +12,7 @@ from ..dependencies import AdminSessionDep, validate_csrf
 
 router = APIRouter(prefix="/business")
 
-@router.get("/")
+@router.get("")
 def business_settings_page(request: Request, service: BusinessServiceDep, session: AdminSessionDep):
     business = service.get_by_id(session.business_id)
 
@@ -24,7 +24,7 @@ def business_settings_page(request: Request, service: BusinessServiceDep, sessio
         active="business",
     )
 
-@router.post("/")
+@router.post("")
 async def update_business_settings_action(request: Request, service: BusinessServiceDep, session: AdminSessionDep):
     await validate_csrf(request)
     form = await request.form()

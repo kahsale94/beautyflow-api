@@ -11,9 +11,10 @@
 </header>
 
 {% if session.is_super_admin %}
-<section class="card">
-    <form method="post" action="/admin/users" class="form-grid">
+<section class="grid two-columns">
+    <form method="post" action="/admin/users" class="card stack">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
+        <h2>Novo usuário</h2>
         <label>Email <input name="email" required type="email" /></label>
         <label>Senha <input name="password" required type="password" minlength="8" /></label>
         <label>Papel
@@ -23,9 +24,13 @@
                 {% endfor %}
             </select>
         </label>
-        <button class="button primary align-end" type="submit">
-            Criar usuário
-        </button>
+        <button class="button primary" type="submit">Criar usuário</button>
+    </form>
+
+    <form method="get" action="/admin/users" class="card stack admin-search-card">
+        <h2>Buscar</h2>
+        <label>Email, papel ou status <input name="q" value="{{ q }}" /></label>
+        <button class="button" type="submit">Filtrar</button>
     </form>
 </section>
 {% else %}
@@ -33,6 +38,11 @@
     Você pode visualizar usuários. Criação e alteração seguem restritas ao
     super_admin.
 </p>
+<form method="get" action="/admin/users" class="card stack admin-search-card">
+    <h2>Buscar</h2>
+    <label>Email, papel ou status <input name="q" value="{{ q }}" /></label>
+    <button class="button" type="submit">Filtrar</button>
+</form>
 {% endif %}
 
 <section class="card">
@@ -44,7 +54,7 @@
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
     </form>
     {% endfor %} {% endif %}
-    <table class="table">
+    <table class="table admin-data-table users-table">
         <thead>
             <tr>
                 <th>ID</th>
@@ -56,14 +66,15 @@
         </thead>
         <tbody>
             {% for user in users %}
-            <tr>
+            <tr id="user-row-{{ user.id }}">
                 {% if session.is_super_admin %}
                 <td>#{{ user.id }}</td>
                 <td>
-                    <input form="user-form-{{ user.id }}" type="email" name="email" value="{{ user.email }}" required />
+                    <input form="user-form-{{ user.id }}" type="email" name="email" value="{{ user.email }}" required
+                        readonly data-editable />
                 </td>
                 <td>
-                    <select form="user-form-{{ user.id }}" name="role">
+                    <select form="user-form-{{ user.id }}" name="role" disabled data-editable>
                         {% for role in roles %}
                         <option value="{{ role.value }}" {% if role == user.role %}selected{% endif %}>
                             {{ role.value }}
@@ -73,18 +84,22 @@
                 </td>
                 <td>{{ 'Ativo' if user.is_active else 'Inativo' }}</td>
                 <td class="actions">
-                    <input form="user-form-{{ user.id }}" name="password" type="password" minlength="8"
-                        placeholder="nova senha opcional" />
-                    <button form="user-form-{{ user.id }}" class="button small" type="submit">
-                        Salvar
-                    </button>
-                    <form method="post" action="/admin/users/{{ user.id }}/deactivate"
-                        data-confirm="Desativar usuário?">
-                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" /><button
-                            class="button danger small" type="submit">
-                            Desativar
+                    <div class="actions-buttons">
+                        <button class="button secondary small" type="button" data-edit-row="#user-row-{{ user.id }}">
+                            Editar
                         </button>
-                    </form>
+                        <button form="user-form-{{ user.id }}" class="button success small row-edit-save" type="submit" data-save-row hidden>
+                            Salvar
+                        </button>
+                        <button class="button cancel-edit small row-edit-cancel" type="button" data-cancel-row="#user-row-{{ user.id }}" hidden>
+                            Cancelar
+                        </button>
+                        <form method="post" action="/admin/users/{{ user.id }}/deactivate"
+                            data-confirm="Desativar usuário?">
+                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
+                            <button class="button danger small" type="submit">Desativar</button>
+                        </form>
+                    </div>
                 </td>
                 {% else %}
                 <td>#{{ user.id }}</td>

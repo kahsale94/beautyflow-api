@@ -20,7 +20,7 @@
         <button class="button primary" type="submit">Cadastrar</button>
     </form>
 
-    <form method="get" action="/admin/clients" class="card stack">
+    <form method="get" action="/admin/clients" class="card stack admin-search-card">
         <h2>Buscar</h2>
         <label>Nome ou telefone <input name="q" value="{{ q }}" /></label>
         <button class="button" type="submit">Filtrar</button>
@@ -36,7 +36,7 @@
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
     </form>
     {% endfor %}
-    <table class="table">
+    <table class="table admin-data-table clients-table">
         <thead>
             <tr>
                 <th>ID</th>
@@ -47,20 +47,31 @@
         </thead>
         <tbody>
             {% for client in clients %}
-            <tr>
+            <tr id="client-row-{{ client.id }}">
                 <td>#{{ client.id }}</td>
                 <td>
                     <input form="client-form-{{ client.id }}" name="name" value="{{ client.name or '' }}" minlength="3"
-                        maxlength="50" />
+                        maxlength="50" readonly data-editable />
                 </td>
                 <td>
                     <input form="client-form-{{ client.id }}" name="phone" value="{{ client.phone }}" required
-                        minlength="9" maxlength="13" />
+                        minlength="9" maxlength="13" readonly data-editable />
                 </td>
-                <td>
-                    <button form="client-form-{{ client.id }}" class="button small" type="submit">
-                        Salvar
-                    </button>
+                <td class="actions">
+
+                    <div class="actions-buttons">
+                        <button class="button secondary small" type="button" data-edit-row="#client-row-{{ client.id }}">
+                            Editar
+                        </button>
+                        <button form="client-form-{{ client.id }}" class="button success small row-edit-save" type="submit" data-save-row hidden>
+                            Salvar
+                        </button>
+                        <button class="button cancel-edit small row-edit-cancel" type="button" data-cancel-row="#client-row-{{ client.id }}" hidden>
+                            Cancelar
+                        </button>
+
+                    </div>
+
                 </td>
             </tr>
             {% endfor %}

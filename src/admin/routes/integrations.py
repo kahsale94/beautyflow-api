@@ -11,7 +11,7 @@ from ..dependencies import AdminSessionDep, SuperAdminSessionDep, validate_csrf
 
 router = APIRouter(prefix="/integrations")
 
-@router.get("/")
+@router.get("")
 def integrations_page(request: Request, service: BusinessIntegrationServiceDep, session: AdminSessionDep):
     integrations = service.get_all(session.business_id)
 

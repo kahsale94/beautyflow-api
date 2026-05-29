@@ -13,27 +13,34 @@ from ..templating import WEEKDAYS, render, redirect_with_flash
 
 router = APIRouter(prefix="/professionals")
 
-@router.get("/")
-def professionals_page(request: Request, professional_service: ProfessionalServiceDep, session: AdminSessionDep):
+@router.get("")
+def professionals_page(request: Request, professional_service: ProfessionalServiceDep, session: AdminSessionDep, q: str | None = None):
     professionals = professional_service.get_all(session.business_id)
+    if q:
+        q_lower = q.lower().strip()
+        professionals = [
+            item for item in professionals
+            if q_lower in item.name.lower() or q_lower in item.email.lower()
+        ]
 
     return render(
         request,
         "admin/professionals/index.html",
-        {"professionals": professionals},
+        {"professionals": professionals, "q": q or ""},
         session=session,
         active="professionals",
     )
 
-@router.post("/")
+@router.post("")
 async def create_professional_action(request: Request, professional_service: ProfessionalServiceDep, session: AdminSessionDep):
     await validate_csrf(request)
     form = await request.form()
 
     try:
         data = ProfessionalCreate(
-            name=form_value(form, "name", ""),
-            email=form_value(form, "email", ""),
+            name = form_value(form, "name", ""),
+            email = form_value(form, "email", ""),
+            phone = form_value(form, "phone", ""),
         )
         professional_service.create(session.business_id, data)
 
@@ -70,28 +77,32 @@ def professional_detail_page(professional_id: int, request: Request, professiona
         active="professionals",
     )
 
-@router.post("/{professional_id}")
+@router.put("/{professional_id}")
 async def update_professional_action(professional_id: int, request: Request, professional_service: ProfessionalServiceDep, session: AdminSessionDep):
     await validate_csrf(request)
     form = await request.form()
+    return_to = form_value(form, "_return_to", f"/admin/professionals/{professional_id}")
+    if not return_to or not return_to.startswith("/admin/professionals"):
+        return_to = f"/admin/professionals/{professional_id}"
 
     try:
         data = ProfessionalUpdate(
-            name=form_value(form, "name"),
-            email=form_value(form, "email"),
+            name = form_value(form, "name"),
+            email = form_value(form, "email"),
+            phone = form_value(form, "phone"),
         )
         professional_service.update(session.business_id, professional_id, data)
 
     except ValidationError:
-        return redirect_with_flash(f"/admin/professionals/{professional_id}", "Dados inválidos.", "error")
+        return redirect_with_flash(return_to, "Dados inválidos.", "error")
     
     except ProfessionalNotFoundError:
         return redirect_with_flash("/admin/professionals", "Profissional não encontrado.", "error")
     
     except ProfessionalAlreadyExistsError:
-        return redirect_with_flash(f"/admin/professionals/{professional_id}", "Profissional já cadastrado.", "error")
+        return redirect_with_flash(return_to, "Profissional já cadastrado.", "error")
 
-    return redirect_with_flash(f"/admin/professionals/{professional_id}", "Profissional atualizado com sucesso.")
+    return redirect_with_flash(return_to, "Profissional atualizado com sucesso.")
 
 @router.post("/{professional_id}/deactivate")
 async def deactivate_professional_action(professional_id: int, request: Request, professional_service: ProfessionalServiceDep, session: AdminSessionDep):

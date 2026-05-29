@@ -6,24 +6,27 @@ from src.schemas import ServiceCreate, ServiceUpdate
 from src.utils import form_decimal, form_int, form_value
 from src.services.service_service import ServiceAlreadyExistsError, ServiceNotFoundError
 
-from ..dependencies import AdminSessionDep, validate_csrf
 from ..templating import render, redirect_with_flash
+from ..dependencies import AdminSessionDep, validate_csrf
 
 router = APIRouter(prefix="/services")
 
-@router.get("/")
-def services_page(request: Request, service: ServiceServiceDep, session: AdminSessionDep):
+@router.get("")
+def services_page(request: Request, service: ServiceServiceDep, session: AdminSessionDep, q: str | None = None):
     services = service.get_all(session.business_id)
+    if q:
+        q_lower = q.lower().strip()
+        services = [item for item in services if q_lower in item.name.lower()]
 
     return render(
         request,
         "admin/services/index.html",
-        {"services": services},
+        {"services": services, "q": q or ""},
         session=session,
         active="services",
     )
 
-@router.post("/")
+@router.post("")
 async def create_service_action(request: Request, service: ServiceServiceDep, session: AdminSessionDep):
     await validate_csrf(request)
     form = await request.form()

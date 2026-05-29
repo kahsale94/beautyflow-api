@@ -4,7 +4,10 @@
 
 {% block head %}
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
 {% endblock %}
 
 {% block content %}
@@ -45,16 +48,27 @@
             </select>
         </label>
         <label>Data e hora
-            <input name="start_datetime" required type="datetime-local" />
+            <input
+                name="start_datetime"
+                required
+                type="text"
+                data-datetime-picker
+                data-timezone="{{ business_timezone }}"
+                data-minute-increment="{{ business.slot_interval_minutes }}"
+                value="{{ default_start_datetime }}"
+                min="{{ min_start_datetime }}"
+                max="{{ max_start_datetime }}" />
         </label>
-        <button class="button primary align-end" type="submit">Criar</button>
+        <div class="appointment-create-actions">
+            <button class="button primary appointment-create-button" type="submit">Criar</button>
+        </div>
     </form>
 </section>
 
 <section class="card">
     <div class="card-header">
         <h2>Agenda</h2>
-        <label class="inline-label">Filtrar profissional
+        <label class="inline-label">Filtrar Profissional
             <select id="calendar-professional-filter">
                 <option value="">Todos</option>
                 {% for professional in professionals %}
@@ -63,7 +77,11 @@
             </select>
         </label>
     </div>
-    <div id="calendar" data-events-url="/admin/appointments/events"></div>
+    <div id="calendar"
+        data-events-url="/admin/appointments/events"
+        data-timezone="{{ business_timezone }}"
+        data-slot-duration="{{ slot_duration }}">
+    </div>
 </section>
 {% endblock %}
 

@@ -10,17 +10,22 @@
     </div>
 </header>
 
-<section class="card">
-    <form method="post" action="/admin/services" class="form-grid">
+<section class="grid two-columns">
+    <form method="post" action="/admin/services" class="card stack">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
+        <h2>Novo serviço</h2>
         <label>Nome <input name="name" required minlength="3" maxlength="50" /></label>
         <label>Duração em minutos
             <input name="duration_minutes" required type="number" min="1" max="1440" value="60" /></label>
         <label>Preço
             <input name="price" required type="number" min="0.01" step="0.01" value="99.90" /></label>
-        <button class="button primary align-end" type="submit">
-            Criar serviço
-        </button>
+        <button class="button primary" type="submit">Criar serviço</button>
+    </form>
+
+    <form method="get" action="/admin/services" class="card stack admin-search-card">
+        <h2>Buscar</h2>
+        <label>Nome do serviço <input name="q" value="{{ q }}" /></label>
+        <button class="button" type="submit">Filtrar</button>
     </form>
 </section>
 
@@ -33,7 +38,7 @@
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
     </form>
     {% endfor %}
-    <table class="table">
+    <table class="table admin-data-table services-table">
         <thead>
             <tr>
                 <th>ID</th>
@@ -45,29 +50,40 @@
         </thead>
         <tbody>
             {% for item in services %}
-            <tr>
+            <tr id="service-row-{{ item.id }}">
                 <td>#{{ item.id }}</td>
                 <td>
                     <input form="service-form-{{ item.id }}" name="name" required value="{{ item.name }}" minlength="3"
-                        maxlength="50" />
+                        maxlength="50" readonly data-editable />
                 </td>
                 <td>
                     <input form="service-form-{{ item.id }}" name="duration_minutes" required type="number" min="1"
-                        max="1440" value="{{ item.duration_minutes }}" />
+                        max="1440" value="{{ item.duration_minutes }}" readonly data-editable />
                 </td>
                 <td>
                     <input form="service-form-{{ item.id }}" name="price" required type="number" min="0.01" step="0.01"
-                        value="{{ item.price }}" />
+                        value="{{ item.price }}" readonly data-editable />
                 </td>
                 <td class="actions">
-                    <button form="service-form-{{ item.id }}" class="button small" type="submit">
-                        Salvar
-                    </button>
-                    <form method="post" action="/admin/services/{{ item.id }}/deactivate"
-                        data-confirm="Desativar este serviço?">
-                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
-                        <button class="button danger small" type="submit">Desativar</button>
-                    </form>
+
+                    <div class="actions-buttons">
+                        <button class="button secondary small" type="button" data-edit-row="#service-row-{{ item.id }}">
+                            Editar
+                        </button>
+                        <button form="service-form-{{ item.id }}" class="button success small row-edit-save" type="submit" data-save-row hidden>
+                            Salvar
+                        </button>
+                        <button class="button cancel-edit small row-edit-cancel" type="button" data-cancel-row="#service-row-{{ item.id }}" hidden>
+                            Cancelar
+                        </button>
+                        <form method="post" action="/admin/services/{{ item.id }}/deactivate"
+                            data-confirm="Desativar este serviço?">
+                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
+                            <button class="button danger small" type="submit">Desativar</button>
+                        </form>
+
+                    </div>
+
                 </td>
             </tr>
             {% endfor %}

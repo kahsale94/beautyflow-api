@@ -60,10 +60,12 @@ class ServiceService:
         return result
 
     def create(self, business_id: int, data: ServiceCreate):
+        name = normalize_text(data.name)
+
         service = Service(
             business_id = business_id,
             name = data.name,
-            normalized_name = normalize_text(data.name),
+            normalized_name = name,
             duration_minutes = data.duration_minutes,
             price = data.price,
         )

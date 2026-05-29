@@ -36,8 +36,7 @@ class IntegrationService:
     def get_all(self):
         result = self.integration_repo.get_all(self.db)
         if (
-            not result
-            or not all(item.is_active for item in result)
+            not all(item.is_active for item in result)
         ):
             raise IntegrationNotFoundError()
 

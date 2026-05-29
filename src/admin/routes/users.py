@@ -1,30 +1,38 @@
 from pydantic import ValidationError
 from fastapi import APIRouter, Request
 
+from src.utils import form_value
 from src.dependecies import UserServiceDep
 from src.models.user_model import UserRole
 from src.schemas import UserCreate, UserUpdate
 from src.services.user_service import UserAlreadyExistsError, UserNotFoundError
-from src.utils import form_value
 
-from ..dependencies import AdminSessionDep, SuperAdminSessionDep, validate_csrf
 from ..templating import render, redirect_with_flash
+from ..dependencies import AdminSessionDep, SuperAdminSessionDep, validate_csrf
 
 router = APIRouter(prefix="/users")
 
-@router.get("/")
-def users_page(request: Request, service: UserServiceDep, session: AdminSessionDep):
+@router.get("")
+def users_page(request: Request, service: UserServiceDep, session: AdminSessionDep, q: str | None = None):
     users = service.get_all(session.business_id)
+    if q:
+        q_lower = q.lower().strip()
+        users = [
+            item for item in users
+            if q_lower in item.email.lower()
+            or q_lower in item.role.value.lower()
+            or q_lower in ("ativo" if item.is_active else "inativo")
+        ]
 
     return render(
         request,
         "admin/users/index.html",
-        {"users": users, "roles": [UserRole.admin, UserRole.user]},
+        {"users": users, "roles": [UserRole.admin, UserRole.user], "q": q or ""},
         session=session,
         active="users",
     )
 
-@router.post("/")
+@router.post("")
 async def create_user_action(request: Request, service: UserServiceDep, session: SuperAdminSessionDep):
     await validate_csrf(request)
     form = await request.form()

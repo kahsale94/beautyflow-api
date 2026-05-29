@@ -10,14 +10,20 @@
     </div>
 </header>
 
-<section class="card">
-    <form method="post" action="/admin/professionals" class="form-grid">
+<section class="grid two-columns">
+    <form method="post" action="/admin/professionals" class="card stack">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
+        <h2>Novo profissional</h2>
         <label>Nome <input name="name" required minlength="3" maxlength="50" /></label>
         <label>Email <input name="email" required type="email" /></label>
-        <button class="button primary align-end" type="submit">
-            Criar profissional
-        </button>
+        <label>Telefone <input name="phone" type="tel" maxlength="20" placeholder="5511999999999" /></label>
+        <button class="button primary" type="submit">Criar profissional</button>
+    </form>
+
+    <form method="get" action="/admin/professionals" class="card stack admin-search-card">
+        <h2>Buscar</h2>
+        <label>Nome, email ou telefone <input name="q" value="{{ q }}" /></label>
+        <button class="button" type="submit">Filtrar</button>
     </form>
 </section>
 
@@ -26,28 +32,59 @@
         <h2>Profissionais ativos</h2>
     </div>
     {% if professionals %}
-    <table class="table">
+    {% for professional in professionals %}
+    <form id="professional-form-{{ professional.id }}" method="post" action="/admin/professionals/{{ professional.id }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
+        <input type="hidden" name="_return_to" value="/admin/professionals" />
+    </form>
+    {% endfor %}
+    <table class="table admin-data-table professionals-table">
         <thead>
             <tr>
                 <th>ID</th>
                 <th>Nome</th>
                 <th>Email</th>
+                <th>Telefone</th>
                 <th>Ações</th>
             </tr>
         </thead>
         <tbody>
             {% for professional in professionals %}
-            <tr>
+            <tr id="professional-row-{{ professional.id }}">
                 <td>#{{ professional.id }}</td>
-                <td>{{ professional.name }}</td>
-                <td>{{ professional.email }}</td>
+                <td>
+                    <input form="professional-form-{{ professional.id }}" name="name" value="{{ professional.name }}"
+                        required minlength="3" maxlength="50" readonly data-editable />
+                </td>
+                <td>
+                    <input form="professional-form-{{ professional.id }}" name="email" value="{{ professional.email }}"
+                        required type="email" readonly data-editable />
+                </td>
+                <td>
+                    <input form="professional-form-{{ professional.id }}" name="phone" value="{{ professional.phone or '' }}"
+                        type="tel" maxlength="20" readonly data-editable />
+                </td>
                 <td class="actions">
-                    <a class="button small" href="/admin/professionals/{{ professional.id }}">Configurar</a>
-                    <form method="post" action="/admin/professionals/{{ professional.id }}/deactivate"
-                        data-confirm="Desativar este profissional?">
-                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
-                        <button class="button danger small" type="submit">Desativar</button>
-                    </form>
+
+                    <div class="actions-buttons">
+                        <button class="button secondary small" type="button" data-edit-row="#professional-row-{{ professional.id }}">
+                            Editar
+                        </button>
+                        <button form="professional-form-{{ professional.id }}" class="button success small row-edit-save" type="submit" data-save-row hidden>
+                            Salvar
+                        </button>
+                        <button class="button cancel-edit small row-edit-cancel" type="button" data-cancel-row="#professional-row-{{ professional.id }}" hidden>
+                            Cancelar
+                        </button>
+                        <a class="button config small" href="/admin/professionals/{{ professional.id }}">Configurar</a>
+                        <form method="post" action="/admin/professionals/{{ professional.id }}/deactivate"
+                            data-confirm="Desativar este profissional?">
+                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
+                            <button class="button danger small" type="submit">Desativar</button>
+                        </form>
+
+                    </div>
+
                 </td>
             </tr>
             {% endfor %}

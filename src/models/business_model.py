@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Optional
 from sqlalchemy import Enum as SAEnum, func, DateTime, String, Text, Integer, Boolean
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
-from .base_model import Base, intpk, name_type
+from .base_model import Base, intpk, name_type, phone_type
 
 if TYPE_CHECKING:
     from .user_model import User
@@ -30,7 +30,7 @@ class Business(Base):
     type: Mapped[BusinessType] = mapped_column(SAEnum(BusinessType, name="businesstype"), nullable=False)
     timezone: Mapped[str] = mapped_column(nullable=False)
 
-    phone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    phone: Mapped[Optional[phone_type]] = mapped_column(nullable=False)
     email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     address: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     city: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)

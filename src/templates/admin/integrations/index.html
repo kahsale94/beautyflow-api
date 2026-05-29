@@ -10,13 +10,15 @@
     </div>
 </header>
 
-<section class="card">
+<section class="card integrations-card">
     {% if integrations %}
     <div class="cards-grid">
         {% for item in integrations %}
         <article class="mini-card">
-            <h2>Integração #{{ item.integration_id }}</h2>
-            <h2>{{ item.integration.name }}</h2>
+            <header class="integration-title">
+                <h2>{{ item.integration.name if item.integration else 'Integração' }}</h2>
+                <span class="integration-meta">ID #{{ item.integration_id }}</span>
+            </header>
             <p>
                 Status:
                 <span class="badge {{ 'scheduled' if item.is_active else 'canceled' }}">{{ 'ativa' if item.is_active

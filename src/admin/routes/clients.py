@@ -11,7 +11,7 @@ from ..dependencies import AdminSessionDep, validate_csrf
 
 router = APIRouter(prefix="/clients")
 
-@router.get("/")
+@router.get("")
 def clients_page(request: Request, service: ClientServiceDep, session: AdminSessionDep, q: str | None = None):
     clients = service.get_all(session.business_id)
     if q:
@@ -26,7 +26,7 @@ def clients_page(request: Request, service: ClientServiceDep, session: AdminSess
         active="clients",
     )
 
-@router.post("/")
+@router.post("")
 async def create_client_action(request: Request, service: ClientServiceDep, session: AdminSessionDep):
     await validate_csrf(request)
     form = await request.form()
