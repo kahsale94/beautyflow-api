@@ -72,12 +72,12 @@
             {% for user in users %}
             <tr id="user-row-{{ user.id }}">
                 {% if session.is_super_admin %}
-                <td>#{{ user.id }}</td>
-                <td>
+                <td data-label="ID">#{{ user.id }}</td>
+                <td data-label="Email">
                     <input form="user-form-{{ user.id }}" type="email" name="email" value="{{ user.email }}" required
                         readonly data-editable />
                 </td>
-                <td>
+                <td data-label="Papel">
                     <select form="user-form-{{ user.id }}" name="role" disabled data-editable>
                         {% for role in roles %}
                         <option value="{{ role.value }}" {% if role == user.role %}selected{% endif %}>
@@ -86,13 +86,13 @@
                         {% endfor %}
                     </select>
                 </td>
-                <td>{{ 'Ativo' if user.is_active else 'Inativo' }}</td>
-                <td>
+                <td data-label="Status">{{ 'Ativo' if user.is_active else 'Inativo' }}</td>
+                <td data-label="Nova senha">
                     <input form="user-form-{{ user.id }}" type="password" name="password" minlength="8"
                         placeholder="Deixe em branco para manter" autocomplete="new-password" readonly
                         data-editable class="edit-only" hidden />
                 </td>
-                <td class="actions">
+                <td class="actions" data-label="Ações">
                     <div class="actions-buttons">
                         <button class="button secondary small" type="button" data-edit-row="#user-row-{{ user.id }}">
                             Editar
@@ -111,11 +111,11 @@
                     </div>
                 </td>
                 {% else %}
-                <td>#{{ user.id }}</td>
-                <td>{{ user.email }}</td>
-                <td>{{ user.role.value }}</td>
-                <td>{{ 'Ativo' if user.is_active else 'Inativo' }}</td>
-                <td>-</td>
+                <td data-label="ID">#{{ user.id }}</td>
+                <td data-label="Email">{{ user.email }}</td>
+                <td data-label="Papel">{{ user.role.value }}</td>
+                <td data-label="Status">{{ 'Ativo' if user.is_active else 'Inativo' }}</td>
+                <td data-label="Ações">-</td>
                 {% endif %}
             </tr>
             {% endfor %}

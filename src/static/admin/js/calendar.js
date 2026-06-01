@@ -30,9 +30,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const eventsUrl = calendarEl.dataset.eventsUrl || '/admin/appointments/events';
     const professionalFilter = document.getElementById('calendar-professional-filter');
+    const mobileCalendarQuery = window.matchMedia('(max-width: 760px)');
+
+    const desktopToolbar = {
+        left: 'prev,next today',
+        center: 'title',
+        right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
+    };
+
+    const mobileToolbar = {
+        left: 'prev,next',
+        center: 'title',
+        right: 'today'
+    };
 
     const calendar = new FullCalendar.Calendar(calendarEl, {
-        initialView: 'dayGridMonth',
+        initialView: mobileCalendarQuery.matches ? 'listWeek' : 'dayGridMonth',
         locale: 'pt-br',
         timeZone: calendarEl.dataset.timezone || 'America/Sao_Paulo',
         slotDuration: calendarEl.dataset.slotDuration || '00:15:00',
@@ -50,11 +63,7 @@ document.addEventListener('DOMContentLoaded', function () {
             minute: '2-digit',
             hour12: false
         },
-        headerToolbar: {
-            left: 'prev,next today',
-            center: 'title',
-            right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
-        },
+        headerToolbar: mobileCalendarQuery.matches ? mobileToolbar : desktopToolbar,
         buttonText: {
             today: 'Hoje',
             month: 'Mês',
@@ -93,6 +102,28 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     calendar.render();
+
+    function syncCalendarResponsiveness() {
+        const isMobile = mobileCalendarQuery.matches;
+        calendar.setOption('headerToolbar', isMobile ? mobileToolbar : desktopToolbar);
+
+        if (isMobile && !['listWeek', 'timeGridDay'].includes(calendar.view.type)) {
+            calendar.changeView('listWeek');
+        }
+
+        if (!isMobile && calendar.view.type === 'listWeek') {
+            calendar.changeView('dayGridMonth');
+        }
+
+        calendar.updateSize();
+    }
+
+    mobileCalendarQuery.addEventListener('change', syncCalendarResponsiveness);
+    window.addEventListener('resize', function () {
+        window.requestAnimationFrame(function () {
+            calendar.updateSize();
+        });
+    });
 
     if (professionalFilter) {
         professionalFilter.addEventListener('change', function () {

@@ -52,20 +52,20 @@
         <tbody>
             {% for item in services %}
             <tr id="service-row-{{ item.id }}">
-                <td>#{{ item.id }}</td>
-                <td>
+                <td data-label="ID">#{{ item.id }}</td>
+                <td data-label="Nome">
                     <input form="service-form-{{ item.id }}" name="name" required value="{{ item.name }}" minlength="3"
                         maxlength="50" readonly data-editable />
                 </td>
-                <td>
+                <td data-label="Duração">
                     <input form="service-form-{{ item.id }}" name="duration_minutes" required type="number" min="1"
                         max="1440" value="{{ item.duration_minutes }}" readonly data-editable />
                 </td>
-                <td>
+                <td data-label="Preço">
                     <input form="service-form-{{ item.id }}" name="price" required type="number" min="0.01" step="0.01"
                         value="{{ item.price }}" readonly data-editable />
                 </td>
-                <td class="actions">
+                <td class="actions" data-label="Ações">
 
                     <div class="actions-buttons">
                         <button class="button secondary small" type="button" data-edit-row="#service-row-{{ item.id }}">

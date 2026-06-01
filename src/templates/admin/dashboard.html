@@ -32,7 +32,7 @@
     </div>
     {% if today_appointments %}
     <div class="table-shell">
-        <table class="table">
+        <table class="table responsive-table dashboard-appointments-table">
         <thead>
             <tr>
                 <th>Horário</th>
@@ -45,16 +45,16 @@
         <tbody>
             {% for appointment in today_appointments %}
             <tr>
-                <td>
+                <td data-label="Horário">
                     {{ appointment.start_datetime.strftime('%H:%M') }} - {{
                     appointment.end_datetime.strftime('%H:%M') }}
                 </td>
-                <td>
+                <td data-label="Status">
                     <span class="badge {{ appointment.status.value }}">{{ appointment.status.value }}</span>
                 </td>
-                <td>#{{ appointment.client_id }}</td>
-                <td>#{{ appointment.professional_id }}</td>
-                <td>#{{ appointment.service_id }}</td>
+                <td data-label="Cliente">#{{ appointment.client_id }}</td>
+                <td data-label="Profissional">#{{ appointment.professional_id }}</td>
+                <td data-label="Serviço">#{{ appointment.service_id }}</td>
             </tr>
             {% endfor %}
         </tbody>

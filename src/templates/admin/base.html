@@ -12,7 +12,22 @@
 
 <body>
     {% if session %}
-    <aside class="sidebar">
+    <header class="mobile-admin-topbar">
+        <a class="brand mobile-brand" href="/admin">Beautyflow</a>
+        <button
+            class="sidebar-toggle"
+            type="button"
+            aria-controls="admin-sidebar"
+            aria-expanded="false"
+            data-sidebar-toggle>
+            <span class="sidebar-toggle-icon" aria-hidden="true"></span>
+            <span>Menu</span>
+        </button>
+    </header>
+
+    <div class="sidebar-backdrop" data-sidebar-close hidden></div>
+
+    <aside id="admin-sidebar" class="sidebar" aria-label="Menu do administrador">
         <a class="brand" href="/admin">Beautyflow</a>
         <nav class="nav">
             <a class="nav-link {{ 'active' if active == 'dashboard' else '' }}" href="/admin">Dashboard</a>

@@ -52,20 +52,20 @@
         <tbody>
             {% for professional in professionals %}
             <tr id="professional-row-{{ professional.id }}">
-                <td>#{{ professional.id }}</td>
-                <td>
+                <td data-label="ID">#{{ professional.id }}</td>
+                <td data-label="Nome">
                     <input form="professional-form-{{ professional.id }}" name="name" value="{{ professional.name }}"
                         required minlength="3" maxlength="50" readonly data-editable />
                 </td>
-                <td>
+                <td data-label="Email">
                     <input form="professional-form-{{ professional.id }}" name="email" value="{{ professional.email }}"
                         required type="email" readonly data-editable />
                 </td>
-                <td>
+                <td data-label="Telefone">
                     <input form="professional-form-{{ professional.id }}" name="phone" value="{{ professional.phone or '' }}"
                         type="tel" maxlength="20" readonly data-editable />
                 </td>
-                <td class="actions">
+                <td class="actions" data-label="Ações">
 
                     <div class="actions-buttons">
                         <button class="button secondary small" type="button" data-edit-row="#professional-row-{{ professional.id }}">
