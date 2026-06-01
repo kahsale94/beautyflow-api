@@ -1,6 +1,6 @@
 {% extends "admin/base.html" %}
 
-{% block title %}Profissionais - BeautyflowAdmin{% endblock %}
+{% block title %}Profissionais - Beautyflow Admin{% endblock %}
 
 {% block content %}
 <header class="page-header">
@@ -38,7 +38,8 @@
         <input type="hidden" name="_return_to" value="/admin/professionals" />
     </form>
     {% endfor %}
-    <table class="table admin-data-table professionals-table">
+    <div class="table-shell">
+        <table class="table admin-data-table professionals-table">
         <thead>
             <tr>
                 <th>ID</th>
@@ -89,7 +90,8 @@
             </tr>
             {% endfor %}
         </tbody>
-    </table>
+        </table>
+    </div>
     {% else %}
     <p class="empty">Nenhum profissional ativo.</p>
     {% endif %}

@@ -31,7 +31,8 @@
         <a class="button small" href="/admin/appointments">Abrir calendário</a>
     </div>
     {% if today_appointments %}
-    <table class="table">
+    <div class="table-shell">
+        <table class="table">
         <thead>
             <tr>
                 <th>Horário</th>
@@ -57,7 +58,8 @@
             </tr>
             {% endfor %}
         </tbody>
-    </table>
+        </table>
+    </div>
     {% else %}
     <p class="empty">Nenhum agendamento para hoje.</p>
     {% endif %}

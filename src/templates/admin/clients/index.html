@@ -36,7 +36,8 @@
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
     </form>
     {% endfor %}
-    <table class="table admin-data-table clients-table">
+    <div class="table-shell">
+        <table class="table admin-data-table clients-table">
         <thead>
             <tr>
                 <th>ID</th>
@@ -76,7 +77,8 @@
             </tr>
             {% endfor %}
         </tbody>
-    </table>
+        </table>
+    </div>
     {% else %}
     <p class="empty">Nenhum cliente encontrado.</p>
     {% endif %}
