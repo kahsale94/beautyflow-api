@@ -1,30 +1,73 @@
+import logging
 import time
 
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from src.core import (
+    SENSITIVE_HEADER_NAMES,
+    get_forwarded_for,
+    get_real_ip,
+    get_user_agent,
+)
+
+logger = logging.getLogger("beautyflow.requests")
+
+
+def _safe(value: str | int | None) -> str:
+    if value is None or value == "":
+        return "-"
+    return str(value)
+
+
 class LoggingMiddleware(BaseHTTPMiddleware):
-    
+
     async def dispatch(self, request: Request, call_next):
-        start = time.time()
-        response = await call_next(request)
-        ms = round((time.time() - start) * 1000, 2)
+        start = time.perf_counter()
 
         client = request.client.host if request.client else None
         port = request.client.port if request.client else None
 
-        xff = request.headers.get("x-forwarded-for")
-        xri = request.headers.get("x-real-ip")
-        ua = request.headers.get("user-agent")
+        xff = get_forwarded_for(request)
+        xri = get_real_ip(request)
+        ua = get_user_agent(request)
 
-        print(
-            f"Request: {request.method} {request.url.path}\n"
-            f"Status: {response.status_code}\n"
-            f"Time: {ms}ms\n"
-            f"Client: {client}:{port}\n"
-            f"X-Forwarded-For: {xff}\n"
-            f"X-Real-Ip: {xri}\n"
-            f"User-Agent: {ua}\n"
+        try:
+            response = await call_next(request)
+        except Exception:
+            ms = round((time.perf_counter() - start) * 1000, 2)
+
+            logger.exception(
+                "Request failed: %s %s | Time: %sms | Client: %s:%s | X-Forwarded-For: %s | X-Real-Ip: %s | User-Agent: %s",
+                request.method,
+                request.url.path,
+                ms,
+                _safe(client),
+                _safe(port),
+                _safe(xff),
+                _safe(xri),
+                _safe(ua),
+            )
+
+            raise
+
+        ms = round((time.perf_counter() - start) * 1000, 2)
+
+        logger.info(
+            "Request: %s %s | Status: %s | Time: %sms | Client: %s:%s | X-Forwarded-For: %s | X-Real-Ip: %s | User-Agent: %s",
+            request.method,
+            request.url.path,
+            response.status_code,
+            ms,
+            _safe(client),
+            _safe(port),
+            _safe(xff),
+            _safe(xri),
+            _safe(ua),
         )
+
+        for header_name in SENSITIVE_HEADER_NAMES:
+            if request.headers.get(header_name):
+                logger.debug("Sensitive header received: %s=[REDACTED]", header_name)
 
         return response

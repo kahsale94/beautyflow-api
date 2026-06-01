@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const professionalFilter = document.getElementById('calendar-professional-filter');
 
     const calendar = new FullCalendar.Calendar(calendarEl, {
-        initialView: 'timeGridWeek',
+        initialView: 'dayGridMonth',
         locale: 'pt-br',
         timeZone: calendarEl.dataset.timezone || 'America/Sao_Paulo',
         slotDuration: calendarEl.dataset.slotDuration || '00:15:00',

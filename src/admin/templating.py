@@ -9,7 +9,8 @@ from fastapi.responses import RedirectResponse, Response
 
 from .dependencies import AdminSession
 from src.core import (ADMIN_ACCESS_COOKIE, ADMIN_BUSINESS_COOKIE, ADMIN_COOKIE_PATH,
-    ADMIN_COOKIE_SAMESITE, ADMIN_COOKIE_SECURE, ADMIN_CSRF_COOKIE, ADMIN_FLASH_COOKIE
+    ADMIN_COOKIE_SAMESITE, ADMIN_COOKIE_SECURE, ADMIN_CSRF_COOKIE, ADMIN_FLASH_COOKIE,
+    ADMIN_REFRESH_COOKIE, USER_ACCESS_TOKEN_EXPIRE_MINUTES, USER_REFRESH_TOKEN_EXPIRE_DAYS
 )
 
 DEFAULT_ADMIN_TIMEZONE = "America/Sao_Paulo"
@@ -83,7 +84,19 @@ def attach_admin_access_cookie(response: Response, access_token: str) -> None:
         httponly=True,
         secure=ADMIN_COOKIE_SECURE,
         samesite=ADMIN_COOKIE_SAMESITE,
-        path=ADMIN_COOKIE_PATH or "/admin",
+        path=ADMIN_COOKIE_PATH,
+        max_age=60 * USER_ACCESS_TOKEN_EXPIRE_MINUTES,
+    )
+
+def attach_admin_refresh_cookie(response: Response, refresh_token: str) -> None:
+    response.set_cookie(
+        ADMIN_REFRESH_COOKIE,
+        refresh_token,
+        httponly=True,
+        secure=ADMIN_COOKIE_SECURE,
+        samesite=ADMIN_COOKIE_SAMESITE,
+        path=ADMIN_COOKIE_PATH,
+        max_age=60 * 60 * 24 * USER_REFRESH_TOKEN_EXPIRE_DAYS,
     )
 
 def set_business_cookie(response: Response, business_id: int) -> None:
@@ -141,6 +154,10 @@ def render(request: Request, template_name: str, context: dict | None = None, *,
     refreshed_token = getattr(request.state, "admin_refreshed_access_token", None)
     if refreshed_token:
         attach_admin_access_cookie(response, refreshed_token)
+
+    refreshed_refresh_token = getattr(request.state, "admin_refreshed_refresh_token", None)
+    if refreshed_refresh_token:
+        attach_admin_refresh_cookie(response, refreshed_refresh_token)
 
     return response
 

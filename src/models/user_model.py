@@ -9,6 +9,7 @@ from .base_model import Base, intpk, business_fk
 
 if TYPE_CHECKING:
     from .business_model import Business
+    from .user_refresh_token_model import UserRefreshToken
 
 class UserRole(str, PyEnum):
     super_admin = "super_admin"
@@ -27,4 +28,5 @@ class User(Base):
     role: Mapped[UserRole] = mapped_column(SAEnum(UserRole, name="userrole"), nullable=False)
     is_active: Mapped[bool] = mapped_column(nullable=False, default=True, server_default="true")
 
+    refresh_tokens: Mapped[list["UserRefreshToken"]] = relationship(back_populates="user")
     business: Mapped["Business"] = relationship(back_populates="users")

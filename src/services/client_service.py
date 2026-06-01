@@ -100,7 +100,7 @@ class ClientService:
 
         update_data = data.model_dump(exclude_unset=True)
 
-        if "phone" in update_data:
+        if "phone" in update_data and update_data["phone"] is not None:
             update_data["phone"] = normalize_phone(update_data["phone"])
 
         for field, value in update_data.items():

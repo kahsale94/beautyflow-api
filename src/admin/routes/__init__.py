@@ -10,6 +10,7 @@ from .appointments import router as appointments_router
 from .business import router as business_router
 from .users import router as users_router
 from .integrations import router as integrations_router
+from .account import router as account_router
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
@@ -23,3 +24,4 @@ router.include_router(appointments_router)
 router.include_router(business_router)
 router.include_router(users_router)
 router.include_router(integrations_router)
+router.include_router(account_router)

@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from uuid import uuid4
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -10,7 +11,7 @@ from .oauth import oauth2_scheme
 from src.models import User, Integration, BusinessIntegration
 from .context import UserContext, IntegrationContext, BusinessIntegrationContext
 from src.core import (
-    get_db, USER_ACCESS_TOKEN_EXPIRE_MINUTES, USER_REFRESH_TOKEN_EXPIRE_DAYS, INTEGRATION_TOKEN_EXPIRE_DAYS, 
+    get_db, USER_ACCESS_TOKEN_EXPIRE_MINUTES, USER_REFRESH_TOKEN_EXPIRE_DAYS, INTEGRATION_TOKEN_EXPIRE_DAYS,
     BUSINESS_INTEGRATION_TOKEN_EXPIRE_MINUTES, USER_SECRET_KEY, INTEGRATION_SECRET_KEY, BUSINESS_INTEGRATION_SECRET_KEY
 )
 
@@ -32,17 +33,20 @@ def create_user_access_token(user_id: int) -> str:
 
     return TokenManager.encode(payload, USER_SECRET_KEY)
 
-def create_user_refresh_token(user_id: int) -> str:
+def create_user_refresh_token(user_id: int, jti: str | None = None) -> tuple[str, str, datetime]:
+    token_jti = jti or uuid4().hex
+    expires_at = datetime.now(timezone.utc) + timedelta(days=USER_REFRESH_TOKEN_EXPIRE_DAYS)
     payload = {
         "sub": str(user_id),
         "type": "user",
         "token_type": "refresh",
-        "exp": datetime.now(timezone.utc) + timedelta(days=USER_REFRESH_TOKEN_EXPIRE_DAYS),
+        "jti": token_jti,
+        "exp": expires_at,
     }
 
-    return TokenManager.encode(payload, USER_SECRET_KEY)
+    return TokenManager.encode(payload, USER_SECRET_KEY), token_jti, expires_at
 
-def create_integration_token(integration_id: int) -> str:      
+def create_integration_token(integration_id: int) -> str:
     payload = {
         "sub": str(integration_id),
         "type": "integration",
@@ -70,20 +74,20 @@ def get_current_actor(db: Session = Depends(get_db), token: str = Depends(oauth2
     token_type = payload.get("token_type")
     if token_type != "access":
         raise HTTPException(status_code=401, detail="Token inválido")
-    
+
     if actor_type == "user":
 
         user_id = int(payload.get("sub"))
         if not user_id:
             raise HTTPException(status_code=401, detail="Token inválido")
-        
+
         user = db.get(User, user_id)
         if(
             not user
             or not user.is_active
         ):
             raise HTTPException(status_code=401, detail="Usuário não encontrado")
-        
+
         return UserContext(
             type = "user",
             id = user.id,
@@ -92,7 +96,7 @@ def get_current_actor(db: Session = Depends(get_db), token: str = Depends(oauth2
             business_id = user.business_id,
             is_active = user.is_active,
         )
-    
+
     if actor_type == "integration":
         integration_id = int(payload.get("sub"))
 
@@ -104,12 +108,12 @@ def get_current_actor(db: Session = Depends(get_db), token: str = Depends(oauth2
         result = db.scalar(stmt)
         if not result:
             raise HTTPException(status_code=401, detail="Integração inválida")
-        
+
         return IntegrationContext(
             type = "integration",
             id = integration_id,
         )
-    
+
     if actor_type == "business_integration":
         integration_id = int(payload.get("sub"))
         business_id = payload.get("business_id")
@@ -123,11 +127,11 @@ def get_current_actor(db: Session = Depends(get_db), token: str = Depends(oauth2
         result = db.scalar(stmt)
         if not result:
             raise HTTPException(status_code=401, detail="Integração inválida para Empresa!")
-        
+
         return BusinessIntegrationContext(
             type = "business_integration",
             integration_id = integration_id,
             business_id = int(business_id),
         )
-    
+
     raise HTTPException(status_code=401, detail="Token inválido")

@@ -9,3 +9,4 @@ from .availability_model import Availability
 from .professional_model import Professional
 from .business_integration_model import BusinessIntegration
 from .professional_service_model import ProfessionalService
+from .user_refresh_token_model import UserRefreshToken

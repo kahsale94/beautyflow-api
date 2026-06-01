@@ -1,7 +1,7 @@
 from pydantic import ValidationError
 from fastapi import APIRouter, Request
 
-from src.utils import form_value
+from src.utils import form_value, normalize_phone
 from src.services.availability_service import AvailabilityAlreadyExistsError, AvailabilityNotFoundError
 from src.services.professional_service import ProfessionalAlreadyExistsError, ProfessionalNotFoundError
 from src.dependecies import AvailabilityServiceDep, ProfessionalServiceDep, ProfessionalServiceLinkServiceDep, ServiceServiceDep
@@ -35,12 +35,13 @@ def professionals_page(request: Request, professional_service: ProfessionalServi
 async def create_professional_action(request: Request, professional_service: ProfessionalServiceDep, session: AdminSessionDep):
     await validate_csrf(request)
     form = await request.form()
+    phone = form_value(form, "phone", "")
 
     try:
         data = ProfessionalCreate(
             name = form_value(form, "name", ""),
             email = form_value(form, "email", ""),
-            phone = form_value(form, "phone", ""),
+            phone = normalize_phone(phone),
         )
         professional_service.create(session.business_id, data)
 
@@ -77,7 +78,7 @@ def professional_detail_page(professional_id: int, request: Request, professiona
         active="professionals",
     )
 
-@router.put("/{professional_id}")
+@router.post("/{professional_id}")
 async def update_professional_action(professional_id: int, request: Request, professional_service: ProfessionalServiceDep, session: AdminSessionDep):
     await validate_csrf(request)
     form = await request.form()
@@ -85,11 +86,13 @@ async def update_professional_action(professional_id: int, request: Request, pro
     if not return_to or not return_to.startswith("/admin/professionals"):
         return_to = f"/admin/professionals/{professional_id}"
 
+    phone = form_value(form, "phone")
+
     try:
         data = ProfessionalUpdate(
             name = form_value(form, "name"),
             email = form_value(form, "email"),
-            phone = form_value(form, "phone"),
+            phone = normalize_phone(phone) if phone else None,
         )
         professional_service.update(session.business_id, professional_id, data)
 

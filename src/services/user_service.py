@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
 from src.models import User
-from src.security import hash
+from src.security import hash, verify_hash
 from src.core import DataBaseDep
 from src.repositories import UserRepository
 from src.schemas import UserCreate, UserUpdate
@@ -11,6 +11,9 @@ class UserAlreadyExistsError(Exception):
     pass
 
 class UserNotFoundError(Exception):
+    pass
+
+class InvalidCurrentPasswordError(Exception):
     pass
 
 class UserService:
@@ -101,7 +104,21 @@ class UserService:
         self.db.refresh(user)
 
         return user
-    
+
+    def change_password(self, user_id: int, current_password: str, new_password: str) -> User:
+        user = self.db.get(User, user_id)
+        if not user or not user.is_active:
+            raise UserNotFoundError()
+
+        if not verify_hash(current_password, user.password_hash):
+            raise InvalidCurrentPasswordError()
+
+        user.password_hash = hash(new_password)
+        self.db.commit()
+        self.db.refresh(user)
+
+        return user
+
     def deactivate(self, business_id: int, user_id: int):
         user = self._get_valid(business_id, user_id)
 

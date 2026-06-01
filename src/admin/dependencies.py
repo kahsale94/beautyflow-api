@@ -19,6 +19,7 @@ class AdminSession:
     business_id: int
     csrf_token: str
     refreshed_access_token: str | None = None
+    refreshed_refresh_token: str | None = None
 
     @property
     def is_super_admin(self) -> bool:
@@ -68,12 +69,13 @@ def _refresh_admin_access_token(request: Request, db: Session) -> str:
         _redirect("/admin/login")
 
     try:
-        access_token = AuthService(db).refresh(RefreshRequest(refresh_token=refresh_token))
+        result = AuthService(db).refresh(RefreshRequest(refresh_token=refresh_token))
     except (InvalidTokenError, DeactivatedUserError, ValueError, TypeError):
         _redirect("/admin/login")
 
-    request.state.admin_refreshed_access_token = access_token
-    return access_token
+    request.state.admin_refreshed_access_token = result.access_token
+    request.state.admin_refreshed_refresh_token = result.refresh_token
+    return result.access_token
 
 def get_current_admin_session(request: Request, db: Session = Depends(get_db)) -> AdminSession:
     token = request.cookies.get(ADMIN_ACCESS_COOKIE)
@@ -127,6 +129,7 @@ def get_current_admin_session(request: Request, db: Session = Depends(get_db)) -
         business_id = user.business_id
 
     refreshed_access_token = getattr(request.state, "admin_refreshed_access_token", None)
+    refreshed_refresh_token = getattr(request.state, "admin_refreshed_refresh_token", None)
 
     return AdminSession(
         user=UserContext(
@@ -140,6 +143,7 @@ def get_current_admin_session(request: Request, db: Session = Depends(get_db)) -
         business_id=business_id,
         csrf_token=csrf_token,
         refreshed_access_token=refreshed_access_token,
+        refreshed_refresh_token=refreshed_refresh_token,
     )
 
 def require_super_admin_session(session: AdminSession = Depends(get_current_admin_session)) -> AdminSession:

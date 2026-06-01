@@ -96,7 +96,7 @@ class BusinessService:
         if "email" in update_data and update_data["email"] is not None:
             update_data["email"] = str(update_data["email"])
 
-        if "phone" in update_data:
+        if "phone" in update_data and update_data["phone"] is not None:
             update_data["phone"] = normalize_phone(update_data["phone"])
 
         for field, value in update_data.items():

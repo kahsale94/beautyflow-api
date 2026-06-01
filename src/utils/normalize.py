@@ -12,16 +12,16 @@ def normalize_text(text: str) -> str:
 
     return text
 
-def normalize_phone(self, phone: str):
+def normalize_phone(phone: str):
     phone = re.sub(r"\D", "", phone)
 
     if phone.startswith("55") and len(phone) == 13:
         return phone
-    
+
     if len(phone) == 11:
         return "55" + phone
-    
+
     if len(phone) == 10:
         return "55" + phone[:2] + "9" + phone[2:]
-    
+
     return phone
