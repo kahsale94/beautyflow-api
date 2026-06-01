@@ -68,7 +68,8 @@
 <section class="card calendar-card">
     <div class="card-header calendar-card-header">
         <h2>Agenda</h2>
-        <label class="inline-label">Filtrar Profissional
+        <label class="inline-label calendar-filter-label">
+            <span class="calendar-filter-label-text">Filtrar profissional</span>
             <select id="calendar-professional-filter">
                 <option value="">Todos</option>
                 {% for professional in professionals %}
@@ -77,6 +78,7 @@
             </select>
         </label>
     </div>
+    <div id="calendar-month-strip" class="calendar-month-strip" aria-label="Navegar por mês"></div>
     <div id="calendar"
         data-events-url="/admin/appointments/events"
         data-timezone="{{ business_timezone }}"

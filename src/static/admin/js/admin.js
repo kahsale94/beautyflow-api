@@ -73,6 +73,10 @@ function finishRowEditing(row, rowSelector) {
         if (element instanceof HTMLElement) element.hidden = false;
     });
 
+    row.querySelectorAll('.edit-only').forEach(function (element) {
+        if (element instanceof HTMLElement) element.hidden = true;
+    });
+
     if (rowSelector) {
         document.querySelectorAll(`[data-edit-row="${rowSelector}"]`).forEach(function (element) {
             if (element instanceof HTMLElement) element.hidden = false;
@@ -91,6 +95,10 @@ document.addEventListener('click', function (event) {
         if (!row) return;
 
         row.classList.add('is-editing');
+
+        row.querySelectorAll('.edit-only[hidden]').forEach(function (element) {
+            if (element instanceof HTMLElement) element.hidden = false;
+        });
 
         const editableFields = Array.from(row.querySelectorAll('[data-editable]'));
         editableFields.forEach(function (field) {

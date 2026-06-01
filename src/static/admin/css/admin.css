@@ -358,8 +358,8 @@ h2 {
 
 .stat-card {
     display: grid;
-    align-content: start;
-    gap: 8px;
+    align-content: space-between;
+    gap: 10px;
     min-height: 128px;
     padding: var(--space-lg);
     border: 1px solid var(--border);
@@ -376,13 +376,25 @@ h2 {
 
 .stat-card strong {
     display: block;
-    font-size: 2rem;
+    color: var(--primary);
+    font-size: clamp(2rem, 4vw, 2.7rem);
+    font-weight: 850;
     line-height: 1;
 }
 
-.stat-card span {
+.stat-card-label {
+    color: var(--text);
+    font-size: .86rem;
+    font-weight: 850;
+    letter-spacing: .06em;
+    line-height: 1.25;
+    text-transform: uppercase;
+}
+
+.stat-card small {
     color: var(--muted);
-    line-height: 1.4;
+    font-weight: 650;
+    line-height: 1.35;
 }
 
 .admin-search-card {
@@ -774,6 +786,13 @@ label {
     background: transparent;
 }
 
+.admin-data-table select:disabled[data-editable] {
+    appearance: none;
+    -moz-appearance: none;
+    -webkit-appearance: none;
+    background-image: none;
+}
+
 .admin-data-table tr.is-editing input,
 .admin-data-table tr.is-editing select {
     padding-right: 12px;
@@ -781,6 +800,17 @@ label {
     border-color: var(--border);
     background: #fff;
     color: var(--text);
+}
+
+.user-password-edit {
+    flex: 1 1 100%;
+    min-width: 220px;
+    margin-bottom: 4px;
+    text-align: left;
+}
+
+.user-password-edit input {
+    margin-top: 6px;
 }
 
 .admin-data-table .actions-buttons {
@@ -860,11 +890,6 @@ label {
 
 .users-table th:nth-child(5),
 .users-table td:nth-child(5) {
-    width: 220px;
-}
-
-.users-table th:nth-child(6),
-.users-table td:nth-child(6) {
     width: 300px;
 }
 
@@ -1061,11 +1086,56 @@ label {
     overflow: hidden;
 }
 
+.calendar-month-strip {
+    display: flex;
+    gap: 10px;
+    margin: 0 0 14px;
+    padding: 2px 0 10px;
+    overflow-x: auto;
+    border-bottom: 1px solid var(--border);
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+}
+
+.calendar-month-button {
+    flex: 0 0 auto;
+    min-width: 72px;
+    padding: 10px 18px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--surface);
+    color: var(--muted);
+    cursor: pointer;
+    font-weight: 800;
+    line-height: 1;
+    transition: background var(--transition), border-color var(--transition), color var(--transition), transform var(--transition);
+}
+
+.calendar-month-button:hover {
+    transform: translateY(-1px);
+    border-color: #cbd5e1;
+    color: var(--text);
+}
+
+.calendar-month-button[aria-current="date"] {
+    border-color: #0ea5e9;
+    background: #0284c7;
+    color: #fff;
+}
+
 #calendar {
     min-width: 0;
 }
 
 .fc {
+    --fc-border-color: var(--border);
+    --fc-button-bg-color: #1f2937;
+    --fc-button-border-color: #1f2937;
+    --fc-button-hover-bg-color: #374151;
+    --fc-button-hover-border-color: #374151;
+    --fc-button-active-bg-color: #0f172a;
+    --fc-button-active-border-color: #0f172a;
+    --fc-today-bg-color: rgba(219, 234, 254, .45);
     font-family: inherit;
 }
 
@@ -1092,14 +1162,243 @@ label {
     font-weight: 700 !important;
 }
 
+.fc .fc-scrollgrid,
+.fc-theme-standard td,
+.fc-theme-standard th {
+    border-color: var(--border);
+}
+
+.fc .fc-col-header-cell {
+    background: var(--surface);
+}
+
+.fc .fc-col-header-cell-cushion {
+    display: block;
+    width: 100%;
+    padding: 8px 4px;
+    overflow: hidden;
+    overflow-wrap: normal;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    word-break: normal;
+}
+
+.fc .fc-col-header-cell-cushion * {
+    overflow-wrap: normal;
+    word-break: normal;
+}
+
+.fc .fc-daygrid-day-frame,
+.fc .fc-daygrid-day-events,
+.fc .fc-daygrid-event-harness,
+.fc .fc-timegrid-col-events {
+    min-width: 0;
+}
+
+.fc .fc-daygrid-day-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 28px;
+    margin: 3px 4px 0 0;
+    border-radius: 999px;
+    color: var(--text);
+    font-weight: 700;
+    line-height: 1;
+}
+
+.fc .fc-day-today .fc-daygrid-day-number {
+    background: #93c5fd;
+    color: #0f172a;
+}
+
+.fc .bf-calendar-day-header {
+    display: inline-flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 3px;
+    color: var(--muted);
+    line-height: 1.15;
+    text-align: center;
+}
+
+.fc .bf-calendar-day-header-label {
+    max-width: 100%;
+    overflow: hidden;
+    font-size: .78rem;
+    font-weight: 900;
+    text-overflow: ellipsis;
+    text-transform: lowercase;
+    white-space: nowrap;
+}
+
+.fc .bf-calendar-day-header-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 999px;
+    color: var(--text);
+    font-size: 1rem;
+    font-weight: 800;
+}
+
+.fc .bf-calendar-day-header.is-today .bf-calendar-day-header-label {
+    color: #2563eb;
+}
+
+.fc .bf-calendar-day-header.is-today .bf-calendar-day-header-number {
+    background: #93c5fd;
+    color: #0f172a;
+}
+
 .fc .fc-event {
-    border-radius: 8px;
-    padding: 2px 4px;
+    border: 0;
+    border-radius: 9px;
+    padding: 0;
+    background: var(--bf-calendar-event-bg, #2dd4bf) !important;
+    box-shadow: none;
+    color: #0f172a;
 }
 
 .fc .fc-daygrid-event,
 .fc .fc-timegrid-event {
-    white-space: normal;
+    max-width: 100%;
+    overflow: hidden;
+    background: var(--bf-calendar-event-bg, #2dd4bf) !important;
+    color: #0f172a;
+    white-space: nowrap;
+}
+
+.fc .fc-daygrid-event {
+    min-width: 0;
+    margin: 1px 3px;
+}
+
+.fc .fc-daygrid-event .fc-event-main,
+.fc .fc-timegrid-event .fc-event-main {
+    min-width: 0;
+    width: 100%;
+    color: inherit;
+}
+
+.fc .appointment-status-scheduled,
+.fc .appointment-status-scheduled .bf-calendar-event,
+.fc .appointment-status-scheduled > td {
+    --bf-calendar-event-bg: #2dd4bf;
+}
+
+.fc .appointment-status-completed,
+.fc .appointment-status-completed .bf-calendar-event,
+.fc .appointment-status-completed > td {
+    --bf-calendar-event-bg: #86efac;
+}
+
+.fc .appointment-status-canceled,
+.fc .appointment-status-cancelled,
+.fc .appointment-status-canceled .bf-calendar-event,
+.fc .appointment-status-cancelled .bf-calendar-event,
+.fc .appointment-status-canceled > td,
+.fc .appointment-status-cancelled > td {
+    --bf-calendar-event-bg: #fca5a5;
+}
+
+.bf-calendar-event,
+.bf-calendar-event * {
+    min-width: 0;
+    overflow-wrap: normal;
+    word-break: normal;
+}
+
+.bf-calendar-event {
+    display: grid;
+    width: 100%;
+    max-width: 100%;
+    gap: 2px;
+    padding: 4px 7px;
+    overflow: hidden;
+    border-radius: 9px;
+    background: transparent;
+    color: #0f172a;
+    line-height: 1.18;
+}
+
+.fc .appointment-status-canceled .bf-calendar-event,
+.fc .appointment-status-cancelled .bf-calendar-event {
+    text-decoration: line-through;
+}
+
+.fc .fc-list-event.bf-calendar-event-shell > td,
+.fc .fc-list-event.bf-calendar-event-shell:hover > td {
+    background: var(--bf-calendar-event-bg, #2dd4bf) !important;
+    color: #0f172a;
+}
+
+.fc .fc-list-event.appointment-status-canceled > td,
+.fc .fc-list-event.appointment-status-cancelled > td,
+.fc .fc-list-event.appointment-status-canceled:hover > td,
+.fc .fc-list-event.appointment-status-cancelled:hover > td {
+    background: #fca5a5 !important;
+}
+
+.fc .fc-list-event.appointment-status-completed > td,
+.fc .fc-list-event.appointment-status-completed:hover > td {
+    background: #86efac !important;
+}
+
+.fc .fc-list-event.appointment-status-canceled .fc-list-event-title,
+.fc .fc-list-event.appointment-status-cancelled .fc-list-event-title {
+    text-decoration: line-through;
+}
+
+.bf-calendar-event--month {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+}
+
+.bf-calendar-event--time {
+    min-height: 100%;
+}
+
+.bf-calendar-event-time {
+    flex: 0 0 auto;
+    color: rgba(15, 23, 42, .74);
+    font-size: .7rem;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+.bf-calendar-event-title,
+.bf-calendar-event-subtitle {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bf-calendar-event-title {
+    font-size: .82rem;
+    font-weight: 850;
+}
+
+.bf-calendar-event--time .bf-calendar-event-title {
+    width: 100%;
+}
+
+.bf-calendar-event-subtitle {
+    font-size: .78rem;
+    opacity: .9;
+}
+
+.fc .fc-list-event-title,
+.fc .fc-list-event-time {
+    overflow-wrap: normal;
 }
 
 /* 13. Integrações e configurações */
@@ -1183,7 +1482,7 @@ pre {
         z-index: 80;
         display: flex;
         align-items: center;
-        justify-content: space-between;
+        justify-content: flex-start;
         gap: 12px;
         min-height: 64px;
         padding: 12px 18px;
@@ -1392,8 +1691,8 @@ pre {
 
     .responsive-table tr,
     .admin-data-table tr {
-        margin-bottom: 12px;
-        padding: 12px;
+        margin-bottom: 10px;
+        padding: 10px 12px;
         border: 1px solid var(--border);
         border-radius: 16px;
         background: var(--surface);
@@ -1404,10 +1703,10 @@ pre {
     .admin-data-table td {
         display: grid;
         width: 100% !important;
-        grid-template-columns: minmax(92px, 34%) minmax(0, 1fr);
-        gap: 10px;
+        grid-template-columns: minmax(78px, 30%) minmax(0, 1fr);
+        gap: 8px;
         align-items: center;
-        padding: 8px 0;
+        padding: 5px 0;
         border-bottom: 0;
         text-align: left;
     }
@@ -1425,8 +1724,8 @@ pre {
     .responsive-table td.actions,
     .admin-data-table td.actions {
         display: block;
-        padding-top: 12px;
-        margin-top: 8px;
+        padding-top: 10px;
+        margin-top: 6px;
         border-top: 1px solid var(--border);
         text-align: left;
         white-space: normal;
@@ -1442,6 +1741,19 @@ pre {
         justify-content: stretch;
         flex-wrap: wrap;
         gap: 8px;
+    }
+
+    .admin-data-table input[readonly],
+    .admin-data-table select:disabled {
+        min-height: auto;
+        padding-block: 0;
+        line-height: 1.35;
+    }
+
+    .admin-data-table tr.is-editing input,
+    .admin-data-table tr.is-editing select {
+        min-height: 42px;
+        padding-block: 10px;
     }
 
     .admin-data-table .actions-buttons > .button,
@@ -1471,6 +1783,15 @@ pre {
         align-items: stretch;
     }
 
+    .calendar-month-strip {
+        margin-inline: -2px;
+    }
+
+    .calendar-month-button {
+        min-width: 70px;
+        padding: 10px 16px;
+    }
+
     .fc .fc-toolbar {
         flex-direction: column;
         align-items: stretch;
@@ -1488,6 +1809,26 @@ pre {
     .fc .fc-button {
         padding: .45rem .6rem !important;
         font-size: .82rem !important;
+    }
+
+    .fc .fc-col-header-cell-cushion {
+        padding-inline: 2px;
+    }
+
+    .fc .bf-calendar-day-header-label {
+        font-size: .72rem;
+    }
+
+    .bf-calendar-event {
+        padding: 4px 5px;
+    }
+
+    .bf-calendar-event-time {
+        font-size: .64rem;
+    }
+
+    .bf-calendar-event-title {
+        font-size: .76rem;
     }
 
     .fc .fc-view-harness {

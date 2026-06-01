@@ -12,16 +12,24 @@
 
 <section class="stats-grid">
     <article class="stat-card">
-        <strong>{{ clients_count }}</strong><span>Clientes</span>
+        <span class="stat-card-label">Clientes</span>
+        <strong>{{ clients_count }}</strong>
+        <small>Total cadastrado</small>
     </article>
     <article class="stat-card">
-        <strong>{{ services_count }}</strong><span>Serviços</span>
+        <span class="stat-card-label">Serviços</span>
+        <strong>{{ services_count }}</strong>
+        <small>Ativos no catálogo</small>
     </article>
     <article class="stat-card">
-        <strong>{{ professionals_count }}</strong><span>Profissionais</span>
+        <span class="stat-card-label">Profissionais</span>
+        <strong>{{ professionals_count }}</strong>
+        <small>Equipe ativa</small>
     </article>
     <article class="stat-card">
-        <strong>{{ today_appointments|length }}</strong><span>Agendamentos hoje</span>
+        <span class="stat-card-label">Agendamentos hoje</span>
+        <strong>{{ today_appointments|length }}</strong>
+        <small>Marcados para hoje</small>
     </article>
 </section>
 
@@ -44,6 +52,9 @@
         </thead>
         <tbody>
             {% for appointment in today_appointments %}
+            {% set client = clients_by_id.get(appointment.client_id) %}
+            {% set professional = professionals_by_id.get(appointment.professional_id) %}
+            {% set service = services_by_id.get(appointment.service_id) %}
             <tr>
                 <td data-label="Horário">
                     {{ appointment.start_datetime.strftime('%H:%M') }} - {{
@@ -52,9 +63,15 @@
                 <td data-label="Status">
                     <span class="badge {{ appointment.status.value }}">{{ appointment.status.value }}</span>
                 </td>
-                <td data-label="Cliente">#{{ appointment.client_id }}</td>
-                <td data-label="Profissional">#{{ appointment.professional_id }}</td>
-                <td data-label="Serviço">#{{ appointment.service_id }}</td>
+                <td data-label="Cliente">
+                    {{ client.name if client and client.name else client.phone if client else '#' ~ appointment.client_id }}
+                </td>
+                <td data-label="Profissional">
+                    {{ professional.name if professional else '#' ~ appointment.professional_id }}
+                </td>
+                <td data-label="Serviço">
+                    {{ service.name if service else '#' ~ appointment.service_id }}
+                </td>
             </tr>
             {% endfor %}
         </tbody>

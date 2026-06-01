@@ -22,6 +22,9 @@ def dashboard_page(request: Request, appointment_service: AppointmentServiceDep,
     professionals = professional_service.get_all(session.business_id)
     services = service_service.get_all(session.business_id)
     today_appointments = appointment_service.get_by_period(session.business_id, today_start, today_end)
+    clients_by_id = {item.id: item for item in clients}
+    professionals_by_id = {item.id: item for item in professionals}
+    services_by_id = {item.id: item for item in services}
 
     return render(
         request,
@@ -32,6 +35,9 @@ def dashboard_page(request: Request, appointment_service: AppointmentServiceDep,
             "professionals_count": len(professionals),
             "services_count": len(services),
             "today_appointments": today_appointments,
+            "clients_by_id": clients_by_id,
+            "professionals_by_id": professionals_by_id,
+            "services_by_id": services_by_id,
         },
         session=session,
         active="dashboard",

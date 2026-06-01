@@ -62,9 +62,6 @@
                 <th>Email</th>
                 <th>Papel</th>
                 <th>Status</th>
-                {% if session.is_super_admin %}
-                <th>Nova senha</th>
-                {% endif %}
                 <th>Ações</th>
             </tr>
         </thead>
@@ -87,13 +84,13 @@
                     </select>
                 </td>
                 <td data-label="Status">{{ 'Ativo' if user.is_active else 'Inativo' }}</td>
-                <td data-label="Nova senha">
-                    <input form="user-form-{{ user.id }}" type="password" name="password" minlength="8"
-                        placeholder="Deixe em branco para manter" autocomplete="new-password" readonly
-                        data-editable class="edit-only" hidden />
-                </td>
                 <td class="actions" data-label="Ações">
                     <div class="actions-buttons">
+                        <label class="edit-only user-password-edit" hidden>Nova senha
+                            <input form="user-form-{{ user.id }}" type="password" name="password" minlength="8"
+                                placeholder="Deixe em branco para manter" autocomplete="new-password" readonly
+                                data-editable />
+                        </label>
                         <button class="button secondary small" type="button" data-edit-row="#user-row-{{ user.id }}">
                             Editar
                         </button>
