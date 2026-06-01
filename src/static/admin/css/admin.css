@@ -115,8 +115,44 @@ label {
     color: white;
 }
 
-.logout-form {
+.sidebar-footer {
     margin-top: auto;
+    display: grid;
+    gap: 12px;
+}
+
+.sidebar-user {
+    min-width: 0;
+    padding: 12px;
+    border: 1px solid rgba(255, 255, 255, .12);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, .05);
+}
+
+.sidebar-user-email {
+    display: block;
+    overflow: hidden;
+    color: #fff;
+    font-size: .88rem;
+    font-weight: 700;
+    line-height: 1.35;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sidebar-user-role {
+    display: block;
+    margin-top: 4px;
+    color: #94a3b8;
+    font-size: .78rem;
+    font-weight: 800;
+    letter-spacing: .06em;
+    line-height: 1.35;
+    text-transform: uppercase;
+}
+
+.logout-form {
+    margin: 0;
 }
 
 .main {

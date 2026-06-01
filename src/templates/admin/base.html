@@ -33,10 +33,24 @@
                 empresa</a>
             {% endif %}
         </nav>
-        <form method="post" action="/admin/logout" class="logout-form">
-            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
-            <button class="button ghost" type="submit">Sair</button>
-        </form>
+        <div class="sidebar-footer">
+            <div class="sidebar-user" aria-label="Usuário logado">
+                <span class="sidebar-user-email" title="{{ session.user.email }}">{{ session.user.email }}</span>
+                <span class="sidebar-user-role">
+                    {% if session.user.role.value == 'super_admin' %}
+                    Super admin
+                    {% elif session.user.role.value == 'admin' %}
+                    Admin
+                    {% else %}
+                    {{ session.user.role.value }}
+                    {% endif %}
+                </span>
+            </div>
+            <form method="post" action="/admin/logout" class="logout-form">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
+                <button class="button ghost" type="submit">Sair</button>
+            </form>
+        </div>
     </aside>
     {% endif %}
 
