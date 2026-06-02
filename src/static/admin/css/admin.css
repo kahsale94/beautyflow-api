@@ -487,6 +487,17 @@ label {
     gap: var(--space-sm);
 }
 
+.calendar-card-header .inline-label {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    overflow-wrap: normal;
+}
+
+.calendar-card-header .inline-label select {
+    width: 160px;
+    flex: 0 0 160px;
+}
+
 .inline-form {
     width: 100%;
 }

@@ -27,7 +27,7 @@
       "typeVersion": 1.1,
       "position": [
         -1488,
-        4160
+        4176
       ],
       "id": "e6890190-0cec-4e2a-ba23-53ed6239062f",
       "name": "webhook"
@@ -68,7 +68,7 @@
       "typeVersion": 3.4,
       "position": [
         -1280,
-        4160
+        4176
       ],
       "id": "8201f8d7-c758-4ad5-8b7a-707e46ec3bec",
       "name": "data handler"
@@ -97,35 +97,6 @@
       "name": "get all",
       "alwaysOutputData": false,
       "onError": "continueErrorOutput"
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "804a7f04-c007-4045-a9f5-34b606a6eea1",
-              "name": "sucess",
-              "value": "=true",
-              "type": "boolean"
-            },
-            {
-              "id": "7748568d-748f-4ac6-ab88-fb32197f0806",
-              "name": "professionals",
-              "value": "={{ $json.professionals }}",
-              "type": "array"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        704,
-        3280
-      ],
-      "id": "0f452b3e-01a6-407a-99ea-29b76bdcde62",
-      "name": "sucess"
     },
     {
       "parameters": {
@@ -191,7 +162,7 @@
       "typeVersion": 3.4,
       "position": [
         -1072,
-        4160
+        4176
       ],
       "id": "456a56c7-dbcf-441e-8f0b-9c98db0a3ecb",
       "name": "action"
@@ -258,7 +229,7 @@
       "typeVersion": 3.4,
       "position": [
         -864,
-        4176
+        4192
       ],
       "id": "1a13f08c-5912-4311-ae1c-14f78af95906",
       "name": "get"
@@ -290,7 +261,7 @@
       "typeVersion": 4.3,
       "position": [
         -240,
-        4336
+        4352
       ],
       "id": "f4e4828a-0e36-4eb3-bc06-a111958f51c1",
       "name": "get by name",
@@ -339,20 +310,6 @@
     },
     {
       "parameters": {
-        "errorType": "errorObject",
-        "errorObject": "={\n  \"error\": {\n    \"execution\": \"{{ $execution.id }}\",\n    \"type\": \"internal api\",\n    \"node\": \"{{ $prevNode.name }}\",\n    \"code\": \"{{ $json.error.status }}\",\n    \"description\": \"{{\n(() => {\n  try {\n    const part = $json.error.message.split(' - ')[1];\n    return JSON.parse(JSON.parse(part)).detail;\n  } catch (e) {\n    return $json.error.message;\n  }\n})()\n}}\"\n  },\n  \"business\": {\n    \"id\": \"{{ $('data handler').item.json.business.id }}\",\n    \"name\": \"{{ $('data handler').item.json.business.name }}\"\n  }\n}"
-      },
-      "type": "n8n-nodes-base.stopAndError",
-      "typeVersion": 1,
-      "position": [
-        -448,
-        3616
-      ],
-      "id": "7315d3b3-365d-4824-8533-b5e821de531c",
-      "name": "error report"
-    },
-    {
-      "parameters": {
         "operation": "keys",
         "keyPattern": "beautyflow_bot.*.*.professional_context"
       },
@@ -366,10 +323,11 @@
       "name": "get context",
       "credentials": {
         "redis": {
-          "id": "nOvNVY4Hbhe1hTxw",
-          "name": "N8N - Test DB"
+          "id": "zMk8tatRFuFo6wmp",
+          "name": "beautyflow"
         }
-      }
+      },
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -386,10 +344,11 @@
       "name": "get context 1",
       "credentials": {
         "redis": {
-          "id": "nOvNVY4Hbhe1hTxw",
-          "name": "N8N - Test DB"
+          "id": "zMk8tatRFuFo6wmp",
+          "name": "beautyflow"
         }
-      }
+      },
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -472,7 +431,7 @@
       "type": "n8n-nodes-base.aggregate",
       "typeVersion": 1,
       "position": [
-        176,
+        400,
         3792
       ],
       "id": "e01a8a99-2bac-45e8-8787-5ecb59290cb8",
@@ -489,7 +448,7 @@
       "type": "n8n-nodes-base.aggregate",
       "typeVersion": 1,
       "position": [
-        176,
+        608,
         4176
       ],
       "id": "fa6cc8df-323d-4608-82ea-e20a4a42b8ae",
@@ -497,53 +456,26 @@
     },
     {
       "parameters": {
-        "errorType": "errorObject",
-        "errorObject": "={\n  \"error\": {\n    \"execution\": \"{{ $execution.id }}\",\n    \"type\": \"internal api\",\n    \"node\": \"{{ $prevNode.name }}\",\n    \"code\": \"{{ $json.error.status }}\",\n    \"description\": \"{{\n(() => {\n  try {\n    const part = $json.error.message.split(' - ')[1];\n    return JSON.parse(JSON.parse(part)).detail;\n  } catch (e) {\n    return $json.error.message;\n  }\n})()\n}}\"\n  },\n  \"business\": {\n    \"id\": \"{{ $('data handler').item.json.business.id }}\",\n    \"name\": \"{{ $('data handler').item.json.business.name }}\"\n  }\n}"
-      },
-      "type": "n8n-nodes-base.stopAndError",
-      "typeVersion": 1,
-      "position": [
-        -32,
-        4032
-      ],
-      "id": "f213d9ff-6844-4cb0-853e-490478a66343",
-      "name": "error report 1"
-    },
-    {
-      "parameters": {
-        "errorType": "errorObject",
-        "errorObject": "={\n  \"error\": {\n    \"execution\": \"{{ $execution.id }}\",\n    \"type\": \"internal api\",\n    \"node\": \"{{ $prevNode.name }}\",\n    \"code\": \"{{ $json.error.status }}\",\n    \"description\": \"{{\n(() => {\n  try {\n    const part = $json.error.message.split(' - ')[1];\n    return JSON.parse(JSON.parse(part)).detail;\n  } catch (e) {\n    return $json.error.message;\n  }\n})()\n}}\"\n  },\n  \"business\": {\n    \"id\": \"{{ $('data handler').item.json.business.id }}\",\n    \"name\": \"{{ $('data handler').item.json.business.name }}\"\n  }\n}"
-      },
-      "type": "n8n-nodes-base.stopAndError",
-      "typeVersion": 1,
-      "position": [
-        -32,
-        4416
-      ],
-      "id": "958772cb-2ae4-4460-88eb-4c8a839851e9",
-      "name": "error report 2"
-    },
-    {
-      "parameters": {
         "operation": "set",
-        "key": "=beautyflow_bot.{{ $('loop').item.json.id }}.{{ $('loop').item.json.name }}.professional_context",
-        "value": "={{ JSON.stringify({\n  id: $('loop').item.json.id,\n  name: $('loop').item.json.name\n}) }}",
+        "key": "=beautyflow_bot.{{ $('loop').item.json.id }}.{{ $('loop').item.json.email }}.professional_context",
+        "value": "={{ JSON.stringify({\n  id: $('loop').item.json.id,\n  name: $('loop').item.json.name,\n  email: $('loop').item.json.email\n}) }}",
         "keyType": "string"
       },
       "type": "n8n-nodes-base.redis",
       "typeVersion": 1,
       "position": [
-        176,
+        384,
         3472
       ],
       "id": "154da4c1-1723-4748-95bf-c7293d425116",
       "name": "push context",
       "credentials": {
         "redis": {
-          "id": "nOvNVY4Hbhe1hTxw",
-          "name": "N8N - Test DB"
+          "id": "zMk8tatRFuFo6wmp",
+          "name": "beautyflow"
         }
-      }
+      },
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -555,17 +487,18 @@
       "type": "n8n-nodes-base.redis",
       "typeVersion": 1,
       "position": [
-        -32,
-        3872
+        192,
+        3936
       ],
       "id": "c01329b5-c4d3-4f33-9291-7f65daff3314",
       "name": "push context 1",
       "credentials": {
         "redis": {
-          "id": "nOvNVY4Hbhe1hTxw",
-          "name": "N8N - Test DB"
+          "id": "zMk8tatRFuFo6wmp",
+          "name": "beautyflow"
         }
-      }
+      },
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -577,17 +510,18 @@
       "type": "n8n-nodes-base.redis",
       "typeVersion": 1,
       "position": [
-        -32,
-        4256
+        0,
+        4400
       ],
       "id": "fbb69190-efc2-4e4b-b38b-d453be715e31",
       "name": "push context 2",
       "credentials": {
         "redis": {
-          "id": "nOvNVY4Hbhe1hTxw",
-          "name": "N8N - Test DB"
+          "id": "zMk8tatRFuFo6wmp",
+          "name": "beautyflow"
         }
-      }
+      },
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -596,7 +530,7 @@
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
       "position": [
-        -32,
+        176,
         3456
       ],
       "id": "347f972e-8dda-4463-8a23-19c02214cfdb",
@@ -637,53 +571,563 @@
       "typeVersion": 1,
       "position": [
         -656,
-        4192
+        4208
       ],
       "id": "003285be-bec6-4daf-9f53-5e7cceb4428a",
       "name": "get context 2",
       "credentials": {
         "redis": {
-          "id": "nOvNVY4Hbhe1hTxw",
-          "name": "N8N - Test DB"
+          "id": "zMk8tatRFuFo6wmp",
+          "name": "beautyflow"
         }
-      }
+      },
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
-        "jsCode": "const httpItems = $('get all').all();\nconst redisItems = $('get context').all();\n\nconst redisIds = new Set();\n\nfor (const item of redisItems) {\n  for (const value of Object.values(item.json)) {\n    const professional = JSON.parse(value);\n    redisIds.add(String(professional.id));\n  }\n}\n\nreturn httpItems\n  .filter(item => !redisIds.has(String(item.json.id)))\n  .map(item => ({\n    json: {\n      id: item.json.id,\n      name: item.json.name,\n    },\n  }));"
+        "jsCode": "const httpItems = $('get all').all();\nconst redisItems = $('get context').all();\n\nconst redisIds = new Set();\n\nfor (const item of redisItems) {\n  for (const value of Object.values(item.json)) {\n    const professional = JSON.parse(value);\n    redisIds.add(String(professional.id));\n  }\n}\n\nconst output = httpItems\n  .filter(item => !redisIds.has(String(item.json.id)))\n  .map(item => ({\n    json: {\n      id: item.json.id,\n      name: item.json.name,\n      email: item.json.email,\n    },\n  }));\n\nif (output.length === 0) {\n  return [\n    {\n      json: {\n        equal: true,\n      },\n    },\n  ];\n}\n\nreturn output;"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         -240,
-        3456
+        3440
       ],
       "id": "38468ea6-9325-45b3-bc64-d606fa66058b",
       "name": "compare"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "4607fa57-8654-4b4b-aa93-3036290745b9",
+              "leftValue": "={{ $('compare').item.json.equal }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -32,
+        3440
+      ],
+      "id": "23790a7d-305f-489b-8d94-87559ea82394",
+      "name": "if"
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch"
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        384,
+        3296
+      ],
+      "id": "5d0db5d9-2d87-452a-9a3f-09956d58649a",
+      "name": "wait"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "bWdz3xBVwmycvfwW",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/bWdz3xBVwmycvfwW",
+          "cachedResultName": "error"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "error": "={{ {\n  workflow: $workflow.id,\n  execution: $execution.id,\n  type: \"internal.redis.get_timeout\",\n  node: $prevNode.name,\n    code: $json.error.status || '',\n    description:\n  (() => {\n    try {\n      const part = $json.error.message.split(' - ')[1];\n      return JSON.parse(JSON.parse(part)).detail;\n    } catch (e) {\n      return $json.error.message;\n    }\n  })()\n} }}\n",
+            "business": "={{ {\n    id: $('data handler').item.json.business.id || '',\n    name: $('data handler').item.json.business.name || '',\n    phone: $('data handler').item.json.business.phone || ''\n} }}",
+            "client": "={{ {\n  remote_jid: $('data handler').item.json.client.remote_jid || '',\n  message_id: $('data handler').item.json.message.id || '',\n  message_text: $('data handler').item.json.message.text || ''\n} }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "error",
+              "displayName": "error",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "object",
+              "removed": false
+            },
+            {
+              "id": "business",
+              "displayName": "business",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "object",
+              "removed": false
+            },
+            {
+              "id": "client",
+              "displayName": "client",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "object",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": true,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        -656,
+        4352
+      ],
+      "id": "e3dd9f43-aad7-4dc1-9b0f-95568d17aa1b",
+      "name": "error report 23"
+    },
+    {
+      "parameters": {
+        "errorType": "errorObject",
+        "errorObject": "={\n  \"error\": {\n    \"workflow\": \"{{ $workflow.id }}\",\n    \"execution\": \"{{ $execution.id }}\",\n    \"type\": \"internal.api.get_professional\",\n    \"node\": \"{{ $prevNode.name }}\",\n    \"code\": \"{{ $json.error.status || '' }}\",\n    \"description\": \"{{\n(() => {\n  try {\n    const part = $json.error.message.split(' - ')[1];\n    return JSON.parse(JSON.parse(part)).detail;\n  } catch (e) {\n    return $json.error.message;\n  }\n})()\n}}\"\n  },\n  \"business\": {\n    \"id\": \"{{ $('data handler').item.json.business.id || '' }}\",\n    \"name\": \"{{ $('data handler').item.json.business.name || '' }}\",\n    \"phone\": \"{{ $('data handler').item.json.business.phone || '' }}\"\n  },\n  \"client\": {\n    \"remote_jid\": \"{{ $('data handler').item.json.client.remote_jid || '' }}\",\n    \"message_id\": \"{{ $('data handler').item.json.message.id || '' }}\",\n    \"message_text\": \"{{ $('data handler').item.json.message.text || '' }}\"\n  }\n}"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        4496
+      ],
+      "id": "73f63b91-6570-4de9-821f-9bf0b37c653d",
+      "name": "error report "
     },
     {
       "parameters": {},
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        176,
-        3344
+        352,
+        4400
       ],
-      "id": "6724c088-ac31-4b96-a627-fd189c81684f",
-      "name": "end"
+      "id": "d2609806-2978-4368-8310-c58f8fa4e2ea",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "bWdz3xBVwmycvfwW",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/bWdz3xBVwmycvfwW",
+          "cachedResultName": "error"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "error": "={{ {\n  workflow: $workflow.id,\n  execution: $execution.id,\n  type: \"internal.redis.context\",\n  node: $prevNode.name,\n    code: $json.error.status || '',\n    description:\n  (() => {\n    try {\n      const part = $json.error.message.split(' - ')[1];\n      return JSON.parse(JSON.parse(part)).detail;\n    } catch (e) {\n      return $json.error.message;\n    }\n  })()\n} }}\n",
+            "business": "={{ {\n    id: $('data handler').item.json.business.id || '',\n    name: $('data handler').item.json.business.name || '',\n    phone: $('data handler').item.json.business.phone || ''\n} }}",
+            "client": "={{ {\n  remote_jid: $('data handler').item.json.client.remote_jid || '',\n  message_id: $('data handler').item.json.message.id || '',\n  message_text: $('data handler').item.json.message.text || ''\n} }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "error",
+              "displayName": "error",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "object",
+              "removed": false
+            },
+            {
+              "id": "business",
+              "displayName": "business",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "object",
+              "removed": false
+            },
+            {
+              "id": "client",
+              "displayName": "client",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "object",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": true,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        4544
+      ],
+      "id": "5c287a3a-9eca-4cb8-b439-fede839d0e50",
+      "name": "error report 24"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "bWdz3xBVwmycvfwW",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/bWdz3xBVwmycvfwW",
+          "cachedResultName": "error"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "error": "={{ {\n  workflow: $workflow.id,\n  execution: $execution.id,\n  type: \"internal.redis.context\",\n  node: $prevNode.name,\n    code: $json.error.status || '',\n    description:\n  (() => {\n    try {\n      const part = $json.error.message.split(' - ')[1];\n      return JSON.parse(JSON.parse(part)).detail;\n    } catch (e) {\n      return $json.error.message;\n    }\n  })()\n} }}\n",
+            "business": "={{ {\n    id: $('data handler').item.json.business.id || '',\n    name: $('data handler').item.json.business.name || '',\n    phone: $('data handler').item.json.business.phone || ''\n} }}",
+            "client": "={{ {\n  remote_jid: $('data handler').item.json.client.remote_jid || '',\n  message_id: $('data handler').item.json.message.id || '',\n  message_text: $('data handler').item.json.message.text || ''\n} }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "error",
+              "displayName": "error",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "object",
+              "removed": false
+            },
+            {
+              "id": "business",
+              "displayName": "business",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "object",
+              "removed": false
+            },
+            {
+              "id": "client",
+              "displayName": "client",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "object",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": true,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        -656,
+        3952
+      ],
+      "id": "7c2e04a4-e6a4-4584-a791-12e73085b3e0",
+      "name": "error report 25"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        512,
+        3952
+      ],
+      "id": "4029fdf2-64d4-4e61-81a9-4da2fd37726e",
+      "name": "No Operation, do nothing1"
+    },
+    {
+      "parameters": {
+        "errorType": "errorObject",
+        "errorObject": "={\n  \"error\": {\n    \"workflow\": \"{{ $workflow.id }}\",\n    \"execution\": \"{{ $execution.id }}\",\n    \"type\": \"internal.api.get_professional\",\n    \"node\": \"{{ $prevNode.name }}\",\n    \"code\": \"{{ $json.error.status || '' }}\",\n    \"description\": \"{{\n(() => {\n  try {\n    const part = $json.error.message.split(' - ')[1];\n    return JSON.parse(JSON.parse(part)).detail;\n  } catch (e) {\n    return $json.error.message;\n  }\n})()\n}}\"\n  },\n  \"business\": {\n    \"id\": \"{{ $('data handler').item.json.business.id || '' }}\",\n    \"name\": \"{{ $('data handler').item.json.business.name || '' }}\",\n    \"phone\": \"{{ $('data handler').item.json.business.phone || '' }}\"\n  },\n  \"client\": {\n    \"remote_jid\": \"{{ $('data handler').item.json.client.remote_jid || '' }}\",\n    \"message_id\": \"{{ $('data handler').item.json.message.id || '' }}\",\n    \"message_text\": \"{{ $('data handler').item.json.message.text || '' }}\"\n  }\n}"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        -48,
+        4048
+      ],
+      "id": "affcfd96-ebe2-46da-b745-da2d5f8f78a9",
+      "name": "error report 1"
+    },
+    {
+      "parameters": {
+        "errorType": "errorObject",
+        "errorObject": "={\n  \"error\": {\n    \"workflow\": \"{{ $workflow.id }}\",\n    \"execution\": \"{{ $execution.id }}\",\n    \"type\": \"internal.api.get_professional\",\n    \"node\": \"{{ $prevNode.name }}\",\n    \"code\": \"{{ $json.error.status || '' }}\",\n    \"description\": \"{{\n(() => {\n  try {\n    const part = $json.error.message.split(' - ')[1];\n    return JSON.parse(JSON.parse(part)).detail;\n  } catch (e) {\n    return $json.error.message;\n  }\n})()\n}}\"\n  },\n  \"business\": {\n    \"id\": \"{{ $('data handler').item.json.business.id || '' }}\",\n    \"name\": \"{{ $('data handler').item.json.business.name || '' }}\",\n    \"phone\": \"{{ $('data handler').item.json.business.phone || '' }}\"\n  },\n  \"client\": {\n    \"remote_jid\": \"{{ $('data handler').item.json.client.remote_jid || '' }}\",\n    \"message_id\": \"{{ $('data handler').item.json.message.id || '' }}\",\n    \"message_text\": \"{{ $('data handler').item.json.message.text || '' }}\"\n  }\n}"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        -656,
+        3616
+      ],
+      "id": "b054e2d7-d240-48c1-8c53-1e17c071653c",
+      "name": "error report 2"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "bWdz3xBVwmycvfwW",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/bWdz3xBVwmycvfwW",
+          "cachedResultName": "error"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "error": "={\n  \"execution\": \"{{ $execution.id }}\",\n  \"type\": \"external api\",\n  \"node\": \"intent type\",\n  \"code\": \"{{ $json.error.code }}\",\n  \"description\": \"{{\n(() => {\n  try {\n    const part = $json.error.message.split(' - ')[1];\n    return JSON.parse(JSON.parse(part)).detail;\n  } catch (e) {\n    return $json.error.message;\n  }\n})()\n}}\"\n}",
+            "business": "={{ {\n  id: $('business context').item.json.id,\n  name: $('business context').item.json.name\n} }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "error",
+              "displayName": "error",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "object",
+              "removed": false
+            },
+            {
+              "id": "business",
+              "displayName": "business",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "object",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": true,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        -448,
+        3600
+      ],
+      "id": "75e98a96-8591-4622-b7a5-ce5c798f657a",
+      "name": "error report 18"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "bWdz3xBVwmycvfwW",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/bWdz3xBVwmycvfwW",
+          "cachedResultName": "error"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "error": "={{ {\n  workflow: $workflow.id,\n  execution: $execution.id,\n  type: \"internal.redis.context\",\n  node: $prevNode.name,\n    code: $json.error.status || '',\n    description:\n  (() => {\n    try {\n      const part = $json.error.message.split(' - ')[1];\n      return JSON.parse(JSON.parse(part)).detail;\n    } catch (e) {\n      return $json.error.message;\n    }\n  })()\n} }}\n",
+            "business": "={{ {\n    id: $('data handler').item.json.business.id || '',\n    name: $('data handler').item.json.business.name || '',\n    phone: $('data handler').item.json.business.phone || ''\n} }}",
+            "client": "={{ {\n  remote_jid: $('data handler').item.json.client.remote_jid || '',\n  message_id: $('data handler').item.json.message.id || '',\n  message_text: $('data handler').item.json.message.text || ''\n} }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "error",
+              "displayName": "error",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "object",
+              "removed": false
+            },
+            {
+              "id": "business",
+              "displayName": "business",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "object",
+              "removed": false
+            },
+            {
+              "id": "client",
+              "displayName": "client",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "object",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": true,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        352,
+        4048
+      ],
+      "id": "0b515e99-68cc-49d3-a637-9c58669f75e4",
+      "name": "error report 26"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "bWdz3xBVwmycvfwW",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/bWdz3xBVwmycvfwW",
+          "cachedResultName": "error"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "error": "={{ {\n  workflow: $workflow.id,\n  execution: $execution.id,\n  type: \"internal.redis.context\",\n  node: $prevNode.name,\n    code: $json.error.status || '',\n    description:\n  (() => {\n    try {\n      const part = $json.error.message.split(' - ')[1];\n      return JSON.parse(JSON.parse(part)).detail;\n    } catch (e) {\n      return $json.error.message;\n    }\n  })()\n} }}\n",
+            "business": "={{ {\n    id: $('data handler').item.json.business.id || '',\n    name: $('data handler').item.json.business.name || '',\n    phone: $('data handler').item.json.business.phone || ''\n} }}",
+            "client": "={{ {\n  remote_jid: $('data handler').item.json.client.remote_jid || '',\n  message_id: $('data handler').item.json.message.id || '',\n  message_text: $('data handler').item.json.message.text || ''\n} }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "error",
+              "displayName": "error",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "object",
+              "removed": false
+            },
+            {
+              "id": "business",
+              "displayName": "business",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "object",
+              "removed": false
+            },
+            {
+              "id": "client",
+              "displayName": "client",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "object",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": true,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        384,
+        3616
+      ],
+      "id": "31e7e708-ff73-4703-98d1-c3548a351bd5",
+      "name": "error report 27"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "804a7f04-c007-4045-a9f5-34b606a6eea1",
+              "name": "sucess",
+              "value": "=true",
+              "type": "boolean"
+            },
+            {
+              "id": "7748568d-748f-4ac6-ab88-fb32197f0806",
+              "name": "professionals",
+              "value": "={{ $json.professionals }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1088,
+        3296
+      ],
+      "id": "0f452b3e-01a6-407a-99ea-29b76bdcde62",
+      "name": "professionals context"
     }
   ],
   "pinData": {
     "webhook": [
       {
         "json": {
-          "action": "get",
-          "professional": {
-            "id": "1"
+          "action": "list",
+          "business": {
+            "id": 3,
+            "name": null
           },
+          "professional": null,
           "api": {
-            "url": "http://beautyflow-api:8000/v1",
-            "token": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwiYnVzaW5lc3NfaWQiOjMsInR5cGUiOiJidXNpbmVzc19pbnRlZ3JhdGlvbiIsInRva2VuX3R5cGUiOiJhY2Nlc3MiLCJleHAiOjE3Nzg2MDI5OTZ9.E1GMS8kj4VJI-JJ2yiY_dlnLJaTTi7SEh-dC4FnNtNg"
+            "url": "http://beautyflow_backend:8000/v1",
+            "token": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwiYnVzaW5lc3NfaWQiOjMsInR5cGUiOiJidXNpbmVzc19pbnRlZ3JhdGlvbiIsInRva2VuX3R5cGUiOiJhY2Nlc3MiLCJleHAiOjE3NzkxMjU4MzN9.IhaW4mT3Nw8dPy5f-xk_IfuidCO0SxGD09PKeQvSFNc",
+            "evo_instance": "sale_instance"
           }
         }
       }
@@ -728,7 +1172,7 @@
         ],
         [
           {
-            "node": "error report",
+            "node": "error report 2",
             "type": "main",
             "index": 0
           }
@@ -778,11 +1222,16 @@
             "node": "push context 2",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "aggregate 2",
+            "type": "main",
+            "index": 0
           }
         ],
         [
           {
-            "node": "error report 2",
+            "node": "error report ",
             "type": "main",
             "index": 0
           }
@@ -793,7 +1242,7 @@
       "main": [
         [
           {
-            "node": "sucess",
+            "node": "wait",
             "type": "main",
             "index": 0
           }
@@ -805,6 +1254,11 @@
         [
           {
             "node": "push context 1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "aggregate 1",
             "type": "main",
             "index": 0
           }
@@ -826,6 +1280,13 @@
             "type": "main",
             "index": 0
           }
+        ],
+        [
+          {
+            "node": "error report 18",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
@@ -834,6 +1295,13 @@
         [
           {
             "node": "has data? 1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "error report 25",
             "type": "main",
             "index": 0
           }
@@ -880,7 +1348,7 @@
       "main": [
         [
           {
-            "node": "sucess",
+            "node": "professionals context",
             "type": "main",
             "index": 0
           }
@@ -891,7 +1359,7 @@
       "main": [
         [
           {
-            "node": "sucess",
+            "node": "professionals context",
             "type": "main",
             "index": 0
           }
@@ -906,6 +1374,13 @@
             "type": "main",
             "index": 0
           }
+        ],
+        [
+          {
+            "node": "error report 27",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
@@ -913,7 +1388,14 @@
       "main": [
         [
           {
-            "node": "aggregate 1",
+            "node": "No Operation, do nothing1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "error report 26",
             "type": "main",
             "index": 0
           }
@@ -924,7 +1406,14 @@
       "main": [
         [
           {
-            "node": "aggregate 2",
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "error report 24",
             "type": "main",
             "index": 0
           }
@@ -935,9 +1424,9 @@
       "main": [
         [
           {
-            "node": "end",
+            "node": "wait",
             "type": "main",
-            "index": 0
+            "index": 1
           }
         ],
         [
@@ -979,11 +1468,36 @@
             "type": "main",
             "index": 0
           }
+        ],
+        [
+          {
+            "node": "error report 23",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
     "compare": {
       "main": [
+        [
+          {
+            "node": "if",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "if": {
+      "main": [
+        [
+          {
+            "node": "wait",
+            "type": "main",
+            "index": 1
+          }
+        ],
         [
           {
             "node": "loop",
@@ -992,15 +1506,79 @@
           }
         ]
       ]
+    },
+    "wait": {
+      "main": [
+        [
+          {
+            "node": "professionals context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "error report 23": {
+      "main": [
+        [
+          {
+            "node": "has data? 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "error report 24": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "error report 25": {
+      "main": [
+        [
+          {
+            "node": "has data? 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "error report 26": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "professionals context": {
+      "main": [
+        []
+      ]
     }
   },
   "active": true,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate",
-    "availableInMCP": false
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "bWdz3xBVwmycvfwW",
+    "timezone": "America/Sao_Paulo",
+    "callerPolicy": "workflowsFromSameOwner"
   },
-  "versionId": "eae21c13-87bb-4fdc-817a-8c5aac21ca86",
+  "versionId": "b0d78064-3bda-4e94-84c6-121648940d57",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "b304e3d5690d6187ef909ae7d9f59e9b1a1652d2a6e2167896375e495fa017bf"

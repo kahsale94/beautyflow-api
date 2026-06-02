@@ -45,9 +45,9 @@
           "mappingMode": "defineBelow",
           "value": {
             "action": "name",
-            "business": "={{ {\n  id: $('data handler').item.json.id,\n  name: $('data handler').item.json.name\n} }}",
+            "business": "={{ {\n  id: $('data handler').item.json.business.id,\n  name: $('data handler').item.json.business.name\n} }}",
             "api": "={{ {\n  url: $('data handler').item.json.api.url,\n  token: $('data handler').item.json.api.token,\n  evo_instance: $('data handler').item.json.api.evo_instance\n} }}",
-            "client": "={{ {\n  remote_jid: $('data handler').item.json.client.remote_jid,\n  message: $('data handler').item.json.message.text\n} }}"
+            "client": "={{ {\n  remote_jid: $('data handler').item.json.client.remote_jid,\n  message: $('data handler').item.json.client.message\n} }}"
           },
           "matchingColumns": [],
           "schema": [
@@ -161,19 +161,19 @@
               "id": "352b0e72-b1eb-4dc5-83f6-d22192950632",
               "name": "business",
               "value": "={{ $json.business }}",
-              "type": "string"
+              "type": "object"
             },
             {
               "id": "04c4d6f9-1957-4f77-8943-36d861e4f03a",
               "name": "client",
               "value": "={{ $json.client }}",
-              "type": "string"
+              "type": "object"
             },
             {
               "id": "deb23a92-cd9a-48d4-95b2-66dee01296bb",
               "name": "api",
               "value": "={{ $json.api }}",
-              "type": "string"
+              "type": "object"
             }
           ]
         },
@@ -189,7 +189,31 @@
       "name": "data handler"
     }
   ],
-  "pinData": {},
+  "pinData": {
+    "webhook": [
+      {
+        "json": {
+          "state": "awaiting_name",
+          "business": {
+            "id": 3,
+            "name": null
+          },
+          "client": {
+            "remote_jid": "5511991549118@s.whatsapp.net",
+            "message": "ola, gostaria de um agendamento"
+          },
+          "api": {
+            "url": "http://beautyflow_backend:8000/v1",
+            "token": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwiYnVzaW5lc3NfaWQiOjMsInR5cGUiOiJidXNpbmVzc19pbnRlZ3JhdGlvbiIsInRva2VuX3R5cGUiOiJhY2Nlc3MiLCJleHAiOjE3NzkyMTgwOTJ9.eEjYdz6AK7chj21y-IbgWN1hBPFGdJx7-vjLyBgAcyU",
+            "evo_instance": "sale_instance"
+          }
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
   "connections": {
     "pending_state": {
       "main": [
@@ -235,7 +259,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "81a0b136-386c-4c9a-aef8-973d6658e5c1",
+  "versionId": "83d2ef8c-0cee-496b-8e7a-b8334c71f917",
   "meta": {
     "instanceId": "b304e3d5690d6187ef909ae7d9f59e9b1a1652d2a6e2167896375e495fa017bf"
   },
