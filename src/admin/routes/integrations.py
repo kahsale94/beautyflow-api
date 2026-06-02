@@ -9,7 +9,7 @@ from src.services.business_integration_service import BusinessIntegrationNotFoun
 from ..templating import render, redirect_with_flash
 from ..dependencies import AdminSessionDep, SuperAdminSessionDep, validate_csrf
 
-router = APIRouter(prefix="/integrations")
+router = APIRouter(prefix="/integrations", tags=["Admin ➔ Integrations"])
 
 @router.get("")
 def integrations_page(request: Request, service: BusinessIntegrationServiceDep, session: AdminSessionDep):

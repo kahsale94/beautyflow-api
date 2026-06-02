@@ -1,18 +1,12 @@
-from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response
 from fastapi.security import OAuth2PasswordRequestForm
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response
 
 from src.security import RefreshRequest
 from src.dependecies import AuthServiceDep, IntegrationDep, BusinessPhoneDep
 from src.services.auth_service import DeactivatedUserError, InvalidCredentialError, InvalidTokenError, DeactivatedLinkError
-from src.core import (
-    USER_REFRESH_COOKIE,
-    USER_REFRESH_COOKIE_PATH,
-    USER_REFRESH_COOKIE_SAMESITE,
-    USER_REFRESH_COOKIE_SECURE,
-    USER_REFRESH_TOKEN_EXPIRE_DAYS,
-)
+from src.core import USER_REFRESH_COOKIE, USER_REFRESH_COOKIE_PATH, USER_REFRESH_COOKIE_SAMESITE, USER_REFRESH_COOKIE_SECURE, USER_REFRESH_TOKEN_EXPIRE_DAYS
 
-router = APIRouter(prefix="/auth", tags=["Auth"])
+router = APIRouter(prefix="/auth", tags=["V1 ➔ Auth"])
 
 def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
     response.set_cookie(

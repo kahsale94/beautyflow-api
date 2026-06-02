@@ -10,7 +10,7 @@ from src.services.user_service import UserAlreadyExistsError, UserNotFoundError
 from ..templating import render, redirect_with_flash
 from ..dependencies import AdminSessionDep, SuperAdminSessionDep, validate_csrf
 
-router = APIRouter(prefix="/users")
+router = APIRouter(prefix="/users", tags=["Admin ➔ Users"])
 
 @router.get("")
 def users_page(request: Request, service: UserServiceDep, session: AdminSessionDep, q: str | None = None):

@@ -10,7 +10,7 @@ from src.services.appointment_service import (
     ServiceNotAvailableError, ClientNotFoundError
 )
 
-router = APIRouter(prefix="/appointments", tags=["Appointments"])
+router = APIRouter(prefix="/appointments", tags=["V1 ➔ Appointments"])
 
 @router.get("/", response_model=list[AppointmentResponse])
 def get_all_appointments(business_id: BusinessScopeDep, service: AppointmentServiceDep, actor: UserOrBusinessIntegrationDep,

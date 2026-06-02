@@ -4,7 +4,7 @@ from src.schemas import ProfessionalCreate, ProfessionalResponse, ProfessionalUp
 from src.services.professional_service import ProfessionalNotFoundError, ProfessionalAlreadyExistsError
 from src.dependecies import ProfessionalServiceDep, BusinessScopeDep, AdminDep, SuperAdminDep, UserOrBusinessIntegrationDep
 
-router = APIRouter(prefix="/professionals", tags=["Professionals"])
+router = APIRouter(prefix="/professionals", tags=["V1 ➔ Professionals"])
 
 @router.get("/", response_model=list[ProfessionalResponse])
 def get_professionals(business_id: BusinessScopeDep, service: ProfessionalServiceDep, actor: UserOrBusinessIntegrationDep, professional_name: str | None = None):

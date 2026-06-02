@@ -11,7 +11,7 @@ from src.services.professional_service_link_service import ProfessionalServiceLi
 from ..dependencies import AdminSessionDep, validate_csrf
 from ..templating import WEEKDAYS, render, redirect_with_flash
 
-router = APIRouter(prefix="/professionals")
+router = APIRouter(prefix="/professionals", tags=["Admin ➔ Professionals"])
 
 @router.get("")
 def professionals_page(request: Request, professional_service: ProfessionalServiceDep, session: AdminSessionDep, q: str | None = None):

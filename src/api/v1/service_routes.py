@@ -4,7 +4,7 @@ from src.schemas import ServiceCreate, ServiceUpdate, ServiceResponse
 from src.services.service_service import ServiceNotFoundError, ServiceAlreadyExistsError
 from src.dependecies import ServiceServiceDep, BusinessScopeDep, AdminDep, SuperAdminDep, UserOrBusinessIntegrationDep
 
-router = APIRouter(prefix="/services", tags=["Services"])
+router = APIRouter(prefix="/services", tags=["V1 ➔ Services"])
 
 @router.get("/", response_model=list[ServiceResponse])
 def get_services(business_id: BusinessScopeDep, service: ServiceServiceDep, actor: UserOrBusinessIntegrationDep, service_name: str | None = None):

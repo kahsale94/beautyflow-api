@@ -35,3 +35,33 @@ def test_availability_admin_write_permission():
     source = read_source("src/api/v1/availability_routes.py")
 
     assert "admin: AdminDep" in source
+
+def test_check_and_suggest_contract_exists():
+    schema_source = read_source("src/schemas/availability_schema.py")
+    route_source = read_source("src/api/v1/availability_routes.py")
+    service_source = read_source("src/services/availability_service.py")
+
+    assert "AvailabilityCheckAndSuggestRequest" in schema_source
+    assert "AvailabilitySuggestionResponse" in schema_source
+    assert "AvailabilityCheckAndSuggestResponse" in schema_source
+    assert '@router.post("/check-and-suggest"' in route_source
+    assert "def check_and_suggest" in service_source
+
+
+def test_check_and_suggest_does_not_change_existing_get_slots_contract():
+    service_source = read_source("src/services/availability_service.py")
+    route_source = read_source("src/api/v1/availability_routes.py")
+
+    assert "def get_slots" in service_source
+    assert "list[AvailabilitySlotsResponse]" in route_source
+    assert "return [AvailabilitySlotsResponse(slot_time=item.time())" in service_source
+
+
+def test_check_and_suggest_reuses_existing_scheduling_rules():
+    service_source = read_source("src/services/availability_service.py")
+
+    assert "minimum_notice_minutes" in service_source
+    assert "maximum_schedule_days" in service_source
+    assert "slot_interval_minutes" in service_source
+    assert "get_scheduled_by_professional_and_date" in service_source
+    assert "professional_service_repo.get_by_ids" in service_source

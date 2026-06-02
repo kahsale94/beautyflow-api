@@ -9,7 +9,7 @@ from src.services.user_service import InvalidCurrentPasswordError, UserNotFoundE
 from ..templating import render, redirect_with_flash
 from ..dependencies import AdminSessionDep, validate_csrf
 
-router = APIRouter(prefix="/account")
+router = APIRouter(prefix="/account", tags=["Admin ➔ Account"])
 
 @router.get("/password")
 def change_password_page(request: Request, session: AdminSessionDep):

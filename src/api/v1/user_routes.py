@@ -4,7 +4,7 @@ from src.schemas import UserCreate, UserResponse, UserUpdate
 from src.services.user_service import UserAlreadyExistsError, UserNotFoundError
 from src.dependecies import UserServiceDep, UserDep, SuperAdminDep, AdminDep, BusinessScopeDep
 
-router = APIRouter(prefix="/users", tags=["Users"])
+router = APIRouter(prefix="/users", tags=["V1 ➔ Users"])
 
 @router.get("/me", response_model=UserResponse)
 def get_me(current_user: UserDep):

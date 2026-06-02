@@ -15,7 +15,7 @@ from src.services.appointment_service import ( AppointmentAlreadyCanceledError, 
 from ..templating import render, redirect_with_flash
 from ..dependencies import AdminSessionDep, validate_csrf
 
-router = APIRouter(prefix="/appointments")
+router = APIRouter(prefix="/appointments", tags=["Admin ➔ Appointments"])
 
 DEFAULT_ADMIN_TIMEZONE = "America/Sao_Paulo"
 

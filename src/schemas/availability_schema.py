@@ -1,4 +1,4 @@
-from datetime import time
+from datetime import date, datetime, time
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -14,6 +14,26 @@ class AvailabilityUpdate(BaseModel):
 
 class AvailabilitySlotsResponse(BaseModel):
     slot_time: time
+
+class AvailabilityCheckAndSuggestRequest(BaseModel):
+    professional_id: int
+    service_id: int
+    requested_start: datetime
+    max_suggestions: int = Field(default=3, ge=1, le=10)
+    search_days_ahead: int | None = Field(default=None, ge=0, le=60)
+
+class AvailabilitySuggestionResponse(BaseModel):
+    start_datetime: datetime
+    end_datetime: datetime
+    date: date
+    slot_time: time
+
+class AvailabilityCheckAndSuggestResponse(BaseModel):
+    requested_start: datetime
+    requested_end: datetime
+    available: bool
+    reason: str | None = None
+    suggestions: list[AvailabilitySuggestionResponse] = []
 
 class AvailabilityResponse(BaseModel):
     professional_id: int

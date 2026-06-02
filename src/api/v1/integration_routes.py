@@ -4,7 +4,7 @@ from src.dependecies import IntegrationServiceDep, SuperAdminDep
 from src.services.integration_service import IntegrationNotFoundError, IntegrationAlreadyExistsError
 from src.schemas import IntegrationCreate, IntegrationResponse, IntegrationUpdate, IntegrationCreateResponse
 
-router = APIRouter(prefix="/integrations", tags=["Integrations"])
+router = APIRouter(prefix="/integrations", tags=["V1 ➔ Integrations"])
 
 @router.get("/", response_model=list[IntegrationResponse])
 def get_all_integrations(service: IntegrationServiceDep, super_admin: SuperAdminDep, integration_name: str | None = None):

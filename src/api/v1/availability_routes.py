@@ -2,13 +2,38 @@ from datetime import date
 
 from fastapi import APIRouter, HTTPException
 
-from src.schemas import AvailabilityCreate, AvailabilityUpdate, AvailabilityResponse, AvailabilitySlotsResponse
+from src.schemas import (AvailabilityCreate, AvailabilityUpdate, AvailabilityResponse, AvailabilitySlotsResponse,
+    AvailabilityCheckAndSuggestRequest, AvailabilityCheckAndSuggestResponse,
+)
 from src.dependecies import AvailabilityServiceDep, BusinessScopeDep, SuperAdminDep, UserOrBusinessIntegrationDep, AdminDep
 from src.services.availability_service import (ProfessionalNotFoundError, InvalidTimeRangeError, AvailabilityAlreadyExistsError,
-    AvailabilityNotFoundError, ProfessionalUnavailableError, ServiceNotFoundError, ProfessionalServiceMismatchError
+    AvailabilityNotFoundError, ProfessionalUnavailableError, ServiceNotFoundError, ProfessionalServiceMismatchError, DatetimeFormatError,
 )
 
-router = APIRouter(prefix="/availabilities", tags=["Availabilities"])
+router = APIRouter(prefix="/availabilities", tags=["V1 ➔ Availabilities"])
+
+@router.post("/check-and-suggest", response_model=AvailabilityCheckAndSuggestResponse)
+def check_and_suggest_availability(data: AvailabilityCheckAndSuggestRequest, business_id: BusinessScopeDep, service: AvailabilityServiceDep, actor: UserOrBusinessIntegrationDep):
+    try:
+        return service.check_and_suggest(business_id, data)
+
+    except ProfessionalNotFoundError:
+        raise HTTPException(status_code=404, detail="Professional não encontrado!")
+
+    except ServiceNotFoundError:
+        raise HTTPException(status_code=404, detail="Serviço não encontrado!")
+
+    except ProfessionalServiceMismatchError:
+        raise HTTPException(status_code=400, detail="Este profissional não executa o serviço informado!")
+
+    except DatetimeFormatError:
+        raise HTTPException(status_code=400, detail="Formato de data invalido! Envie timezone no datetime.")
+
+    except AvailabilityNotFoundError:
+        raise HTTPException(status_code=404, detail="Disponibilidade não encontrada dentro da janela de agendamento!")
+
+    except ProfessionalUnavailableError:
+        raise HTTPException(status_code=404, detail="Profissional indisponivel!")
 
 @router.get("/", response_model=list[AvailabilitySlotsResponse])
 def get_availability_slots(professional_id: int, service_id: int, date: date, business_id: BusinessScopeDep, service: AvailabilityServiceDep, actor: UserOrBusinessIntegrationDep):

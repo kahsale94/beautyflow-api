@@ -10,7 +10,7 @@ from src.services.business_service import BusinessAlreadyExistsError, BusinessNo
 from ..templating import render, redirect_with_flash
 from ..dependencies import AdminSessionDep, validate_csrf
 
-router = APIRouter(prefix="/business")
+router = APIRouter(prefix="/business", tags=["Admin ➔ Business"])
 
 @router.get("")
 def business_settings_page(request: Request, service: BusinessServiceDep, session: AdminSessionDep):

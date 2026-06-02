@@ -4,7 +4,7 @@ from src.schemas import BusinessIntegrationResponse, BusinessIntegrationCreate, 
 from src.dependecies import BusinessScopeDep, BusinessIntegrationServiceDep, SuperAdminDep, BusinessIntegrationDep
 from src.services.business_integration_service import BusinessIntegrationNotFoundError, BusinessIntegrationAlreadyExistsError
 
-router = APIRouter(prefix="/business-integrations", tags=["Business Integrations"])
+router = APIRouter(prefix="/business-integrations", tags=["V1 ➔ Business Integrations"])
 
 @router.get("/config", response_model=BusinessIntegrationResponse)
 def get_my_config(actor: BusinessIntegrationDep, service: BusinessIntegrationServiceDep):

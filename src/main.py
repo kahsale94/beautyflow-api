@@ -15,9 +15,13 @@ if ENVIRONMENT == "production":
         docs_url=None,
         redoc_url=None,
         openapi_url=None,
+        swagger_ui_parameters={"docExpansion": "none"},
     )
 else:
-    app = FastAPI(title="Beautyflow API")
+    app = FastAPI(
+        title="Beautyflow API",
+        swagger_ui_parameters={"docExpansion": "none"},
+    )
 
 allowed_origins = CORS_ORIGINS
 

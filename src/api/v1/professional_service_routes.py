@@ -6,7 +6,7 @@ from src.services.professional_service_link_service import (ProfessionalServiceL
     ProfessionalServiceLinkInvalidBusinessError, ProfessionalServiceLinkNotFoundError
 )
 
-router = APIRouter(prefix="/professional-services", tags=["Professional Services"])
+router = APIRouter(prefix="/professional-services", tags=["V1 ➔ Professional Services"])
 
 @router.get("/professionals/{professional_id}", response_model=list[ProfessionalServiceResponse])
 def get_services_by_professional(professional_id: int, business_id: BusinessScopeDep, service: ProfessionalServiceLinkServiceDep, actor: UserOrBusinessIntegrationDep):

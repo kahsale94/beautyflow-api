@@ -6,7 +6,7 @@ from src.dependecies import BusinessServiceDep
 from ..dependencies import SuperAdminSessionDep, validate_csrf
 from ..templating import render, redirect_with_flash, set_business_cookie
 
-router = APIRouter(prefix="/businesses")
+router = APIRouter(prefix="/businesses", tags=["Admin ➔ Businesses"])
 
 @router.get("")
 def businesses_page(request: Request, business_service: BusinessServiceDep, session: SuperAdminSessionDep):

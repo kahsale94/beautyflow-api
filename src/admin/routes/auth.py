@@ -3,20 +3,14 @@ from fastapi.responses import RedirectResponse
 
 from src.dependecies import AuthServiceDep
 from src.services.auth_service import InvalidCredentialError
-from src.core import (
-    ADMIN_ACCESS_COOKIE,
-    ADMIN_REFRESH_COOKIE,
-    ADMIN_COOKIE_PATH,
-    ADMIN_COOKIE_SAMESITE,
-    ADMIN_COOKIE_SECURE,
-    USER_ACCESS_TOKEN_EXPIRE_MINUTES,
-    USER_REFRESH_TOKEN_EXPIRE_DAYS,
+from src.core import (ADMIN_ACCESS_COOKIE, ADMIN_REFRESH_COOKIE, ADMIN_COOKIE_PATH,
+    ADMIN_COOKIE_SAMESITE, ADMIN_COOKIE_SECURE, USER_ACCESS_TOKEN_EXPIRE_MINUTES, USER_REFRESH_TOKEN_EXPIRE_DAYS,
 )
 
 from ..templating import render, redirect_with_flash
 from ..dependencies import get_or_create_csrf_token, validate_csrf
 
-router = APIRouter()
+router = APIRouter(tags=["Admin ➔ Auth"])
 
 @router.get("/login")
 def login_page(request: Request):

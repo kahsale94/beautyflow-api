@@ -8,7 +8,7 @@ from src.dependecies import AppointmentServiceDep, BusinessServiceDep, ClientSer
 from ..templating import render
 from ..dependencies import AdminSessionDep
 
-router = APIRouter()
+router = APIRouter(tags=["Admin ➔ Dashboard"])
 
 @router.get("/")
 def dashboard_page(request: Request, appointment_service: AppointmentServiceDep, client_service: ClientServiceDep, professional_service: ProfessionalServiceDep,

@@ -7,7 +7,14 @@ from sqlalchemy.exc import IntegrityError
 
 from src.core import DataBaseDep
 from src.models import Availability, Appointment
-from src.schemas import AvailabilityCreate, AvailabilityUpdate, AvailabilitySlotsResponse
+from src.schemas import (
+    AvailabilityCreate,
+    AvailabilityUpdate,
+    AvailabilitySlotsResponse,
+    AvailabilityCheckAndSuggestRequest,
+    AvailabilityCheckAndSuggestResponse,
+    AvailabilitySuggestionResponse,
+)
 from src.repositories import (AvailabilityRepository, ProfessionalRepository, AppointmentRepository,
     ServiceRepository, ProfessionalServiceRepository
 )
@@ -31,6 +38,9 @@ class ServiceNotFoundError(Exception):
     pass
 
 class ProfessionalServiceMismatchError(Exception):
+    pass
+
+class DatetimeFormatError(Exception):
     pass
 
 class AvailabilityService:
@@ -74,6 +84,21 @@ class AvailabilityService:
             raise ServiceNotFoundError()
         
         return service
+
+    def _validate_booking_context(self, business_id: int, professional_id: int, service_id: int):
+        professional = self._validate_professional(business_id, professional_id)
+        service = self._validate_service(business_id, service_id)
+
+        professional_service = self.professional_service_repo.get_by_ids(
+            self.db,
+            professional_id,
+            service_id,
+        )
+
+        if not professional_service:
+            raise ProfessionalServiceMismatchError()
+
+        return professional, service
 
     def _validate_time_range(self, start: time, end: time):
         if start >= end:
@@ -129,6 +154,68 @@ class AvailabilityService:
     
         return gaps
 
+    def _get_slot_datetimes_for_date(self, business_id: int, professional, service, target_date: date, now: datetime):
+        tz = ZoneInfo(professional.business.timezone)
+        weekday = target_date.weekday()
+
+        availability = self.availability_repo.get_by_professional_and_weekday(
+            self.db,
+            professional.id,
+            weekday,
+        )
+
+        if (
+            not availability
+            or availability.professional_id != professional.id
+            or availability.weekday != weekday
+        ):
+            return []
+
+        start_dt = self._combine_date_time(target_date, availability.start_time, tz)
+        end_dt = self._combine_date_time(target_date, availability.end_time, tz)
+
+        start_of_day = start_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_of_day = start_of_day + timedelta(days=1)
+
+        appointments = self.appointment_repo.get_scheduled_by_professional_and_date(
+            self.db,
+            business_id,
+            professional.id,
+            start_of_day,
+            end_of_day,
+        )
+
+        gaps = self._build_gaps(start_dt, end_dt, appointments, tz)
+
+        slot_step_minutes = professional.business.slot_interval_minutes or self.SLOT_STEP_MINUTES
+        minimum_notice_minutes = professional.business.minimum_notice_minutes or 0
+        minimum_start = now + timedelta(minutes=minimum_notice_minutes)
+
+        slot_times = []
+
+        for gap_start, gap_end in gaps:
+            slot_times.extend(
+                self._generate_slots(
+                    gap_start,
+                    gap_end,
+                    service.duration_minutes,
+                    slot_step_minutes,
+                    minimum_start if target_date == now.date() else None,
+                )
+            )
+
+        return [self._combine_date_time(target_date, slot_time, tz) for slot_time in slot_times]
+
+    def _build_suggestion(self, slot_start: datetime, duration_minutes: int):
+        slot_end = slot_start + timedelta(minutes=duration_minutes)
+
+        return AvailabilitySuggestionResponse(
+            start_datetime=slot_start,
+            end_datetime=slot_end,
+            date=slot_start.date(),
+            slot_time=slot_start.time(),
+        )
+
     def get_all(self, business_id: int, professional_id: int):
         self._validate_professional(business_id, professional_id)
 
@@ -151,13 +238,7 @@ class AvailabilityService:
         return result
     
     def get_slots(self, business_id: int, professional_id: int, service_id: int, date: date):
-        professional = self._validate_professional(business_id, professional_id)
-        service = self._validate_service(business_id, service_id)
-
-        professional_service = self.professional_service_repo.get_by_ids(self.db, professional_id, service_id)
-
-        if not professional_service:
-            raise ProfessionalServiceMismatchError()
+        professional, service = self._validate_booking_context(business_id, professional_id, service_id)
 
         tz = ZoneInfo(professional.business.timezone)
         now = datetime.now(tz)
@@ -172,8 +253,8 @@ class AvailabilityService:
             raise AvailabilityNotFoundError()
 
         weekday = date.weekday()
-
         availability = self.availability_repo.get_by_professional_and_weekday(self.db, professional_id, weekday)
+
         if (
             not availability
             or availability.professional_id != professional_id
@@ -181,37 +262,113 @@ class AvailabilityService:
         ):
             raise AvailabilityNotFoundError()
 
-        start_dt = self._combine_date_time(date, availability.start_time, tz)
-        end_dt = self._combine_date_time(date, availability.end_time, tz)
+        slot_datetimes = self._get_slot_datetimes_for_date(
+            business_id,
+            professional,
+            service,
+            date,
+            now,
+        )
 
-        start_of_day = start_dt.replace(hour=0, minute=0, second=0, microsecond=0)
-        end_of_day = start_of_day + timedelta(days=1)
-
-        appointments = self.appointment_repo.get_scheduled_by_professional_and_date(self.db, business_id, professional_id, start_of_day, end_of_day)
-
-        gaps = self._build_gaps(start_dt, end_dt, appointments, tz)
-
-        slot_step_minutes = professional.business.slot_interval_minutes or self.SLOT_STEP_MINUTES
-        minimum_notice_minutes = professional.business.minimum_notice_minutes or 0
-        minimum_start = now + timedelta(minutes=minimum_notice_minutes)
-
-        slot_times = []
-
-        for gap_start, gap_end in gaps:
-            slot_times.extend(
-                self._generate_slots(
-                    gap_start,
-                    gap_end,
-                    service.duration_minutes,
-                    slot_step_minutes,
-                    minimum_start if date == now.date() else None,
-                )
-            )
-
-        if not slot_times:
+        if not slot_datetimes:
             raise ProfessionalUnavailableError()
 
-        return [AvailabilitySlotsResponse(slot_time=t) for t in slot_times]
+        return [AvailabilitySlotsResponse(slot_time=item.time()) for item in slot_datetimes]
+
+    def check_and_suggest(self, business_id: int, data: AvailabilityCheckAndSuggestRequest):
+        professional, service = self._validate_booking_context(
+            business_id,
+            data.professional_id,
+            data.service_id,
+        )
+
+        if data.requested_start.tzinfo is None:
+            raise DatetimeFormatError()
+
+        tz = ZoneInfo(professional.business.timezone)
+        now = datetime.now(tz)
+        requested_start = data.requested_start.astimezone(tz).replace(second=0, microsecond=0)
+        requested_end = requested_start + timedelta(minutes=service.duration_minutes)
+
+        if requested_start.date() < now.date():
+            raise ProfessionalUnavailableError()
+
+        max_days = professional.business.maximum_schedule_days or 30
+        max_date = now.date() + timedelta(days=max_days)
+
+        if requested_start.date() > max_date:
+            raise AvailabilityNotFoundError()
+
+        requested_day_slots = self._get_slot_datetimes_for_date(
+            business_id,
+            professional,
+            service,
+            requested_start.date(),
+            now,
+        )
+
+        if requested_start in requested_day_slots:
+            return AvailabilityCheckAndSuggestResponse(
+                requested_start=requested_start,
+                requested_end=requested_end,
+                available=True,
+                reason="requested_slot_available",
+                suggestions=[],
+            )
+
+        suggestions: list[AvailabilitySuggestionResponse] = []
+        added_slots: set[datetime] = set()
+
+        def add_suggestions(slot_datetimes: list[datetime]):
+            for slot_start in slot_datetimes:
+                if len(suggestions) >= data.max_suggestions:
+                    break
+
+                if slot_start in added_slots:
+                    continue
+
+                suggestions.append(
+                    self._build_suggestion(
+                        slot_start,
+                        service.duration_minutes,
+                    )
+                )
+                added_slots.add(slot_start)
+
+        same_day_after_requested = [slot for slot in requested_day_slots if slot > requested_start]
+        same_day_before_requested = [slot for slot in requested_day_slots if slot < requested_start]
+
+        add_suggestions(same_day_after_requested)
+        add_suggestions(same_day_before_requested)
+
+        search_days_ahead = data.search_days_ahead if data.search_days_ahead is not None else max_days
+        search_days_ahead = min(search_days_ahead, max_days)
+
+        day_offset = 1
+        while len(suggestions) < data.max_suggestions and day_offset <= search_days_ahead:
+            target_date = requested_start.date() + timedelta(days=day_offset)
+
+            if target_date > max_date:
+                break
+
+            slot_datetimes = self._get_slot_datetimes_for_date(
+                business_id,
+                professional,
+                service,
+                target_date,
+                now,
+            )
+
+            add_suggestions(slot_datetimes)
+            day_offset += 1
+
+        return AvailabilityCheckAndSuggestResponse(
+            requested_start=requested_start,
+            requested_end=requested_end,
+            available=False,
+            reason="requested_slot_unavailable" if suggestions else "no_available_slots_found",
+            suggestions=suggestions,
+        )
 
     def create(self, business_id: int, data: AvailabilityCreate):
         self._validate_professional(business_id, data.professional_id)

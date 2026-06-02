@@ -12,7 +12,7 @@ from .users import router as users_router
 from .integrations import router as integrations_router
 from .account import router as account_router
 
-router = APIRouter(prefix="/admin", tags=["Admin"])
+router = APIRouter(prefix="/admin")
 
 router.include_router(auth_router)
 router.include_router(dashboard_router)

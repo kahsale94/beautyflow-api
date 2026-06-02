@@ -6,5 +6,13 @@ from .appointment_schema import AppointmentCreate, AppointmentResponse, Appointm
 from .professional_schema import ProfessionalCreate, ProfessionalResponse, ProfessionalUpdate
 from .professional_service_schema import ProfessionalServiceCreate, ProfessionalServiceResponse
 from .integration_schema import IntegrationCreate, IntegrationResponse, IntegrationUpdate, IntegrationCreateResponse
-from .availability_schema import AvailabilityCreate, AvailabilityResponse, AvailabilityUpdate, AvailabilitySlotsResponse
+from .availability_schema import (
+    AvailabilityCreate,
+    AvailabilityResponse,
+    AvailabilityUpdate,
+    AvailabilitySlotsResponse,
+    AvailabilityCheckAndSuggestRequest,
+    AvailabilitySuggestionResponse,
+    AvailabilityCheckAndSuggestResponse,
+)
 from .business_integration_schma import BusinessIntegrationResponse, BusinessIntegrationCreate, BusinessIntegrationUpdate
