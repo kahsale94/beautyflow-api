@@ -1,3 +1,4 @@
+
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
@@ -55,6 +56,8 @@ class BusinessService:
 
     def create(self, data: BusinessCreate):
         phone = normalize_phone(data.phone)
+        if not phone:
+            raise ValueError("Telefone da empresa é obrigatório")
 
         business = Business(
             name = data.name,
@@ -122,12 +125,7 @@ class BusinessService:
         return
 
     def delete(self, business_id: int):
-        business = self._get_valid(business_id)
-
-        self.business_repo.delete(self.db, business)
-        self.db.commit()
-
-        return
+        return self.deactivate(business_id)
 
 def get_business_service(db: DataBaseDep):
     return BusinessService(

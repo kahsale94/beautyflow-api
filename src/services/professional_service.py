@@ -120,12 +120,7 @@ class ProfessionalService:
         return
 
     def delete(self, business_id: int, professional_id: int):
-        professional = self._get_valid(business_id, professional_id)
-
-        self.professional_repo.delete(self.db, professional)
-        self.db.commit()
-
-        return
+        return self.deactivate(business_id, professional_id)
 
 
 def get_professional_service(db: DataBaseDep):

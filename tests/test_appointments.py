@@ -45,3 +45,44 @@ def test_appointment_route_handles_professional_service_mismatch():
 
     assert "except ProfessionalServiceMismatchError" in source
     assert "Este profissional não executa o serviço informado" in source
+
+def test_appointment_create_and_update_reuse_business_booking_rules():
+    service_source = read_source("src/services/appointment_service.py")
+    route_source = read_source("src/api/v1/appointment_routes.py")
+
+    assert "BusinessNotAvailableForBookingError" in service_source
+    assert "AppointmentMinimumNoticeError" in service_source
+    assert "AppointmentMaximumScheduleWindowError" in service_source
+    assert "AppointmentInvalidSlotIntervalError" in service_source
+    assert "InvalidBusinessTimezoneError" in service_source
+    assert "_is_aligned_to_slot" in service_source
+    assert "business.booking_enabled" in service_source
+    assert "minimum_notice_minutes" in service_source
+    assert "maximum_schedule_days" in service_source
+    assert "slot_interval_minutes" in service_source
+    assert "Agendamento desabilitado para esta empresa" in route_source
+    assert "Horário não respeita a antecedência mínima" in route_source
+    assert "Horário excede a janela máxima" in route_source
+    assert "Horário não está alinhado" in route_source
+
+def test_update_appointment_rejects_null_required_fields():
+    source = read_source("src/services/appointment_service.py")
+
+    assert 'for field in ("client_id", "professional_id", "service_id", "start_datetime")' in source
+    assert 'raise ValueError(f"{field} não pode ser nulo")' in source
+
+def test_cancel_completed_appointment_returns_conflict():
+    service_source = read_source("src/services/appointment_service.py")
+    route_source = read_source("src/api/v1/appointment_routes.py")
+
+    cancel_slice = service_source[service_source.index("def cancel"):service_source.index("def delete")]
+    assert "AppointmentStatus.completed" in cancel_slice
+    assert "raise AppointmentAlreadyCompletedError()" in cancel_slice
+    assert "Agendamento já concluído e não pode ser cancelado" in route_source
+
+def test_delete_appointment_is_logical_cancel():
+    source = read_source("src/services/appointment_service.py")
+    delete_slice = source[source.index("def delete"):]
+
+    assert "appointment.status = AppointmentStatus.canceled" in delete_slice
+    assert "appointment_repo.delete" not in delete_slice

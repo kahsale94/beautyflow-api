@@ -49,11 +49,3 @@ def deactivate_business_integration(integration_id: int, business_id: BusinessSc
 
     except BusinessIntegrationNotFoundError:
         raise HTTPException(status_code=404, detail="Vínculo não encontrado!")
-
-@router.delete("/{integration_id}", status_code=204)
-def delete_business_integration(integration_id: int, business_id: BusinessScopeDep, service: BusinessIntegrationServiceDep, super_admin: SuperAdminDep):
-    try:
-        service.delete(business_id, integration_id)
-
-    except BusinessIntegrationNotFoundError:
-        raise HTTPException(status_code=404, detail="Vínculo não encontrado!")

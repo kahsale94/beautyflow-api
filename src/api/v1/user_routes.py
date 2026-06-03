@@ -52,11 +52,3 @@ def deactivate_user(user_id: int, business_id: BusinessScopeDep, service: UserSe
 
     except UserNotFoundError:
         raise HTTPException(status_code=404, detail="Usuário não encontrado!")
-    
-@router.delete("/{user_id}", status_code=204)
-def delete_user(user_id: int, business_id: BusinessScopeDep, service: UserServiceDep, super_admin: SuperAdminDep):
-    try:
-        service.delete(business_id, user_id)
-
-    except UserNotFoundError:
-        raise HTTPException(status_code=404, detail="Usuário não encontrado!")

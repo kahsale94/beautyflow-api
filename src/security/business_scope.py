@@ -1,16 +1,25 @@
+from sqlalchemy.orm import Session
 from fastapi import Depends, Header, HTTPException
+
+from src.core import get_db
+from src.models import Business
 
 from .authentication import get_current_actor
 from .authorization import require_integration
 from .context import UserContext, BusinessIntegrationContext, IntegrationContext
 
 def get_business_scope(actor: UserContext | BusinessIntegrationContext = Depends(get_current_actor),
-     x_business_id: int | None = Header(default = None, alias = "X-Business-ID")) -> int:
+    x_business_id: int | None = Header(default=None, alias="X-Business-ID"), db: Session = Depends(get_db),
+) -> int:
 
     if isinstance(actor, UserContext) and actor.role == "super_admin":
 
         if x_business_id is None:
             raise HTTPException(status_code=400, detail="X-Business-ID obrigatório para super admin!")
+
+        business = db.get(Business, x_business_id)
+        if not business or not business.is_active:
+            raise HTTPException(status_code=404, detail="Empresa não encontrada ou inativa")
 
         return x_business_id
 

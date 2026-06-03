@@ -33,6 +33,9 @@ def create_client(data: ClientCreate, business_id: BusinessScopeDep, service: Cl
     except ClientAlreadyExistsError:
         raise HTTPException(status_code=409, detail="Cliente já cadastrado!")
 
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc) or "Dados inválidos")
+
 @router.patch("/{client_id}", response_model=ClientResponse)
 def update_name(client_id: int, name: str, business_id: BusinessScopeDep, service: ClientServiceDep, actor: UserOrBusinessIntegrationDep):
     try:
@@ -43,6 +46,9 @@ def update_name(client_id: int, name: str, business_id: BusinessScopeDep, servic
     
     except ClientAlreadyExistsError:
         raise HTTPException(status_code=409, detail="Cliente já cadastrado!")
+
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc) or "Dados inválidos")
     
 @router.put("/{client_id}", response_model=ClientResponse)
 def update_client(client_id: int, data: ClientUpdate, business_id: BusinessScopeDep, service: ClientServiceDep, admin: AdminDep):
@@ -55,10 +61,5 @@ def update_client(client_id: int, data: ClientUpdate, business_id: BusinessScope
     except ClientAlreadyExistsError:
         raise HTTPException(status_code=409, detail="Cliente já cadastrado!")
 
-@router.delete("/{client_id}", status_code=204)
-def delete_client(client_id: int, business_id: BusinessScopeDep, service: ClientServiceDep, super_admin: SuperAdminDep):
-    try:
-        service.delete(business_id, client_id)
-
-    except ClientNotFoundError:
-        raise HTTPException(status_code=404, detail="Cliente não encontrado!")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc) or "Dados inválidos")

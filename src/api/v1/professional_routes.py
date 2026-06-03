@@ -33,6 +33,9 @@ def create_professional(data: ProfessionalCreate, business_id: BusinessScopeDep,
     except ProfessionalAlreadyExistsError:
         raise HTTPException(status_code=409, detail="Profissional já existe!")
 
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc) or "Dados inválidos")
+
 @router.put("/{professional_id}", response_model=ProfessionalResponse)
 def update_professional(professional_id: int, data: ProfessionalUpdate, business_id: BusinessScopeDep, service: ProfessionalServiceDep, admin: AdminDep):
     try:
@@ -40,19 +43,14 @@ def update_professional(professional_id: int, data: ProfessionalUpdate, business
     
     except ProfessionalNotFoundError:
         raise HTTPException(status_code=404, detail="Profissional não encontrado!")
+
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc) or "Dados inválidos")
     
 @router.patch("/{professional_id}/deactivate", status_code=204)
 def deactivate_professional(professional_id: int, business_id: BusinessScopeDep, service: ProfessionalServiceDep, admin: AdminDep):
     try:
         service.deactivate(business_id, professional_id)
-
-    except ProfessionalNotFoundError:
-        raise HTTPException(status_code=404, detail="Profissional não encontrado!")
-
-@router.delete("/{professional_id}", status_code=204)
-def delete_professional(professional_id: int, business_id: BusinessScopeDep, service: ProfessionalServiceDep, super_admin: SuperAdminDep):
-    try:
-        service.delete(business_id, professional_id)
 
     except ProfessionalNotFoundError:
         raise HTTPException(status_code=404, detail="Profissional não encontrado!")

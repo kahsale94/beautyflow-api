@@ -113,12 +113,7 @@ class ServiceService:
         return
 
     def delete(self, business_id: int, service_id: int):
-        service = self._get_valid(business_id, service_id)
-
-        self.service_repo.delete(self.db, service)
-        self.db.commit()
-
-        return
+        return self.deactivate(business_id, service_id)
 
 def get_service_service(db: DataBaseDep):
     return ServiceService(

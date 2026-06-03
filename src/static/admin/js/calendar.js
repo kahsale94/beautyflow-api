@@ -45,9 +45,9 @@ document.addEventListener('DOMContentLoaded', function () {
         right: 'today dayGridMonth,timeGridWeek,timeGridDay,listWeek'
     };
 
-    const monthFormatter = new Intl.DateTimeFormat('pt-BR', { month: 'short' });
-    const monthTitleFormatter = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' });
-    const dayHeaderFormatter = new Intl.DateTimeFormat('pt-BR', { weekday: 'short' });
+    const monthFormatter = new Intl.DateTimeFormat('pt-BR', {month: 'short',timeZone: 'UTC'});
+    const monthTitleFormatter = new Intl.DateTimeFormat('pt-BR', {month: 'long', year: 'numeric', timeZone: 'UTC'});
+    const dayHeaderFormatter = new Intl.DateTimeFormat('pt-BR', {weekday: 'short', timeZone: 'UTC'});
 
     function normalizeShortMonth(value) {
         return value.replace('.', '').replace(/^./, char => char.toUpperCase());
@@ -66,7 +66,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (args.view.type !== 'dayGridMonth') {
             const number = document.createElement('span');
             number.className = 'bf-calendar-day-header-number';
-            number.textContent = String(args.date.getDate());
+            number.textContent = String(args.date.getUTCDate());
             wrapper.appendChild(number);
         }
 
@@ -156,8 +156,8 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!monthStrip || !calendarInstance) return;
 
         const activeDate = calendarInstance.getDate();
-        const activeMonth = activeDate.getMonth();
-        const activeYear = activeDate.getFullYear();
+        const activeMonth = activeDate.getUTCMonth();
+        const activeYear = activeDate.getUTCFullYear();
 
         monthStrip.innerHTML = '';
         monthStrip.setAttribute('aria-label', monthTitleFormatter.format(activeDate));
@@ -201,17 +201,23 @@ document.addEventListener('DOMContentLoaded', function () {
         navLinks: true,
         dayMaxEventRows: 3,
         eventDisplay: 'block',
-        displayEventEnd: false,
+        displayEventEnd: true,
         dayHeaderFormat: { weekday: 'short', day: 'numeric' },
         views: {
             dayGridMonth: {
-                dayHeaderFormat: { weekday: 'short' }
+                dayHeaderFormat: { weekday: 'short' },
+                displayEventEnd: false
             },
             timeGridWeek: {
-                dayHeaderFormat: { weekday: 'short', day: 'numeric' }
+                dayHeaderFormat: { weekday: 'short', day: 'numeric' },
+                displayEventEnd: true
             },
             timeGridDay: {
-                dayHeaderFormat: { weekday: 'long', day: 'numeric' }
+                dayHeaderFormat: { weekday: 'long', day: 'numeric' },
+                displayEventEnd: true
+            },
+            listWeek: {
+                displayEventEnd: true
             }
         },
         eventTimeFormat: {
@@ -261,9 +267,7 @@ document.addEventListener('DOMContentLoaded', function () {
         },
         eventContent: function (info) {
             const props = info.event.extendedProps || {};
-            const startTime = info.event.start
-                ? info.event.start.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-                : '';
+            const startTime = info.timeText || '';
             const client = props.client || info.event.title || 'Cliente';
             const service = props.service || 'Serviço';
             const professional = props.professional || '';
@@ -289,9 +293,7 @@ document.addEventListener('DOMContentLoaded', function () {
         },
         eventDidMount: function (info) {
             const props = info.event.extendedProps || {};
-            const startTime = info.event.start
-                ? info.event.start.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-                : '';
+            const startTime = info.timeText || '';
             applyAppointmentColorToElement(info.el, eventStatus(info));
             info.el.title = [startTime, props.client, props.service, props.professional]
                 .filter(Boolean)

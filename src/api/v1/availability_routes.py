@@ -94,11 +94,3 @@ def update_availability(professional_id: int, weekday: int, data: AvailabilityUp
 
     except InvalidTimeRangeError:
         raise HTTPException(status_code=400, detail="Intervalo de tempo invalido!")
-
-@router.delete("/{professional_id}", status_code=204)
-def delete_availability(professional_id: int, weekday: int, business_id: BusinessScopeDep, service: AvailabilityServiceDep, super_admin: SuperAdminDep):
-    try:
-        service.delete(business_id, professional_id, weekday)
-
-    except AvailabilityNotFoundError:
-        raise HTTPException(status_code=404, detail="Disponibilidade não encontrada!")

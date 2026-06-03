@@ -34,14 +34,3 @@ def create_professional_service_link(data: ProfessionalServiceCreate, business_i
     
     except ProfessionalServiceLinkAlreadyExistsError:
         raise HTTPException(status_code=409, detail="Profissional já está vinculado a este serviço!")
-
-@router.delete("/professionals/{professional_id}/services/{service_id}", status_code=204)
-def delete_professional_service_link(professional_id: int, service_id: int, business_id: BusinessScopeDep, service: ProfessionalServiceLinkServiceDep, admin: AdminDep):
-    try:
-        service.delete(business_id, professional_id, service_id)
-
-    except ProfessionalServiceLinkInvalidBusinessError:
-        raise HTTPException(status_code=404, detail="Profissional ou serviço não encontrado para esta empresa!")
-    
-    except ProfessionalServiceLinkNotFoundError:
-        raise HTTPException(status_code=404, detail="Vínculo não encontrado!")

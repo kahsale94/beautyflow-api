@@ -69,6 +69,12 @@ services:
                 condition: service_healthy
             db-migrate:
                 condition: service_completed_successfully
+        healthcheck:
+            test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health/live', timeout=5).read()\" || exit 1"]
+            interval: 30s
+            timeout: 10s
+            retries: 5
+            start_period: 20s
         environment:
             - ENVIRONMENT=${ENVIRONMENT}
             - DATABASE_URL=${DATABASE_URL}
@@ -100,6 +106,7 @@ services:
             - ADMIN_COOKIE_SAMESITE=${ADMIN_COOKIE_SAMESITE:-lax}
             - ADMIN_COOKIE_PATH=${ADMIN_COOKIE_PATH:-/admin}
             - FORWARDED_ALLOW_IPS=${FORWARDED_ALLOW_IPS:-127.0.0.1}
+            - TRUSTED_PROXY_IPS=${TRUSTED_PROXY_IPS:-127.0.0.1}
             - LOG_LEVEL=${LOG_LEVEL:-INFO}
             - TZ=${TZ:-America/Sao_Paulo}
         networks:

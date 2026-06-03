@@ -19,7 +19,7 @@ class UserRole(str, PyEnum):
 class User(Base):
     __tablename__ = "users"
 
-    __table_args__ = (UniqueConstraint("business_id", "email", name="uq_user_business_email"),)
+    __table_args__ = (UniqueConstraint("email", name="uq_user_email"),)
 
     id: Mapped[intpk]
     business_id: Mapped[business_fk] = mapped_column(nullable=True)

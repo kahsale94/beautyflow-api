@@ -1,7 +1,7 @@
+import hmac
+import hashlib
 from dataclasses import dataclass
 from datetime import datetime, timezone
-import hashlib
-import hmac
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -36,11 +36,7 @@ class AuthService:
         self.db = db
 
     def _hash_jti(self, jti: str) -> str:
-        return hmac.new(
-            USER_SECRET_KEY.encode("utf-8"),
-            jti.encode("utf-8"),
-            hashlib.sha256,
-        ).hexdigest()
+        return hmac.new(USER_SECRET_KEY.encode("utf-8"), jti.encode("utf-8"), hashlib.sha256).hexdigest()
 
     def _as_aware_datetime(self, value: datetime) -> datetime:
         if value.tzinfo is None:
@@ -61,7 +57,8 @@ class AuthService:
         return refresh_token
 
     def login(self, email: str, password: str):
-        stmt = select(User).where(User.email == email)
+        normalized_email = email.strip().lower()
+        stmt = select(User).where(User.email == normalized_email)
         user = self.db.scalars(stmt).one_or_none()
         if not user or not user.is_active:
             raise InvalidCredentialError()

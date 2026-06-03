@@ -15,4 +15,4 @@ from .availability_schema import (
     AvailabilitySuggestionResponse,
     AvailabilityCheckAndSuggestResponse,
 )
-from .business_integration_schma import BusinessIntegrationResponse, BusinessIntegrationCreate, BusinessIntegrationUpdate
+from .business_integration_schema import BusinessIntegrationResponse, BusinessIntegrationCreate, BusinessIntegrationUpdate

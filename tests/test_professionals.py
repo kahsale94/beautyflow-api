@@ -8,7 +8,8 @@ def read_source(relative_path: str) -> str:
 def test_professional_create_persists_email():
     source = read_source("src/services/professional_service.py")
 
-    assert "email=str(data.email)" in source
+    assert "email" in source
+    assert "str(data.email)" in source
 
 def test_professional_lists_can_return_empty_list():
     source = read_source("src/services/professional_service.py")

@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import BaseModel, ConfigDict, field_validator, Field, EmailStr
 
-from .base_schema import name_type
+from .base_schema import name_type, phone_type
 from src.models.business_model import BusinessType
 
 def validate_slug_value(value: str | None) -> str | None:
@@ -22,7 +22,7 @@ class BusinessCreate(BaseModel):
     timezone: str = Field(examples=["America/Sao_Paulo"])
 
     slug: str | None = None
-    phone: str | None = None
+    phone: phone_type = Field(examples=["5511900000000"])
     email: EmailStr | None = None
     address: str | None = None
     city: str | None = None
@@ -58,7 +58,7 @@ class BusinessUpdate(BaseModel):
     timezone: str | None = Field(default=None, examples=["America/Sao_Paulo"])
 
     slug: str | None = None
-    phone: str | None = None
+    phone: phone_type | None = Field(default=None, examples=["5511900000000"])
     email: EmailStr | None = None
     address: str | None = None
     city: str | None = None
@@ -100,7 +100,7 @@ class BusinessResponse(BaseModel):
     created_at: datetime
     is_active: bool
 
-    phone: str | None = None
+    phone: phone_type
     email: EmailStr | None = None
     address: str | None = None
     city: str | None = None

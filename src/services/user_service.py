@@ -63,7 +63,7 @@ class UserService:
 
     def create(self, business_id: int | None, data: UserCreate):
         user = User(
-            email = str(data.email),
+            email = str(data.email).strip().lower(),
             password_hash = hash(data.password),
             role = data.role,
             business_id = business_id,
@@ -87,7 +87,7 @@ class UserService:
         update_data = data.model_dump(exclude_unset=True)
 
         if "email" in update_data and update_data["email"] is not None:
-            update_data["email"] = str(update_data["email"])
+            update_data["email"] = str(update_data["email"]).strip().lower()
 
         if "password" in update_data:
             user.password_hash = hash(update_data.pop("password"))
@@ -129,12 +129,7 @@ class UserService:
         return
 
     def delete(self, business_id: int, user_id: int):
-        user = self._get_valid(business_id, user_id)
-
-        self.user_repo.delete(self.db, user)
-        self.db.commit()
-
-        return
+        return self.deactivate(business_id, user_id)
     
 def get_user_service(db: DataBaseDep):
     return UserService(

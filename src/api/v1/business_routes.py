@@ -37,6 +37,9 @@ def create_business(data: BusinessCreate, service: BusinessServiceDep, super_adm
     except BusinessAlreadyExistsError:
         raise HTTPException(status_code=409, detail="Empresa já existe!")
 
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc) or "Dados inválidos")
+
 @router.put("/{business_id}", response_model=BusinessResponse)
 def update_business(business_id: int, data: BusinessUpdate, service: BusinessServiceDep, super_admin: SuperAdminDep):
     try:
@@ -45,18 +48,13 @@ def update_business(business_id: int, data: BusinessUpdate, service: BusinessSer
     except BusinessNotFoundError:
         raise HTTPException(status_code=404, detail="Empresa não encontrada!")
 
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc) or "Dados inválidos")
+
 @router.patch("/{business_id}/deactivate", status_code=204)
 def deactivate_business(business_id: int, service: BusinessServiceDep, super_admin: SuperAdminDep):
     try:
         service.deactivate(business_id)
-
-    except BusinessNotFoundError:
-        raise HTTPException(status_code=404, detail="Empresa não encontrada!")
-
-@router.delete("/{business_id}", status_code=204)
-def delete_business(business_id: int, service: BusinessServiceDep, super_admin: SuperAdminDep):
-    try:
-        service.delete(business_id)
 
     except BusinessNotFoundError:
         raise HTTPException(status_code=404, detail="Empresa não encontrada!")

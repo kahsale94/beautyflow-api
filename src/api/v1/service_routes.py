@@ -47,11 +47,3 @@ def deactivate_service(service_id: int, business_id: BusinessScopeDep, service: 
 
     except ServiceNotFoundError:
         raise HTTPException(status_code=404, detail="Serviço não encontrado!")
-
-@router.delete("/{service_id}", status_code=204)
-def delete_service(service_id: int, business_id: BusinessScopeDep, service: ServiceServiceDep, super_admin: SuperAdminDep):
-    try:
-        service.delete(business_id, service_id)
-
-    except ServiceNotFoundError:
-        raise HTTPException(status_code=404, detail="Serviço não encontrado!")

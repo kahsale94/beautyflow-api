@@ -29,6 +29,7 @@ from .config import (
     RATE_LIMIT_WINDOW_SECONDS,
     RATE_LIMIT_AUTH_MAX_REQUESTS,
     RATE_LIMIT_AUTH_WINDOW_SECONDS,
+    TRUSTED_PROXY_IPS,
 )
 from .logging import configure_logging
 from .http_header import apply_security_headers, get_forwarded_for, get_real_ip, get_user_agent, SENSITIVE_HEADER_NAMES

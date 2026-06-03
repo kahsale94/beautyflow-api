@@ -15,5 +15,6 @@ class ClientResponse(BaseModel):
     name: name_type | None = None
     phone: phone_type = Field(examples=["5511900000000"])
     business_id: int
+    is_active: bool
 
     model_config = ConfigDict(from_attributes=True)

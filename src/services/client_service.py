@@ -1,3 +1,4 @@
+
 import re
 
 from sqlalchemy.orm import Session
@@ -29,6 +30,7 @@ class ClientService:
         client = self.client_repo.get_by_id(self.db, business_id, client_id)
         if (
             not client
+            or not client.is_active
             or client.business_id != business_id
         ):
             raise ClientNotFoundError()
@@ -37,9 +39,7 @@ class ClientService:
 
     def get_all(self, business_id: int):
         result = self.client_repo.get_by_business(self.db, business_id)
-        if (
-            not all(item.business_id == business_id for item in result)
-        ):
+        if not all(item.business_id == business_id and item.is_active for item in result):
             raise ClientNotFoundError()
 
         return result
@@ -47,12 +47,13 @@ class ClientService:
     def get_by_id(self, business_id: int, client_id: int):
         return self._get_valid(business_id, client_id)
 
-    def get_by_phone(self, business_id: int, phone: str):
-        phone = normalize_phone(phone)
+    def get_by_phone(self, business_id: int, client_phone: str):
+        normalized_phone = normalize_phone(client_phone)
 
-        result = self.client_repo.get_by_phone(self.db, business_id, phone)
+        result = self.client_repo.get_by_phone(self.db, business_id, normalized_phone)
         if (
-            not result 
+            not result
+            or not result.is_active
             or result.business_id != business_id
         ):
             raise ClientNotFoundError()
@@ -64,8 +65,8 @@ class ClientService:
 
         client = Client(
             business_id = business_id,
-            phone = phone,
             name = data.name,
+            phone = phone,
         )
 
         self.client_repo.add(self.db, client)
@@ -83,18 +84,15 @@ class ClientService:
     def new_name(self, business_id: int, client_id: int, name: str):
         client = self._get_valid(business_id, client_id)
 
+        if name is None or not re.search(r"[A-Za-zÀ-ÿ]", name):
+            raise ValueError("Nome inválido")
+
         client.name = name
-
-        try:
-            self.db.commit()
-        except IntegrityError:
-            self.db.rollback()
-            raise ClientAlreadyExistsError()
-
+        self.db.commit()
         self.db.refresh(client)
 
         return client
-    
+
     def update(self, business_id: int, client_id: int, data: ClientUpdate):
         client = self._get_valid(business_id, client_id)
 
@@ -111,18 +109,19 @@ class ClientService:
         except IntegrityError:
             self.db.rollback()
             raise ClientAlreadyExistsError()
-
+        
         self.db.refresh(client)
 
         return client
 
-    def delete(self, business_id: int, client_id: int):
+    def deactivate(self, business_id: int, client_id: int):
         client = self._get_valid(business_id, client_id)
-
-        self.client_repo.delete(self.db, client)
+        client.is_active = False
         self.db.commit()
-
         return
+
+    def delete(self, business_id: int, client_id: int):
+        return self.deactivate(business_id, client_id)
 
 def get_client_service(db: DataBaseDep):
     return ClientService(

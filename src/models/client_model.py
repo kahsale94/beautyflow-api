@@ -18,6 +18,7 @@ class Client(Base):
     name: Mapped[Optional[name_type]] = mapped_column(nullable=True)
     phone: Mapped[phone_type] = mapped_column(nullable=False)
     business_id: Mapped[business_fk]
+    is_active: Mapped[bool] = mapped_column(nullable=False, default=True, server_default="true")
 
     business: Mapped["Business"] = relationship(back_populates="clients")
     appointments: Mapped[list["Appointment"]] = relationship(back_populates="client", cascade="all, delete-orphan")

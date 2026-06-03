@@ -1,3 +1,4 @@
+import logging
 import time
 from collections import defaultdict
 
@@ -16,7 +17,10 @@ from src.core import (
     RATE_LIMIT_MAX_REQUESTS,
     RATE_LIMIT_REDIS_URL,
     RATE_LIMIT_WINDOW_SECONDS,
+    TRUSTED_PROXY_IPS,
 )
+
+logger = logging.getLogger("beautyflow.rate_limit")
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, max_requests: int | None = None, window: int | None = None):
@@ -37,7 +41,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         key = f"rate-limit:{client_ip}:{request.method}:{path}"
 
         if self.redis_client:
-            allowed = self._allow_with_redis(key, max_requests, window)
+            try:
+                allowed = self._allow_with_redis(key, max_requests, window)
+            except Exception:
+                logger.exception("Redis rate limit unavailable. Falling back to in-memory rate limit.")
+                allowed = self._allow_in_memory(key, max_requests, window)
         else:
             allowed = self._allow_in_memory(key, max_requests, window)
 
@@ -56,10 +64,15 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         return self.max_requests, self.window
 
     def _allow_with_redis(self, key: str, max_requests: int, window: int) -> bool:
-        current = self.redis_client.incr(key)  # type: ignore[union-attr]
-        if current == 1:
+        pipe = self.redis_client.pipeline()  # type: ignore[union-attr]
+        pipe.incr(key)
+        pipe.ttl(key)
+        current, ttl = pipe.execute()
+
+        if current == 1 or ttl == -1:
             self.redis_client.expire(key, window)  # type: ignore[union-attr]
-        return current <= max_requests
+
+        return int(current) <= max_requests
 
     def _allow_in_memory(self, key: str, max_requests: int, window: int) -> bool:
         current_time = time.time()
@@ -73,15 +86,15 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         return True
 
     def _get_client_ip(self, request: Request) -> str:
-        real_ip = request.headers.get("x-real-ip")
-        if real_ip:
-            return real_ip.strip()
+        direct_client_ip = request.client.host if request.client else "unknown"
 
-        forwarded_for = request.headers.get("x-forwarded-for")
-        if forwarded_for:
-            return forwarded_for.split(",")[0].strip()
+        if direct_client_ip in TRUSTED_PROXY_IPS:
+            real_ip = request.headers.get("x-real-ip")
+            if real_ip:
+                return real_ip.strip()
 
-        if request.client:
-            return request.client.host
+            forwarded_for = request.headers.get("x-forwarded-for")
+            if forwarded_for:
+                return forwarded_for.split(",")[0].strip()
 
-        return "unknown"
+        return direct_client_ip

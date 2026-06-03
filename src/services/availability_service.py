@@ -7,13 +7,8 @@ from sqlalchemy.exc import IntegrityError
 
 from src.core import DataBaseDep
 from src.models import Availability, Appointment
-from src.schemas import (
-    AvailabilityCreate,
-    AvailabilityUpdate,
-    AvailabilitySlotsResponse,
-    AvailabilityCheckAndSuggestRequest,
-    AvailabilityCheckAndSuggestResponse,
-    AvailabilitySuggestionResponse,
+from src.schemas import (AvailabilityCreate, AvailabilityUpdate, AvailabilitySlotsResponse,
+    AvailabilityCheckAndSuggestRequest, AvailabilityCheckAndSuggestResponse, AvailabilitySuggestionResponse,
 )
 from src.repositories import (AvailabilityRepository, ProfessionalRepository, AppointmentRepository,
     ServiceRepository, ProfessionalServiceRepository

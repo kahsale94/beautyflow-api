@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum as PyEnum
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import Enum as SAEnum, func, DateTime, String, Text, Integer, Boolean
+from sqlalchemy import Enum as SAEnum, func, DateTime, String, Text, Integer, Boolean, UniqueConstraint
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from .base_model import Base, intpk, name_type, phone_type
@@ -24,13 +24,18 @@ class BusinessType(str, PyEnum):
 class Business(Base):
     __tablename__ = "businesses"
 
+    __table_args__ = (
+        UniqueConstraint("name", name="uq_business_name"),
+        UniqueConstraint("slug", name="uq_business_slug"),
+    )
+
     id: Mapped[intpk]
-    name: Mapped[name_type] = mapped_column(nullable=False, unique=True)
-    slug: Mapped[Optional[str]] = mapped_column(String(80), nullable=True, unique=True, index=True)
+    name: Mapped[name_type] = mapped_column(nullable=False)
+    slug: Mapped[Optional[str]] = mapped_column(String(80), nullable=True, index=True)
     type: Mapped[BusinessType] = mapped_column(SAEnum(BusinessType, name="businesstype"), nullable=False)
     timezone: Mapped[str] = mapped_column(nullable=False)
 
-    phone: Mapped[Optional[phone_type]] = mapped_column(nullable=False)
+    phone: Mapped[phone_type] = mapped_column(nullable=False)
     email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     address: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     city: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)

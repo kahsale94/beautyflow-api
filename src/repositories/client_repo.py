@@ -1,3 +1,4 @@
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -13,6 +14,7 @@ class ClientRepository:
 
     def get_by_id(self, db: Session, business_id: int, client_id: int):
         stmt = select(Client).where(
+            Client.is_active == True,
             Client.business_id == business_id,
             Client.id == client_id,
         )
@@ -20,6 +22,7 @@ class ClientRepository:
 
     def get_by_phone(self, db: Session, business_id: int, phone: str):
         stmt = select(Client).where(
+            Client.is_active == True,
             Client.business_id == business_id,
             Client.phone == phone,
         )
@@ -27,6 +30,7 @@ class ClientRepository:
 
     def get_by_business(self, db: Session, business_id: int):
         stmt = select(Client).where(
+            Client.is_active == True,
             Client.business_id == business_id,
         )
         return db.scalars(stmt).all()
