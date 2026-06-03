@@ -476,8 +476,16 @@ label {
     align-items: end;
 }
 
+.settings-form .form-grid {
+    align-items: start;
+}
+
 .compact-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.grid-span-2 {
+    grid-column: span 2;
 }
 
 .inline-form,
@@ -2183,5 +2191,11 @@ pre {
     .fc .fc-button {
         padding: .4rem .5rem !important;
         font-size: .78rem !important;
+    }
+}
+
+@media (max-width: 760px) {
+    .grid-span-2 {
+        grid-column: 1 / -1;
     }
 }

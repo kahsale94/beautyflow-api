@@ -36,14 +36,8 @@ def get_forwarded_for(request: Request) -> str | None:
 
     return value.split(",")[0].strip()
 
-
 def get_real_ip(request: Request) -> str | None:
     return request.headers.get("x-real-ip")
-
-
-def get_user_agent(request: Request) -> str | None:
-    return request.headers.get("user-agent")
-
 
 def apply_security_headers(request: Request, response: Response) -> None:
     for header_name, header_value in SECURITY_HEADERS.items():
@@ -56,7 +50,4 @@ def apply_security_headers(request: Request, response: Response) -> None:
         )
 
     if request.url.path.startswith("/admin"):
-        response.headers.setdefault(
-            "Content-Security-Policy",
-            ADMIN_CONTENT_SECURITY_POLICY,
-        )
+        response.headers.setdefault("Content-Security-Policy", ADMIN_CONTENT_SECURITY_POLICY)

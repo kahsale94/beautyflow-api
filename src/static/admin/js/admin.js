@@ -204,8 +204,166 @@ function initializeAdminSidebar() {
     });
 }
 
+
+function normalizeOptionText(value) {
+    return String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .toLowerCase();
+}
+
+async function fetchOptionItems(url) {
+    const response = await window.fetch(url, {
+        headers: { 'Accept': 'application/json' },
+        credentials: 'same-origin',
+    });
+
+    if (!response.ok) {
+        throw new Error(`Unable to load options from ${url}`);
+    }
+
+    const payload = await response.json();
+    return Array.isArray(payload.items) ? payload.items : [];
+}
+
+function replaceSelectOptions(select, items, options) {
+    const currentValue = options.currentValue || '';
+    const normalizedCurrentValue = normalizeOptionText(currentValue);
+    const getValue = options.getValue;
+    const getLabel = options.getLabel;
+    let selectedValue = '';
+
+    select.replaceChildren();
+
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = options.placeholder || 'Selecione';
+    select.appendChild(placeholder);
+
+    items.forEach(function (item) {
+        const value = String(getValue(item) || '').trim();
+        const label = String(getLabel(item) || value).trim();
+        if (!value) return;
+
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = label;
+        select.appendChild(option);
+
+        if (
+            normalizedCurrentValue &&
+            (normalizeOptionText(value) === normalizedCurrentValue || normalizeOptionText(label) === normalizedCurrentValue)
+        ) {
+            selectedValue = value;
+        }
+    });
+
+    if (currentValue && !selectedValue) {
+        const option = document.createElement('option');
+        option.value = currentValue;
+        option.textContent = currentValue;
+        select.insertBefore(option, select.firstElementChild ? select.firstElementChild.nextSibling : null);
+        selectedValue = currentValue;
+    }
+
+    select.value = selectedValue;
+}
+
+function keepCurrentSelectOption(select, placeholder) {
+    const currentValue = select.dataset.currentValue || select.value || '';
+    replaceSelectOptions(select, [], {
+        currentValue: currentValue,
+        placeholder: placeholder,
+        getValue: function (item) { return item; },
+        getLabel: function (item) { return item; },
+    });
+}
+
+function initializeBusinessExternalOptions() {
+    const timezoneSelect = document.querySelector('[data-business-timezone]');
+    const stateSelect = document.querySelector('[data-business-state]');
+    const citySelect = document.querySelector('[data-business-city]');
+
+    async function loadTimezones() {
+        if (!(timezoneSelect instanceof HTMLSelectElement)) return;
+
+        const currentValue = timezoneSelect.dataset.currentValue || timezoneSelect.value || '';
+        try {
+            const items = await fetchOptionItems('/admin/business/options/timezones');
+            replaceSelectOptions(timezoneSelect, items, {
+                currentValue: currentValue,
+                placeholder: 'Selecione o timezone',
+                getValue: function (item) { return item; },
+                getLabel: function (item) { return item; },
+            });
+        } catch (error) {
+            console.warn(error);
+            keepCurrentSelectOption(timezoneSelect, 'Selecione o timezone');
+        }
+    }
+
+    async function loadCities() {
+        if (!(stateSelect instanceof HTMLSelectElement)) return;
+        if (!(citySelect instanceof HTMLSelectElement)) return;
+
+        const selectedState = stateSelect.value;
+        const currentValue = citySelect.dataset.currentValue || citySelect.value || '';
+
+        if (!selectedState) {
+            keepCurrentSelectOption(citySelect, 'Selecione a cidade');
+            return;
+        }
+
+        try {
+            const items = await fetchOptionItems(`/admin/business/options/cities?state=${encodeURIComponent(selectedState)}`);
+            replaceSelectOptions(citySelect, items, {
+                currentValue: currentValue,
+                placeholder: 'Selecione a cidade',
+                getValue: function (item) { return item.name; },
+                getLabel: function (item) { return item.name; },
+            });
+        } catch (error) {
+            console.warn(error);
+            keepCurrentSelectOption(citySelect, 'Selecione a cidade');
+        }
+    }
+
+    async function loadStates() {
+        if (!(stateSelect instanceof HTMLSelectElement)) return;
+
+        const currentValue = stateSelect.dataset.currentValue || stateSelect.value || '';
+        try {
+            const items = await fetchOptionItems('/admin/business/options/states');
+            replaceSelectOptions(stateSelect, items, {
+                currentValue: currentValue,
+                placeholder: 'Selecione o estado',
+                getValue: function (item) { return item.uf; },
+                getLabel: function (item) { return `${item.uf} - ${item.name}`; },
+            });
+        } catch (error) {
+            console.warn(error);
+            keepCurrentSelectOption(stateSelect, 'Selecione o estado');
+        }
+
+        await loadCities();
+    }
+
+    if (stateSelect instanceof HTMLSelectElement && citySelect instanceof HTMLSelectElement) {
+        stateSelect.addEventListener('change', function () {
+            citySelect.dataset.currentValue = '';
+            citySelect.value = '';
+            loadCities();
+        });
+    }
+
+    loadTimezones();
+    loadStates();
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     initializeAdminSidebar();
+    initializeBusinessExternalOptions();
     document.querySelectorAll('.flash').forEach(function (flash) {
         window.setTimeout(function () {
             if (flash instanceof HTMLElement) flash.remove();

@@ -4,10 +4,10 @@ import secrets
 from typing import Annotated
 from dataclasses import dataclass
 
-from fastapi import Depends, HTTPException, Request
 from sqlalchemy.orm import Session
+from fastapi import Depends, HTTPException, Request
 
-from src.models import User
+from src.models import Business, User
 from src.models.user_model import UserRole
 from src.security import RefreshRequest, TokenManager, UserContext
 from src.services.auth_service import AuthService, DeactivatedUserError, InvalidTokenError
@@ -109,12 +109,13 @@ def get_current_admin_session(request: Request, db: Session = Depends(get_db)) -
     csrf_token = get_or_create_csrf_token(request)
 
     if user.role == UserRole.super_admin:
+        is_business_selection_page = request.url.path.startswith("/admin/businesses")
         business_id_query = request.query_params.get("business_id")
         business_id_cookie = request.cookies.get(ADMIN_BUSINESS_COOKIE)
         business_id_value = business_id_query or business_id_cookie
 
         if not business_id_value:
-            if request.url.path.startswith("/admin/businesses"):
+            if is_business_selection_page:
                 business_id = 0
             else:
                 _redirect("/admin/businesses")
@@ -122,7 +123,17 @@ def get_current_admin_session(request: Request, db: Session = Depends(get_db)) -
             try:
                 business_id = int(business_id_value)
             except (TypeError, ValueError):
-                _redirect("/admin/businesses")
+                if is_business_selection_page:
+                    business_id = 0
+                else:
+                    _redirect("/admin/businesses")
+            else:
+                selected_business = db.get(Business, business_id) if business_id > 0 else None
+                if business_id <= 0 or not selected_business or not selected_business.is_active:
+                    if is_business_selection_page:
+                        business_id = 0
+                    else:
+                        _redirect("/admin/businesses")
     else:
         if user.business_id is None:
             raise HTTPException(status_code=403, detail="Usuário sem empresa vinculada.")

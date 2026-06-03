@@ -1,12 +1,11 @@
-from zoneinfo import ZoneInfo
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Request
 
 from src.dependecies import AppointmentServiceDep, BusinessServiceDep, ClientServiceDep, ProfessionalServiceDep, ServiceServiceDep
 
-from ..templating import render
 from ..dependencies import AdminSessionDep
+from ..templating import render, safe_timezone
 
 router = APIRouter(tags=["Admin ➔ Dashboard"])
 
@@ -14,7 +13,7 @@ router = APIRouter(tags=["Admin ➔ Dashboard"])
 def dashboard_page(request: Request, appointment_service: AppointmentServiceDep, client_service: ClientServiceDep, professional_service: ProfessionalServiceDep,
     service_service: ServiceServiceDep, business_service: BusinessServiceDep, session: AdminSessionDep):
     business = business_service.get_by_id(session.business_id)
-    tz = ZoneInfo(business.timezone)
+    tz = safe_timezone(business.timezone)
     today_start = datetime.now(tz).replace(hour=0, minute=0, second=0, microsecond=0)
     today_end = today_start + timedelta(days=1)
 

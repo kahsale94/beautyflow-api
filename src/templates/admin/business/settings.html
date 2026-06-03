@@ -33,7 +33,9 @@
                     </select>
                 </label>
                 <label>Timezone
-                    <input name="timezone" required value="{{ business.timezone }}" />
+                    <select name="timezone" required data-business-timezone data-current-value="{{ business.timezone }}">
+                        <option value="{{ business.timezone }}" selected>{{ business.timezone }}</option>
+                    </select>
                 </label>
             </div>
             <label>Descrição
@@ -50,15 +52,27 @@
                 <label>Email
                     <input name="email" type="email" value="{{ business.email or '' }}" />
                 </label>
-                <label>Endereço
-                    <input name="address" value="{{ business.address or '' }}" />
-                </label>
-                <label>Cidade
-                    <input name="city" value="{{ business.city or '' }}" />
                 </label>
                 <label>Estado
-                    <input name="state" value="{{ business.state or '' }}" />
+                    <select name="state" data-business-state data-current-value="{{ business.state or '' }}">
+                        {% if business.state %}
+                        <option value="{{ business.state }}" selected>{{ business.state }}</option>
+                        {% else %}
+                        <option value="">Selecione o estado</option>
+                        {% endif %}
+                    </select>
                 </label>
+                <label>Cidade
+                    <select name="city" data-business-city data-current-value="{{ business.city or '' }}">
+                        {% if business.city %}
+                        <option value="{{ business.city }}" selected>{{ business.city }}</option>
+                        {% else %}
+                        <option value="">Selecione a cidade</option>
+                        {% endif %}
+                    </select>
+                </label>
+                <label>Endereço
+                    <input name="address" value="{{ business.address or '' }}" />
             </div>
         </div>
     </section>

@@ -1,24 +1,17 @@
-import logging
 import time
+import logging
 
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from src.core import (
-    SENSITIVE_HEADER_NAMES,
-    get_forwarded_for,
-    get_real_ip,
-    get_user_agent,
-)
+from src.core import (SENSITIVE_HEADER_NAMES, get_forwarded_for, get_real_ip)
 
 logger = logging.getLogger("beautyflow.requests")
-
 
 def _safe(value: str | int | None) -> str:
     if value is None or value == "":
         return "-"
     return str(value)
-
 
 class LoggingMiddleware(BaseHTTPMiddleware):
 
@@ -30,7 +23,6 @@ class LoggingMiddleware(BaseHTTPMiddleware):
 
         xff = get_forwarded_for(request)
         xri = get_real_ip(request)
-        ua = get_user_agent(request)
 
         try:
             response = await call_next(request)
@@ -38,7 +30,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             ms = round((time.perf_counter() - start) * 1000, 2)
 
             logger.exception(
-                "Request failed: %s %s | Time: %sms | Client: %s:%s | X-Forwarded-For: %s | X-Real-Ip: %s | User-Agent: %s",
+                "Request failed: %s %s | Time: %sms | Client: %s:%s | X-Forwarded-For: %s | X-Real-Ip: %s",
                 request.method,
                 request.url.path,
                 ms,
@@ -46,7 +38,6 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                 _safe(port),
                 _safe(xff),
                 _safe(xri),
-                _safe(ua),
             )
 
             raise
@@ -54,7 +45,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         ms = round((time.perf_counter() - start) * 1000, 2)
 
         logger.info(
-            "Request: %s %s | Status: %s | Time: %sms | Client: %s:%s | X-Forwarded-For: %s | X-Real-Ip: %s | User-Agent: %s",
+            "Request: %s %s | Status: %s | Time: %sms | Client: %s:%s | X-Forwarded-For: %s | X-Real-Ip: %s",
             request.method,
             request.url.path,
             response.status_code,
@@ -63,7 +54,6 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             _safe(port),
             _safe(xff),
             _safe(xri),
-            _safe(ua),
         )
 
         for header_name in SENSITIVE_HEADER_NAMES:

@@ -3,7 +3,7 @@ from fastapi.responses import RedirectResponse
 
 from src.dependecies import AuthServiceDep
 from src.services.auth_service import InvalidCredentialError
-from src.core import (ADMIN_ACCESS_COOKIE, ADMIN_REFRESH_COOKIE, ADMIN_COOKIE_PATH,
+from src.core import (ADMIN_ACCESS_COOKIE, ADMIN_REFRESH_COOKIE, ADMIN_BUSINESS_COOKIE, ADMIN_COOKIE_PATH,
     ADMIN_COOKIE_SAMESITE, ADMIN_COOKIE_SECURE, USER_ACCESS_TOKEN_EXPIRE_MINUTES, USER_REFRESH_TOKEN_EXPIRE_DAYS,
 )
 
@@ -33,6 +33,7 @@ async def login_action(request: Request, service: AuthServiceDep, email: str = F
         return redirect_with_flash("/admin/login", "Email ou senha inválidos.", "error")
 
     response = RedirectResponse("/admin/", status_code=303)
+    response.delete_cookie(ADMIN_BUSINESS_COOKIE, path=ADMIN_COOKIE_PATH)
     response.set_cookie(
         ADMIN_ACCESS_COOKIE,
         access_token,
@@ -65,5 +66,6 @@ async def logout_action(request: Request, service: AuthServiceDep):
     response = RedirectResponse("/admin/login", status_code=303)
     response.delete_cookie(ADMIN_ACCESS_COOKIE, path=ADMIN_COOKIE_PATH)
     response.delete_cookie(ADMIN_REFRESH_COOKIE, path=ADMIN_COOKIE_PATH)
+    response.delete_cookie(ADMIN_BUSINESS_COOKIE, path=ADMIN_COOKIE_PATH)
 
     return response
