@@ -77,7 +77,7 @@ def get_all_appointments(business_id: BusinessScopeDep, service: AppointmentServ
         
         return service.get_all(business_id)
     
-    except (AppointmentNotFoundError, InvalidBusinessTimezoneError, DatetimeFormatError, ValueError) as exc:
+    except (InvalidBusinessTimezoneError, DatetimeFormatError, ValueError) as exc:
         _handle_booking_rule_errors(exc)
 
 @router.get("/{appointment_id}", response_model=AppointmentResponse)

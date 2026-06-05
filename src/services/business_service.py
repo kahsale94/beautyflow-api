@@ -36,23 +36,20 @@ class BusinessService:
 
     def get_all(self):
         result = self.business_repo.get_all(self.db)
-        if not all(item.is_active for item in result):
+        if (
+            not all(item.is_active for item in result)
+        ):
             raise BusinessNotFoundError()
 
         return result
 
+    def get_by_slug(self, business_name: str):
+        result = self.business_repo.get_by_slug(self.db, business_name)
+
+        return result
+    
     def get_by_id(self, business_id: int):
         return self._get_valid(business_id)
-
-    def get_by_name(self, business_name: str):
-        result = self.business_repo.get_by_name(self.db, business_name)
-        if (
-            not result
-            or not result.is_active
-        ):
-            raise BusinessNotFoundError()
-
-        return [result]
 
     def create(self, data: BusinessCreate):
         phone = normalize_phone(data.phone)

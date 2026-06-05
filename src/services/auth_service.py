@@ -6,8 +6,10 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from src.utils import normalize_phone
 from src.core import DataBaseDep, USER_SECRET_KEY
-from src.models import User, BusinessIntegration, UserRefreshToken
+from src.repositories import BusinessRepository, IntegrationRepository
+from src.models import User, BusinessIntegration, UserRefreshToken, Integration
 from src.security import RefreshRequest, TokenManager, verify_hash, create_user_access_token, create_user_refresh_token, create_business_integration_token
 
 class InvalidCredentialError(Exception):
@@ -22,6 +24,12 @@ class DeactivatedUserError(Exception):
 class DeactivatedLinkError(Exception):
     pass
 
+class IntegrationNotFoundError(Exception):
+    pass
+
+class BusinessNotFoundError(Exception):
+    pass
+
 @dataclass(frozen=True)
 class RefreshResult:
     access_token: str
@@ -32,8 +40,12 @@ class AuthService:
     def __init__(
         self,
         db: Session,
+        business_repo: BusinessRepository,
+        integration_repo: IntegrationRepository,
     ):
         self.db = db
+        self.business_repo = business_repo,
+        self.integration_repo = integration_repo,
 
     def _hash_jti(self, jti: str) -> str:
         return hmac.new(USER_SECRET_KEY.encode("utf-8"), jti.encode("utf-8"), hashlib.sha256).hexdigest()
@@ -136,18 +148,33 @@ class AuthService:
             return
 
         jti_hash = self._hash_jti(str(payload["jti"]))
-        refresh_record = self.db.scalars(
-            select(UserRefreshToken).where(UserRefreshToken.jti_hash == jti_hash)
-        ).one_or_none()
+        refresh_record = self.db.scalars(select(UserRefreshToken).where(
+            UserRefreshToken.jti_hash == jti_hash)).one_or_none()
 
         if refresh_record and refresh_record.revoked_at is None:
             refresh_record.revoked_at = datetime.now(timezone.utc)
             self.db.commit()
 
     def get_business_integration_token(self, business_phone: str, integration_id: int):
+        integration = self.integration_repo.get_by_id(self.db, integration_id)
+        if (
+            not integration
+            or not integration.is_active
+        ):
+            raise IntegrationNotFoundError()
+        
+        phone = normalize_phone(business_phone)
+
+        business = self.business_repo.get_by_phone(self.db, phone)
+        if (
+            not business 
+            or not business.is_active
+        ):
+            raise BusinessNotFoundError()
+        
         stmt = select(BusinessIntegration).where(
-            BusinessIntegration.integration_id == integration_id,
-            BusinessIntegration.config["n8n"]["phone"].astext == business_phone,
+            BusinessIntegration.integration_id == integration.id,
+            BusinessIntegration.business_id == business.id,
             BusinessIntegration.is_active == True,
         )
 
@@ -156,9 +183,11 @@ class AuthService:
         if not business_integration:
             raise DeactivatedLinkError()
 
-        return create_business_integration_token(business_integration.business_id, integration_id)
+        return create_business_integration_token(business_integration.business_id, business_integration.integration_id)
 
 def get_auth_service(db: DataBaseDep):
     return AuthService(
         db,
+        BusinessRepository,
+        IntegrationRepository,
     )

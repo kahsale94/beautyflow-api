@@ -11,15 +11,11 @@ def get_my_business(business_id: BusinessScopeDep, service: BusinessServiceDep, 
     return service.get_by_id(business_id)
 
 @router.get("/", response_model=list[BusinessResponse])
-def get_businesses(service: BusinessServiceDep, super_admin: SuperAdminDep, business_name: str | None = None):
-    try:
-        if business_name:
-            return service.get_by_name(business_name)
-        
-        return service.get_all()
+def get_businesses(service: BusinessServiceDep, super_admin: SuperAdminDep, business_slug: str | None = None):
+    if business_slug:
+        return service.get_by_slug(business_slug)
     
-    except BusinessNotFoundError:
-        raise HTTPException(status_code=404, detail="Empresa(s) não encontrada(s)!")
+    return service.get_all()
 
 @router.get("/{business_id}", response_model=BusinessResponse)
 def get_business_by_id(business_id: int, service: BusinessServiceDep, super_admin: SuperAdminDep):

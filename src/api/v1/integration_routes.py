@@ -8,14 +8,10 @@ router = APIRouter(prefix="/integrations", tags=["V1 ➔ Integrations"])
 
 @router.get("/", response_model=list[IntegrationResponse])
 def get_all_integrations(service: IntegrationServiceDep, super_admin: SuperAdminDep, integration_name: str | None = None):
-    try:
-        if integration_name:
-            return service.get_by_name(integration_name)
-        
-        return service.get_all()
+    if integration_name:
+        return service.get_by_name(integration_name)
     
-    except IntegrationNotFoundError:
-        raise HTTPException(status_code=404, detail="Nenhuma integração encontrada!")
+    return service.get_all()
 
 @router.get("/{integration_id}", response_model=IntegrationResponse)
 def get_integration_by_id(integration_id: int, service: IntegrationServiceDep, super_admin: SuperAdminDep):

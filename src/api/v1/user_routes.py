@@ -12,14 +12,10 @@ def get_me(current_user: UserDep):
 
 @router.get("/", response_model=list[UserResponse])
 def get_users(business_id: BusinessScopeDep, service: UserServiceDep, admin: AdminDep, user_email: str | None = None):
-    try:
-        if user_email:
-            return service.get_by_email(business_id, user_email)
-     
-        return service.get_all(business_id)
-
-    except UserNotFoundError:
-        raise HTTPException(status_code=404, detail="Nenhum usuário encontrado!")
+    if user_email:
+        return service.get_by_email(business_id, user_email)
+ 
+    return service.get_all(business_id)
 
 @router.get("/{user_id}", response_model=UserResponse)
 def get_user_by_id(user_id: int, business_id: BusinessScopeDep, service: UserServiceDep, admin: AdminDep):

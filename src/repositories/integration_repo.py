@@ -1,5 +1,5 @@
-from sqlalchemy import select
 from sqlalchemy.orm import Session
+from sqlalchemy import select, func
 
 from src.models import Integration
 
@@ -19,11 +19,20 @@ class IntegrationRepository:
         return db.scalars(stmt).one_or_none()
     
     def get_by_name(self, db: Session, integration_name: str):
-        stmt = select(Integration).where(
+        similarity_score = func.similarity(Integration.name, integration_name)
+
+        stmt = (select(Integration).where(
             Integration.is_active == True,
-            Integration.name == integration_name,
+            (
+                Integration.name.ilike(f"%{integration_name}%")
+                | (similarity_score > 0.4)
+            ),
         )
-        return db.scalars(stmt).one_or_none()
+        .order_by(similarity_score.desc())
+        .limit(20)
+        )
+
+        return db.scalars(stmt).all()
     
     def get_all(self, db: Session):
         stmt = select(Integration).where(

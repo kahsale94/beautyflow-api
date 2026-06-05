@@ -2,8 +2,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
 from src.models import User
-from src.security import hash, verify_hash
 from src.core import DataBaseDep
+from src.security import hash, verify_hash
 from src.repositories import UserRepository
 from src.schemas import UserCreate, UserUpdate
 
@@ -52,14 +52,8 @@ class UserService:
 
     def get_by_email(self, business_id: int, user_email: str):
         user = self.user_repo.get_by_email(self.db, business_id, user_email)
-        if (
-            not user
-            or not user.is_active
-            or user.business_id != business_id
-        ):
-            raise UserNotFoundError()
 
-        return [user]
+        return user
 
     def create(self, business_id: int | None, data: UserCreate):
         user = User(
@@ -88,9 +82,6 @@ class UserService:
 
         if "email" in update_data and update_data["email"] is not None:
             update_data["email"] = str(update_data["email"]).strip().lower()
-
-        if "password" in update_data:
-            user.password_hash = hash(update_data.pop("password"))
 
         for field, value in update_data.items():
             setattr(user, field, value)

@@ -37,12 +37,7 @@ def login_user(response: Response, service: AuthServiceDep, form_data: OAuth2Pas
         raise HTTPException(status_code=401, detail="Email ou senha inválidos!")
 
 @router.post("/refresh")
-def refresh_user_token(
-    request: Request,
-    response: Response,
-    service: AuthServiceDep,
-    data: RefreshRequest | None = Body(default=None),
-):
+def refresh_user_token(request: Request, response: Response, service: AuthServiceDep, data: RefreshRequest | None = Body(default=None)):
     if "refresh_token" in request.query_params:
         raise HTTPException(status_code=400, detail="Não envie refresh_token na URL.")
 

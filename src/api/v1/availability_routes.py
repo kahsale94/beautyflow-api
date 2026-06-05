@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException
 from src.schemas import (AvailabilityCreate, AvailabilityUpdate, AvailabilityResponse, AvailabilitySlotsResponse,
     AvailabilityCheckAndSuggestRequest, AvailabilityCheckAndSuggestResponse,
 )
-from src.dependecies import AvailabilityServiceDep, BusinessScopeDep, SuperAdminDep, UserOrBusinessIntegrationDep, AdminDep
+from src.dependecies import AvailabilityServiceDep, BusinessScopeDep, UserOrBusinessIntegrationDep, AdminDep
 from src.services.availability_service import (ProfessionalNotFoundError, InvalidTimeRangeError, AvailabilityAlreadyExistsError,
     AvailabilityNotFoundError, ProfessionalUnavailableError, ServiceNotFoundError, ProfessionalServiceMismatchError, DatetimeFormatError,
 )

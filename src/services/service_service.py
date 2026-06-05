@@ -34,28 +34,18 @@ class ServiceService:
 
         return service
 
-    def get_all(self, business_id: int):
-        result = self.service_repo.get_by_business(self.db, business_id)
-        if (
-            not all(item.is_active for item in result)
-            or not all(item.business_id == business_id for item in result)
-        ):
-            raise ServiceNotFoundError()
-
-        return result
-
     def get_by_id(self, business_id: int, service_id: int):
         return self._get_valid(business_id, service_id)
+    
+    def get_all(self, business_id: int):
+        result = self.service_repo.get_by_business(self.db, business_id)
+
+        return result
     
     def get_by_name(self, business_id: int, service_name: str):
         normalized_name = normalize_text(service_name)
 
         result = self.service_repo.get_by_name(self.db, business_id, normalized_name)
-        if (
-            not all(item.is_active for item in result)
-            or not all(item.business_id == business_id for item in result)
-        ):
-            raise ServiceNotFoundError()
 
         return result
 

@@ -204,7 +204,6 @@ function initializeAdminSidebar() {
     });
 }
 
-
 function normalizeOptionText(value) {
     return String(value || '')
         .normalize('NFD')

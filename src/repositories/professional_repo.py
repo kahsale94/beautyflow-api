@@ -1,5 +1,5 @@
-from sqlalchemy import select, func
 from sqlalchemy.orm import Session
+from sqlalchemy import select, func
 
 from src.models import Professional
 

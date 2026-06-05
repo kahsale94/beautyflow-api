@@ -153,11 +153,7 @@ class AppointmentService:
         ):
             raise ServiceNotAvailableError()
 
-        professional_service = self.professional_service_repo.get_by_ids(
-            self.db,
-            professional_id,
-            service_id,
-        )
+        professional_service = self.professional_service_repo.get_by_ids(self.db, professional_id, service_id)
 
         if not professional_service:
             raise ProfessionalServiceMismatchError()
@@ -243,19 +239,6 @@ class AppointmentService:
 
     def get_all(self, business_id: int):
         result = self.appointment_repo.get_by_business(self.db, business_id)
-        if not all(item.business_id == business_id for item in result):
-            raise AppointmentNotFoundError()
-
-        business_tz = self._get_business_timezone(business_id)
-        return self._validate_return(result, business_tz)
-
-    def get_by_id(self, business_id: int, appointment_id: int):
-        result = self.appointment_repo.get_by_id(self.db, business_id, appointment_id)
-        if (
-            not result
-            or result.business_id != business_id
-        ):
-            raise AppointmentNotFoundError()
 
         business_tz = self._get_business_timezone(business_id)
         return self._validate_return(result, business_tz)
@@ -307,6 +290,17 @@ class AppointmentService:
         business_tz = self._get_business_timezone(business_id)
         return self._validate_return(result, business_tz)
 
+    def get_by_id(self, business_id: int, appointment_id: int):
+        result = self.appointment_repo.get_by_id(self.db, business_id, appointment_id)
+        if (
+            not result
+            or result.business_id != business_id
+        ):
+            raise AppointmentNotFoundError()
+
+        business_tz = self._get_business_timezone(business_id)
+        return self._validate_return(result, business_tz)
+    
     def create(self, business_id: int, data: AppointmentCreate):
         start_datetime, end_datetime = self._validate_appointment(business_id, data.client_id, data.professional_id, data.service_id, data.start_datetime)
 

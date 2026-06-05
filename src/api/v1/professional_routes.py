@@ -2,20 +2,16 @@ from fastapi import APIRouter, HTTPException
 
 from src.schemas import ProfessionalCreate, ProfessionalResponse, ProfessionalUpdate
 from src.services.professional_service import ProfessionalNotFoundError, ProfessionalAlreadyExistsError
-from src.dependecies import ProfessionalServiceDep, BusinessScopeDep, AdminDep, SuperAdminDep, UserOrBusinessIntegrationDep
+from src.dependecies import ProfessionalServiceDep, BusinessScopeDep, AdminDep, UserOrBusinessIntegrationDep
 
 router = APIRouter(prefix="/professionals", tags=["V1 ➔ Professionals"])
 
 @router.get("/", response_model=list[ProfessionalResponse])
 def get_professionals(business_id: BusinessScopeDep, service: ProfessionalServiceDep, actor: UserOrBusinessIntegrationDep, professional_name: str | None = None):
-    try:
-        if professional_name:
-            return service.get_by_name(business_id, professional_name)
-        
-        return service.get_all(business_id)   
-     
-    except ProfessionalNotFoundError:
-        raise HTTPException(status_code=404, detail= "Profissional(is) não encontrado(s)!")
+    if professional_name:
+        return service.get_by_name(business_id, professional_name)
+    
+    return service.get_all(business_id)   
 
 @router.get("/{professional_id}", response_model=ProfessionalResponse)
 def get_professional_by_id(professional_id: int, business_id: BusinessScopeDep, service: ProfessionalServiceDep, actor: UserOrBusinessIntegrationDep):

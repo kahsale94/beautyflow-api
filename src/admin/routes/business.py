@@ -1,6 +1,7 @@
 import httpx
 from time import monotonic
 from pydantic import ValidationError
+from zoneinfo import available_timezones
 from fastapi import APIRouter, HTTPException, Query, Request
 
 from src.schemas import BusinessUpdate
@@ -14,7 +15,7 @@ from ..dependencies import AdminSessionDep, validate_csrf
 
 router = APIRouter(prefix="/business", tags=["Admin ➔ Business"])
 
-IBGE_LOCALIDADES_BASE_URL = "https://servicodados.ibge.gov.br/api/v1/localidades"
+IBGE_LOCALITIES_BASE_URL = "https://servicodados.ibge.gov.br/api/v1/localidades"
 IBGE_CACHE_TTL_SECONDS = 60 * 60 * 24
 
 PREFERRED_TIMEZONES: tuple[str, ...] = (
@@ -44,7 +45,6 @@ def _set_cached_options(cache_key: str, items: list[dict[str, str]]) -> list[dic
     _options_cache[cache_key] = (monotonic() + IBGE_CACHE_TTL_SECONDS, items)
     return items
 
-
 def _normalize_state_options(payload) -> list[dict[str, str]]:
     states = []
     for item in payload if isinstance(payload, list) else []:
@@ -64,28 +64,20 @@ def _normalize_city_options(payload) -> list[dict[str, str]]:
 
     return sorted(cities, key=lambda item: item["name"])
 
-async def _fetch_ibge_options(
-    cache_key: str,
-    path: str,
-    normalizer,
-) -> list[dict[str, str]]:
+async def _fetch_ibge_options(cache_key: str, path: str, normalizer)-> list[dict[str, str]]:
     cached = _get_cached_options(cache_key)
     if cached is not None:
         return cached
 
     try:
         async with httpx.AsyncClient(timeout=10) as client:
-            response = await client.get(f"{IBGE_LOCALIDADES_BASE_URL}/{path}", params={"orderBy": "nome"})
+            response = await client.get(f"{IBGE_LOCALITIES_BASE_URL}/{path}", params={"orderBy": "nome"})
             response.raise_for_status()
             payload = response.json()
     except (httpx.HTTPError, ValueError) as exc:
-        raise HTTPException(
-            status_code=502,
-            detail="Não foi possível consultar a API de localidades do IBGE.",
-        ) from exc
+        raise HTTPException(status_code=502, detail="Não foi possível consultar a API de localidades do IBGE.") from exc
 
     return _set_cached_options(cache_key, normalizer(payload))
-
 
 def _timezone_options() -> list[str]:
     timezones = set(available_timezones())
@@ -94,17 +86,14 @@ def _timezone_options() -> list[str]:
 
     return preferred + remaining
 
-
 @router.get("/options/timezones")
 def business_timezone_options(session: AdminSessionDep):
     return {"items": _timezone_options()}
-
 
 @router.get("/options/states")
 async def business_state_options(session: AdminSessionDep):
     states = await _fetch_ibge_options("states", "estados", _normalize_state_options)
     return {"items": states}
-
 
 @router.get("/options/cities")
 async def business_city_options(session: AdminSessionDep, state: str = Query(..., min_length=2, max_length=2)):

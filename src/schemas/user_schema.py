@@ -9,7 +9,6 @@ class UserCreate(BaseModel):
 
 class UserUpdate(BaseModel):
     email: EmailStr | None = None
-    password: str | None = Field(default=None, min_length=8)
     role: UserRole | None = None
 
 class UserResponse(BaseModel):

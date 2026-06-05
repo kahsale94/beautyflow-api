@@ -1,5 +1,6 @@
 
 import re
+from typing import Sequence
 
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
@@ -51,14 +52,8 @@ class ClientService:
         normalized_phone = normalize_phone(client_phone)
 
         result = self.client_repo.get_by_phone(self.db, business_id, normalized_phone)
-        if (
-            not result
-            or not result.is_active
-            or result.business_id != business_id
-        ):
-            raise ClientNotFoundError()
 
-        return [result]
+        return result
 
     def create(self, business_id: int, data: ClientCreate):
         phone = normalize_phone(data.phone)

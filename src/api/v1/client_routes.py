@@ -2,20 +2,16 @@ from fastapi import APIRouter, HTTPException
 
 from src.schemas import ClientCreate, ClientUpdate, ClientResponse
 from src.services.client_service import ClientNotFoundError, ClientAlreadyExistsError
-from src.dependecies import ClientServiceDep, BusinessScopeDep, SuperAdminDep, AdminDep, UserOrBusinessIntegrationDep
+from src.dependecies import ClientServiceDep, BusinessScopeDep, AdminDep, UserOrBusinessIntegrationDep
 
 router = APIRouter(prefix="/clients", tags=["V1 ➔ Clients"])
 
 @router.get("/", response_model=list[ClientResponse])
 def get_all_clients(business_id: BusinessScopeDep, service: ClientServiceDep, actor: UserOrBusinessIntegrationDep, client_phone: str | None = None):
-    try:
-        if client_phone:
-            return service.get_by_phone(business_id, client_phone)
-        
-        return service.get_all(business_id)
+    if client_phone:
+        return service.get_by_phone(business_id, client_phone)
     
-    except ClientNotFoundError:
-        raise HTTPException(status_code=404, detail="Cliente(s) não encontrado(s)")
+    return service.get_all(business_id)
 
 @router.get("/{client_id}", response_model=ClientResponse)
 def get_client(client_id: int, business_id: BusinessScopeDep, service: ClientServiceDep, actor: UserOrBusinessIntegrationDep):

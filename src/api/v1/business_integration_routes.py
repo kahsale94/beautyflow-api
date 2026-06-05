@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 
 from src.schemas import BusinessIntegrationResponse, BusinessIntegrationCreate, BusinessIntegrationUpdate
-from src.dependecies import BusinessScopeDep, BusinessIntegrationServiceDep, SuperAdminDep, BusinessIntegrationDep
+from src.dependecies import BusinessScopeDep, BusinessIntegrationServiceDep, SuperAdminDep, BusinessIntegrationDep, AdminDep
 from src.services.business_integration_service import BusinessIntegrationNotFoundError, BusinessIntegrationAlreadyExistsError
 
 router = APIRouter(prefix="/business-integrations", tags=["V1 ➔ Business Integrations"])
@@ -11,12 +11,8 @@ def get_my_config(actor: BusinessIntegrationDep, service: BusinessIntegrationSer
     return service.get_by_ids(actor.business_id, actor.integration_id)
 
 @router.get("/", response_model=list[BusinessIntegrationResponse])
-def get_business_integrations(business_id: BusinessScopeDep, service: BusinessIntegrationServiceDep, super_admin: SuperAdminDep):
-    try:
-        return service.get_all(business_id)
-    
-    except BusinessIntegrationNotFoundError:
-        raise HTTPException(status_code=404, detail="Nenhum vínculo encontrado!")
+def get_business_integrations(business_id: BusinessScopeDep, service: BusinessIntegrationServiceDep, admin: AdminDep):
+    return service.get_all(business_id)
 
 @router.get("/{integration_id}", response_model=BusinessIntegrationResponse)
 def get_business_integration_by_id(integration_id: int, business_id: BusinessScopeDep, service: BusinessIntegrationServiceDep, super_admin: SuperAdminDep):
