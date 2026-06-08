@@ -10,7 +10,7 @@ from fastapi import Depends, HTTPException, Request
 from src.models import Business, User
 from src.models.user_model import UserRole
 from src.security import RefreshRequest, TokenManager, UserContext
-from src.services.auth_service import AuthService, DeactivatedUserError, InvalidTokenError
+from src.services.auth_service import AuthService, DeactivatedUserError, InvalidTokenError, get_auth_service
 from src.core import ADMIN_ACCESS_COOKIE, ADMIN_BUSINESS_COOKIE, ADMIN_CSRF_COOKIE, ADMIN_REFRESH_COOKIE, USER_SECRET_KEY, get_db
 
 @dataclass(frozen=True)
@@ -63,32 +63,36 @@ async def validate_csrf(request: Request) -> None:
     if str(form_token) != cookie_token or not is_valid_csrf_token(cookie_token):
         raise HTTPException(status_code=403, detail="CSRF token inválido.")
 
-def _refresh_admin_access_token(request: Request, db: Session) -> str:
+def _refresh_admin_access_token(request: Request, service: AuthService) -> str:
     refresh_token = request.cookies.get(ADMIN_REFRESH_COOKIE)
     if not refresh_token:
         _redirect("/admin/login")
 
     try:
-        result = AuthService(db).refresh(RefreshRequest(refresh_token=refresh_token))
-    except (InvalidTokenError, DeactivatedUserError, ValueError, TypeError):
+        result = service.refresh(
+            RefreshRequest(refresh_token=refresh_token)
+        )
+
+    except Exception as e:
         _redirect("/admin/login")
 
     request.state.admin_refreshed_access_token = result.access_token
     request.state.admin_refreshed_refresh_token = result.refresh_token
+
     return result.access_token
 
-def get_current_admin_session(request: Request, db: Session = Depends(get_db)) -> AdminSession:
+def get_current_admin_session(request: Request, db: Session = Depends(get_db), auth_service: AuthService = Depends(get_auth_service)) -> AdminSession:
     token = request.cookies.get(ADMIN_ACCESS_COOKIE)
     if not token:
-        _redirect("/admin/login")
+        token = _refresh_admin_access_token(request, auth_service)
 
     try:
         payload = TokenManager.decode(token)  # type: ignore[arg-type]
-    except Exception:
-        token = _refresh_admin_access_token(request, db)
+    except Exception as e:
+        token = _refresh_admin_access_token(request, auth_service)
         try:
             payload = TokenManager.decode(token)
-        except Exception:
+        except Exception as e:
             _redirect("/admin/login")
 
     if payload.get("type") != "user" or payload.get("token_type") != "access":

@@ -38,12 +38,12 @@ async def create_client_action(request: Request, service: ClientServiceDep, sess
         service.create(session.business_id, data)
 
     except (ValidationError, ValueError):
-        return redirect_with_flash("/admin/clients", "Dados inválidos. Confira nome e telefone.", "error")
+        return redirect_with_flash("/admin/clients", "Dados inválidos. Confira nome e telefone.", "error", request=request)
     
     except ClientAlreadyExistsError:
-        return redirect_with_flash("/admin/clients", "Cliente já cadastrado.", "error")
+        return redirect_with_flash("/admin/clients", "Cliente já cadastrado.", "error", request=request)
 
-    return redirect_with_flash("/admin/clients", "Cliente criado com sucesso.")
+    return redirect_with_flash("/admin/clients", "Cliente criado com sucesso.", request=request)
 
 @router.post("/{client_id}")
 async def update_client_action(client_id: int, request: Request, service: ClientServiceDep, session: AdminSessionDep):
@@ -57,12 +57,12 @@ async def update_client_action(client_id: int, request: Request, service: Client
         service.update(session.business_id, client_id, data)
 
     except ValidationError:
-        return redirect_with_flash("/admin/clients", "Dados inválidos.", "error")
+        return redirect_with_flash("/admin/clients", "Dados inválidos.", "error", request=request)
     
     except ClientNotFoundError:
-        return redirect_with_flash("/admin/clients", "Cliente não encontrado.", "error")
+        return redirect_with_flash("/admin/clients", "Cliente não encontrado.", "error", request=request)
     
     except ClientAlreadyExistsError:
-        return redirect_with_flash("/admin/clients", "Já existe cliente com esse telefone.", "error")
+        return redirect_with_flash("/admin/clients", "Já existe cliente com esse telefone.", "error", request=request)
 
-    return redirect_with_flash("/admin/clients", "Cliente atualizado com sucesso.")
+    return redirect_with_flash("/admin/clients", "Cliente atualizado com sucesso.", request=request)

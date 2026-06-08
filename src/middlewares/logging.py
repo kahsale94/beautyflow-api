@@ -15,6 +15,10 @@ def _safe(value: str | int | None) -> str:
 
 class LoggingMiddleware(BaseHTTPMiddleware):
 
+    EXCLUDED_PATHS = {
+        "/health/live",
+    }
+
     async def dispatch(self, request: Request, call_next):
         start = time.perf_counter()
 
@@ -41,6 +45,9 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             )
 
             raise
+
+        if request.url.path in self.EXCLUDED_PATHS:
+            return response
 
         ms = round((time.perf_counter() - start) * 1000, 2)
 

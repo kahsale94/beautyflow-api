@@ -12,8 +12,8 @@ from src.services.appointment_service import ( AppointmentAlreadyCanceledError, 
     AppointmentTimeConflictError, ClientNotFoundError, DatetimeFormatError, ProfessionalNotAvailableError, ProfessionalServiceMismatchError, ServiceNotAvailableError,
 )
 
-from ..templating import render, redirect_with_flash
 from ..dependencies import AdminSessionDep, validate_csrf
+from ..templating import render, redirect_with_flash, attach_refreshed_admin_cookies
 
 router = APIRouter(prefix="/appointments", tags=["Admin ➔ Appointments"])
 
@@ -103,8 +103,8 @@ def calendar_page(request: Request, client_service: ClientServiceDep, profession
     )
 
 @router.get("/events")
-def calendar_events(start: str, end: str, appointment_service: AppointmentServiceDep, business_service: BusinessServiceDep, client_service: ClientServiceDep,
-    professional_service: ProfessionalServiceDep, service_service: ServiceServiceDep, session: AdminSessionDep, professional_id: int | None = None):
+def calendar_events(request: Request, start: str, end: str, appointment_service: AppointmentServiceDep, business_service: BusinessServiceDep,
+    client_service: ClientServiceDep, professional_service: ProfessionalServiceDep, service_service: ServiceServiceDep, session: AdminSessionDep, professional_id: int | None = None):
     business = business_service.get_by_id(session.business_id)
     business_timezone = _safe_timezone_name(business.timezone)
     start_dt = _parse_calendar_datetime(start, business_timezone)
@@ -127,7 +127,9 @@ def calendar_events(start: str, end: str, appointment_service: AppointmentServic
         professional = professionals.get(appointment.professional_id)
         service = services.get(appointment.service_id)
         status = appointment.status.value if hasattr(appointment.status, "value") else str(appointment.status)
+
         title = f"{client.name if client and client.name else client.phone if client else 'Cliente'} - {service.name if service else 'Serviço'}"
+
         events.append(
             {
                 "id": str(appointment.id),
@@ -143,7 +145,9 @@ def calendar_events(start: str, end: str, appointment_service: AppointmentServic
             }
         )
 
-    return JSONResponse(events)
+    response = JSONResponse(events)
+    attach_refreshed_admin_cookies(request, response)
+    return response
 
 @router.get("/{appointment_id}/details")
 def appointment_details_fragment(appointment_id: int, request: Request, appointment_service: AppointmentServiceDep, business_service: BusinessServiceDep,
@@ -190,12 +194,12 @@ async def create_appointment_action(request: Request, appointment_service: Appoi
         appointment_service.create(session.business_id, data)
 
     except (ValidationError, ValueError) as exc:
-        return redirect_with_flash("/admin/appointments", _appointment_error_message(exc), "error")
+        return redirect_with_flash("/admin/appointments", _appointment_error_message(exc), "error", request = request)
 
     except Exception as exc:
-        return redirect_with_flash("/admin/appointments", _appointment_error_message(exc), "error")
+        return redirect_with_flash("/admin/appointments", _appointment_error_message(exc), "error", request = request)
 
-    return redirect_with_flash("/admin/appointments", "Agendamento criado com sucesso.")
+    return redirect_with_flash("/admin/appointments", "Agendamento criado com sucesso.", request = request)
 
 @router.post("/{appointment_id}")
 async def update_appointment_action(appointment_id: int, request: Request, appointment_service: AppointmentServiceDep, business_service: BusinessServiceDep, session: AdminSessionDep):
@@ -214,15 +218,15 @@ async def update_appointment_action(appointment_id: int, request: Request, appoi
         appointment_service.update(session.business_id, appointment_id, data)
 
     except AppointmentNotFoundError:
-        return redirect_with_flash("/admin/appointments", "Agendamento não encontrado.", "error")
+        return redirect_with_flash("/admin/appointments", "Agendamento não encontrado.", "error", request = request)
 
     except (ValidationError, ValueError) as exc:
-        return redirect_with_flash("/admin/appointments", _appointment_error_message(exc), "error")
+        return redirect_with_flash("/admin/appointments", _appointment_error_message(exc), "error", request = request)
 
     except Exception as exc:
-        return redirect_with_flash("/admin/appointments", _appointment_error_message(exc), "error")
+        return redirect_with_flash("/admin/appointments", _appointment_error_message(exc), "error", request = request)
 
-    return redirect_with_flash("/admin/appointments", "Agendamento atualizado com sucesso.")
+    return redirect_with_flash("/admin/appointments", "Agendamento atualizado com sucesso.", request = request)
 
 @router.post("/{appointment_id}/cancel")
 async def cancel_appointment_action(appointment_id: int, request: Request, appointment_service: AppointmentServiceDep, session: AdminSessionDep):
@@ -232,9 +236,9 @@ async def cancel_appointment_action(appointment_id: int, request: Request, appoi
         appointment_service.cancel(session.business_id, appointment_id)
 
     except Exception as exc:
-        return redirect_with_flash("/admin/appointments", _appointment_error_message(exc), "error")
+        return redirect_with_flash("/admin/appointments", _appointment_error_message(exc), "error", request = request)
 
-    return redirect_with_flash("/admin/appointments", "Agendamento cancelado.")
+    return redirect_with_flash("/admin/appointments", "Agendamento cancelado.", request = request)
 
 @router.post("/{appointment_id}/complete")
 async def complete_appointment_action(appointment_id: int, request: Request, appointment_service: AppointmentServiceDep, session: AdminSessionDep):
@@ -244,6 +248,6 @@ async def complete_appointment_action(appointment_id: int, request: Request, app
         appointment_service.complete(session.business_id, appointment_id)
 
     except Exception as exc:
-        return redirect_with_flash("/admin/appointments", _appointment_error_message(exc), "error")
+        return redirect_with_flash("/admin/appointments", _appointment_error_message(exc), "error", request = request)
 
-    return redirect_with_flash("/admin/appointments", "Agendamento concluído.")
+    return redirect_with_flash("/admin/appointments", "Agendamento concluído.", request = request)

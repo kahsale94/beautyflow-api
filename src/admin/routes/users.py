@@ -46,12 +46,12 @@ async def create_user_action(request: Request, service: UserServiceDep, session:
         service.create(session.business_id, data)
 
     except ValidationError:
-        return redirect_with_flash("/admin/users", "Dados inválidos para usuário.", "error")
+        return redirect_with_flash("/admin/users", "Dados inválidos para usuário.", "error", request=request)
     
     except UserAlreadyExistsError:
-        return redirect_with_flash("/admin/users", "Email já cadastrado.", "error")
+        return redirect_with_flash("/admin/users", "Email já cadastrado.", "error", request=request)
     
-    return redirect_with_flash("/admin/users", "Usuário criado com sucesso.")
+    return redirect_with_flash("/admin/users", "Usuário criado com sucesso.", request=request)
 
 @router.post("/{user_id}")
 async def update_user_action(user_id: int, request: Request, service: UserServiceDep, session: SuperAdminSessionDep):
@@ -70,15 +70,15 @@ async def update_user_action(user_id: int, request: Request, service: UserServic
         service.update(session.business_id, user_id, data)
 
     except ValidationError:
-        return redirect_with_flash("/admin/users", "Dados inválidos.", "error")
+        return redirect_with_flash("/admin/users", "Dados inválidos.", "error", request=request)
     
     except UserNotFoundError:
-        return redirect_with_flash("/admin/users", "Usuário não encontrado.", "error")
+        return redirect_with_flash("/admin/users", "Usuário não encontrado.", "error", request=request)
     
     except UserAlreadyExistsError:
-        return redirect_with_flash("/admin/users", "Email já cadastrado.", "error")
+        return redirect_with_flash("/admin/users", "Email já cadastrado.", "error", request=request)
     
-    return redirect_with_flash("/admin/users", "Usuário atualizado.")
+    return redirect_with_flash("/admin/users", "Usuário atualizado.", request=request)
 
 @router.post("/{user_id}/deactivate")
 async def deactivate_user_action(user_id: int, request: Request, service: UserServiceDep, session: SuperAdminSessionDep):
@@ -88,6 +88,6 @@ async def deactivate_user_action(user_id: int, request: Request, service: UserSe
         service.deactivate(session.business_id, user_id)
 
     except UserNotFoundError:
-        return redirect_with_flash("/admin/users", "Usuário não encontrado.", "error")
+        return redirect_with_flash("/admin/users", "Usuário não encontrado.", "error", request=request)
     
-    return redirect_with_flash("/admin/users", "Usuário desativado.")
+    return redirect_with_flash("/admin/users", "Usuário desativado.", request=request)

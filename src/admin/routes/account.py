@@ -35,6 +35,7 @@ async def change_password_action(request: Request, service: UserServiceDep, sess
             "/admin/account/password",
             "A confirmação da nova senha não confere.",
             "error",
+            request = request,
         )
 
     try:
@@ -46,6 +47,7 @@ async def change_password_action(request: Request, service: UserServiceDep, sess
             "/admin/account/password",
             "A nova senha deve ter pelo menos 8 caracteres.",
             "error",
+            request = request,
         )
 
     except InvalidCurrentPasswordError:
@@ -53,6 +55,7 @@ async def change_password_action(request: Request, service: UserServiceDep, sess
             "/admin/account/password",
             "Senha atual inválida.",
             "error",
+            request = request,
         )
 
     except UserNotFoundError:
@@ -60,6 +63,7 @@ async def change_password_action(request: Request, service: UserServiceDep, sess
             "/admin/login",
             "Sessão inválida. Faça login novamente.",
             "error",
+            request = request,
         )
 
-    return redirect_with_flash("/admin/account/password", "Senha alterada com sucesso.")
+    return redirect_with_flash("/admin/account/password", "Senha alterada com sucesso.", request=request)

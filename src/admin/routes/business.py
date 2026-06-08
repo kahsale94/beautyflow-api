@@ -143,12 +143,12 @@ async def update_business_settings_action(request: Request, service: BusinessSer
         service.update(session.business_id, data)
 
     except ValidationError:
-        return redirect_with_flash("/admin/business", "Dados inválidos. Verifique os campos da empresa.", "error")
+        return redirect_with_flash("/admin/business", "Dados inválidos. Verifique os campos da empresa.", "error", request=request)
     
     except BusinessNotFoundError:
-        return redirect_with_flash("/admin/business", "Empresa não encontrada.", "error")
+        return redirect_with_flash("/admin/business", "Empresa não encontrada.", "error", request=request)
     
     except BusinessAlreadyExistsError:
-        return redirect_with_flash("/admin/business", "Já existe empresa com esse nome ou slug.", "error")
+        return redirect_with_flash("/admin/business", "Já existe empresa com esse nome ou slug.", "error", request=request)
 
-    return redirect_with_flash("/admin/business", "Dados da empresa atualizados.")
+    return redirect_with_flash("/admin/business", "Dados da empresa atualizados.", request=request)

@@ -1,6 +1,7 @@
 # Geral
 z_files/
 docker-compose_dev.yml
+.tmp.driveupload/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

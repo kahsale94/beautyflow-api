@@ -40,12 +40,12 @@ async def create_service_action(request: Request, service: ServiceServiceDep, se
         service.create(session.business_id, data)
 
     except (ValidationError, ValueError):
-        return redirect_with_flash("/admin/services", "Dados inválidos para o serviço.", "error")
+        return redirect_with_flash("/admin/services", "Dados inválidos para o serviço.", "error", request=request)
     
     except ServiceAlreadyExistsError:
-        return redirect_with_flash("/admin/services", "Serviço já cadastrado.", "error")
+        return redirect_with_flash("/admin/services", "Serviço já cadastrado.", "error", request=request)
 
-    return redirect_with_flash("/admin/services", "Serviço criado com sucesso.")
+    return redirect_with_flash("/admin/services", "Serviço criado com sucesso.", request=request)
 
 @router.post("/{service_id}")
 async def update_service_action(service_id: int, request: Request, service: ServiceServiceDep, session: AdminSessionDep):
@@ -61,15 +61,15 @@ async def update_service_action(service_id: int, request: Request, service: Serv
         service.update(session.business_id, service_id, data)
 
     except ValidationError:
-        return redirect_with_flash("/admin/services", "Dados inválidos para atualização.", "error")
+        return redirect_with_flash("/admin/services", "Dados inválidos para atualização.", "error", request=request)
     
     except ServiceNotFoundError:
-        return redirect_with_flash("/admin/services", "Serviço não encontrado.", "error")
+        return redirect_with_flash("/admin/services", "Serviço não encontrado.", "error", request=request)
     
     except ServiceAlreadyExistsError:
-        return redirect_with_flash("/admin/services", "Já existe um serviço com esse nome.", "error")
+        return redirect_with_flash("/admin/services", "Já existe um serviço com esse nome.", "error", request=request)
 
-    return redirect_with_flash("/admin/services", "Serviço atualizado com sucesso.")
+    return redirect_with_flash("/admin/services", "Serviço atualizado com sucesso.", request=request)
 
 @router.post("/{service_id}/deactivate")
 async def deactivate_service_action(service_id: int, request: Request, service: ServiceServiceDep, session: AdminSessionDep):
@@ -79,6 +79,6 @@ async def deactivate_service_action(service_id: int, request: Request, service: 
         service.deactivate(session.business_id, service_id)
 
     except ServiceNotFoundError:
-        return redirect_with_flash("/admin/services", "Serviço não encontrado.", "error")
+        return redirect_with_flash("/admin/services", "Serviço não encontrado.", "error", request=request)
     
-    return redirect_with_flash("/admin/services", "Serviço desativado com sucesso.")
+    return redirect_with_flash("/admin/services", "Serviço desativado com sucesso.", request=request)

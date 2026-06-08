@@ -30,7 +30,7 @@ async def login_action(request: Request, service: AuthServiceDep, email: str = F
         access_token, refresh_token = service.login(email, password)
 
     except InvalidCredentialError:
-        return redirect_with_flash("/admin/login", "Email ou senha inválidos.", "error")
+        return redirect_with_flash("/admin/login", "Email ou senha inválidos.", "error", request = request)
 
     response = RedirectResponse("/admin/", status_code=303)
     response.delete_cookie(ADMIN_BUSINESS_COOKIE, path=ADMIN_COOKIE_PATH)

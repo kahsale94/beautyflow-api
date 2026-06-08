@@ -99,6 +99,15 @@ def attach_admin_refresh_cookie(response: Response, refresh_token: str) -> None:
         max_age=60 * 60 * 24 * USER_REFRESH_TOKEN_EXPIRE_DAYS,
     )
 
+def attach_refreshed_admin_cookies(request: Request, response: Response) -> None:
+    refreshed_token = getattr(request.state, "admin_refreshed_access_token", None)
+    if refreshed_token:
+        attach_admin_access_cookie(response, refreshed_token)
+
+    refreshed_refresh_token = getattr(request.state, "admin_refreshed_refresh_token", None)
+    if refreshed_refresh_token:
+        attach_admin_refresh_cookie(response, refreshed_refresh_token)
+
 def set_business_cookie(response: Response, business_id: int) -> None:
     response.set_cookie(
         ADMIN_BUSINESS_COOKIE,
@@ -151,19 +160,17 @@ def render(request: Request, template_name: str, context: dict | None = None, *,
     elif context.get("csrf_token"):
         attach_csrf_cookie(response, context["csrf_token"])
 
-    refreshed_token = getattr(request.state, "admin_refreshed_access_token", None)
-    if refreshed_token:
-        attach_admin_access_cookie(response, refreshed_token)
-
-    refreshed_refresh_token = getattr(request.state, "admin_refreshed_refresh_token", None)
-    if refreshed_refresh_token:
-        attach_admin_refresh_cookie(response, refreshed_refresh_token)
+    attach_refreshed_admin_cookies(request, response)
 
     return response
 
-def redirect_with_flash(url: str, message: str | None = None, category: str = "success", status_code: int = 303):
+def redirect_with_flash(url: str, message: str | None = None, category: str = "success", status_code: int = 303, request: Request | None = None):
     response = RedirectResponse(url=url, status_code=status_code)
+
     if message:
         set_flash(response, message, category)
+
+    if request:
+        attach_refreshed_admin_cookies(request, response)
 
     return response

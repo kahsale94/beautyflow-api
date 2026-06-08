@@ -37,9 +37,9 @@ async def update_integration_config_action(integration_id: int, request: Request
         )
 
     except json.JSONDecodeError:
-        return redirect_with_flash("/admin/integrations", "JSON de configuração inválido.", "error")
+        return redirect_with_flash("/admin/integrations", "JSON de configuração inválido.", "error", request=request)
     
     except BusinessIntegrationNotFoundError:
-        return redirect_with_flash("/admin/integrations", "Integração não encontrada.", "error")
+        return redirect_with_flash("/admin/integrations", "Integração não encontrada.", "error", request=request)
 
-    return redirect_with_flash("/admin/integrations", "Configuração atualizada.")
+    return redirect_with_flash("/admin/integrations", "Configuração atualizada.", request=request)

@@ -44,8 +44,8 @@ class AuthService:
         integration_repo: IntegrationRepository,
     ):
         self.db = db
-        self.business_repo = business_repo,
-        self.integration_repo = integration_repo,
+        self.business_repo = business_repo
+        self.integration_repo = integration_repo
 
     def _hash_jti(self, jti: str) -> str:
         return hmac.new(USER_SECRET_KEY.encode("utf-8"), jti.encode("utf-8"), hashlib.sha256).hexdigest()
@@ -188,6 +188,6 @@ class AuthService:
 def get_auth_service(db: DataBaseDep):
     return AuthService(
         db,
-        BusinessRepository,
-        IntegrationRepository,
+        BusinessRepository(),
+        IntegrationRepository(),
     )
