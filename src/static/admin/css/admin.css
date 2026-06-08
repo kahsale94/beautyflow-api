@@ -855,6 +855,22 @@ label {
     margin: 0;
 }
 
+.readonly-value {
+    display: inline;
+}
+
+tr.is-editing .readonly-value {
+    display: none;
+}
+
+.admin-data-table input[readonly] {
+    display: none;
+}
+
+tr.is-editing input[data-editable] {
+    display: block;
+}
+
 .clients-table th:nth-child(1),
 .clients-table td:nth-child(1) {
     width: 50px;

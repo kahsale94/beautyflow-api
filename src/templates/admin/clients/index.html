@@ -14,7 +14,7 @@
     <form method="post" action="/admin/clients" class="card stack">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
         <h2>Novo cliente</h2>
-        <label>Nome <input name="name" minlength="3" maxlength="50" /></label>
+        <label>Nome <input name="name" minlength="3" maxlength="50" placeholder="Carlos Silva" /></label>
         <label>Telefone
             <input name="phone" required minlength="9" maxlength="13" placeholder="5511999999999" /></label>
         <button class="button primary" type="submit">Cadastrar</button>
@@ -22,7 +22,7 @@
 
     <form method="get" action="/admin/clients" class="card stack admin-search-card">
         <h2>Buscar</h2>
-        <label>Nome ou telefone <input name="q" value="{{ q }}" /></label>
+        <label>Nome ou telefone <input name="q" value="{{ q }}" placeholder="Carlos ou 5511999999999" /></label>
         <button class="button" type="submit">Filtrar</button>
     </form>
 </section>
@@ -51,10 +51,16 @@
             <tr id="client-row-{{ client.id }}">
                 <td data-label="ID">#{{ client.id }}</td>
                 <td data-label="Nome">
+                    <span class="readonly-value">
+                        {{ client.name }}
+                    </span>
                     <input form="client-form-{{ client.id }}" name="name" value="{{ client.name or '' }}" minlength="3"
                         maxlength="50" readonly data-editable />
                 </td>
                 <td data-label="Telefone">
+                    <span class="readonly-value">
+                        {{ client.phone }}
+                    </span>
                     <input form="client-form-{{ client.id }}" name="phone" value="{{ client.phone }}" required
                         minlength="9" maxlength="13" readonly data-editable />
                 </td>

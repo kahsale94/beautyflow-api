@@ -18,11 +18,13 @@
             <h2 class="section-title">Informações gerais</h2>
             <div class="form-grid compact-grid">
                 <label>Nome
-                    <input name="name" required minlength="3" maxlength="50" value="{{ business.name }}" />
+                    <input name="name" required minlength="3" maxlength="50" value="{{ business.name }}" placeholder="Minha Empresa" />
                 </label>
+                {% if session.is_super_admin %}
                 <label>Slug
-                    <input name="slug" pattern="[a-z0-9]+(-[a-z0-9]+)*" value="{{ business.slug or '' }}" />
+                    <input name="slug" pattern="[a-z0-9]+(-[a-z0-9]+)*" value="{{ business.slug or '' }}" placeholder="minha-empresa" />
                 </label>
+                {% endif %}
                 <label>Tipo
                     <select name="type" required>
                         {% for type in business_types %}
@@ -32,14 +34,16 @@
                         {% endfor %}
                     </select>
                 </label>
+                {% if session.is_super_admin %}
                 <label>Timezone
                     <select name="timezone" required data-business-timezone data-current-value="{{ business.timezone }}">
                         <option value="{{ business.timezone }}" selected>{{ business.timezone }}</option>
                     </select>
                 </label>
+                {% endif %}
             </div>
             <label>Descrição
-                <textarea name="description" rows="4">{{ business.description or '' }}</textarea>
+                <textarea name="description" rows="4" placeholder="Descrição da empresa">{{ business.description or '' }}</textarea>
             </label>
         </div>
 

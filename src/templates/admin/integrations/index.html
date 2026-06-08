@@ -25,18 +25,16 @@
                     else 'inativa' }}</span>
             </p>
             <p class="muted">Criada em {{ item.created_at.strftime('%d/%m/%Y') }}</p>
+            {% if session.is_super_admin %}
             <details>
                 <summary>Configuração</summary>
-                {% if session.is_super_admin %}
                 <form method="post" action="/admin/integrations/{{ item.integration_id }}/config" class="stack">
                     <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
                     <textarea name="config" rows="8">{{ (item.config or {}) | tojson(indent=2) }}</textarea>
                     <button class="button small" type="submit">Salvar JSON</button>
                 </form>
-                {% else %}
-                <pre>{{ (item.config or {}) | tojson(indent=2) }}</pre>
-                {% endif %}
             </details>
+            {% endif %}
         </article>
         {% endfor %}
     </div>

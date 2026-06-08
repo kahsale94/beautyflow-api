@@ -14,17 +14,17 @@
     <form method="post" action="/admin/services" class="card stack">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
         <h2>Novo serviço</h2>
-        <label>Nome <input name="name" required minlength="3" maxlength="50" /></label>
+        <label>Nome <input name="name" required minlength="3" maxlength="50" placeholder="Corte Masculino" /></label>
         <label>Duração em minutos
-            <input name="duration_minutes" required type="number" min="1" max="1440" value="60" /></label>
+            <input name="duration_minutes" required type="number" min="1" max="1440" placeholder="60" /></label>
         <label>Preço
-            <input name="price" required type="number" min="0.01" step="0.01" value="99.90" /></label>
+            <input name="price" required type="number" min="0.01" step="0.01" placeholder="99.90" /></label>
         <button class="button primary" type="submit">Criar serviço</button>
     </form>
 
     <form method="get" action="/admin/services" class="card stack admin-search-card">
         <h2>Buscar</h2>
-        <label>Nome do serviço <input name="q" value="{{ q }}" /></label>
+        <label>Nome do serviço <input name="q" value="{{ q }}" placeholder="Corte Masculino" /></label>
         <button class="button" type="submit">Filtrar</button>
     </form>
 </section>
@@ -33,8 +33,8 @@
     <div class="card-header">
         <h2>Serviços ativos</h2>
     </div>
-    {% if services %} {% for item in services %}
-    <form id="service-form-{{ item.id }}" method="post" action="/admin/services/{{ item.id }}">
+    {% if services %} {% for service in services %}
+    <form id="service-form-{{ service.id }}" method="post" action="/admin/services/{{ service.id }}">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
     </form>
     {% endfor %}
@@ -50,34 +50,43 @@
             </tr>
         </thead>
         <tbody>
-            {% for item in services %}
-            <tr id="service-row-{{ item.id }}">
-                <td data-label="ID">#{{ item.id }}</td>
+            {% for service in services %}
+            <tr id="service-row-{{ service.id }}">
+                <td data-label="ID">#{{ service.id }}</td>
                 <td data-label="Nome">
-                    <input form="service-form-{{ item.id }}" name="name" required value="{{ item.name }}" minlength="3"
+                    <span class="readonly-value">
+                        {{ service.name }}
+                    </span>
+                    <input form="service-form-{{ service.id }}" name="name" required value="{{ service.name }}" minlength="3"
                         maxlength="50" readonly data-editable />
                 </td>
                 <td data-label="Duração">
-                    <input form="service-form-{{ item.id }}" name="duration_minutes" required type="number" min="1"
-                        max="1440" value="{{ item.duration_minutes }}" readonly data-editable />
+                    <span class="readonly-value">
+                        {{ service.duration_minutes }} min
+                    </span>
+                    <input form="service-form-{{ service.id }}" name="duration_minutes" required type="number" min="1"
+                        max="1440" value="{{ service.duration_minutes }}" readonly data-editable />
                 </td>
                 <td data-label="Preço">
-                    <input form="service-form-{{ item.id }}" name="price" required type="number" min="0.01" step="0.01"
-                        value="{{ item.price }}" readonly data-editable />
+                    <span class="readonly-value">
+                        R$ {{ service.price }}
+                    </span>
+                    <input form="service-form-{{ service.id }}" name="price" required type="number" min="0.01" step="0.01"
+                        value="{{ service.price }}" readonly data-editable />
                 </td>
                 <td class="actions" data-label="Ações">
 
                     <div class="actions-buttons">
-                        <button class="button secondary small" type="button" data-edit-row="#service-row-{{ item.id }}">
+                        <button class="button secondary small" type="button" data-edit-row="#service-row-{{ service.id }}">
                             Editar
                         </button>
-                        <button form="service-form-{{ item.id }}" class="button success small row-edit-save" type="submit" data-save-row hidden>
+                        <button form="service-form-{{ service.id }}" class="button success small row-edit-save" type="submit" data-save-row hidden>
                             Salvar
                         </button>
-                        <button class="button cancel-edit small row-edit-cancel" type="button" data-cancel-row="#service-row-{{ item.id }}" hidden>
+                        <button class="button cancel-edit small row-edit-cancel" type="button" data-cancel-row="#service-row-{{ service.id }}" hidden>
                             Cancelar
                         </button>
-                        <form method="post" action="/admin/services/{{ item.id }}/deactivate"
+                        <form method="post" action="/admin/services/{{ service.id }}/deactivate"
                             data-confirm="Desativar este serviço?">
                             <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
                             <button class="button danger small" type="submit">Desativar</button>
