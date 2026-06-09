@@ -343,6 +343,7 @@ In production mode, API documentation is disabled.
 - Create the external n8n network, or set `BEAUTYFLOW_EXTERNAL_NETWORK`.
 - Run `alembic upgrade head` before starting the backend.
 - Route traffic only after `/health/ready` returns HTTP 200.
+- Use `/health/live` for the container healthcheck; it only verifies that the API process is responding.
 - Keep the database backup and rollback procedure ready before applying migrations.
 
 ## 🐳 Running with Docker Compose

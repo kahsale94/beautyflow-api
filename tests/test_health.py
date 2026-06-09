@@ -16,8 +16,11 @@ def test_health_routes_exist_and_are_registered():
     assert "_check_migration_head" in health_source
     assert "app.include_router(health_router)" in main_source
 
-def test_docker_uses_ready_healthcheck():
-    source = read_source("docker-compose.yml")
+def test_docker_uses_live_healthcheck_without_request_log_noise():
+    compose_source = read_source("docker-compose.yml")
+    logging_source = read_source("src/middlewares/logging.py")
 
-    assert "/health/ready" in source
-    assert "TRUSTED_PROXY_IPS" in source
+    assert "/health/live" in compose_source
+    assert '"/health/live"' in logging_source
+    assert "EXCLUDED_PATHS" in logging_source
+    assert "TRUSTED_PROXY_IPS" in compose_source
