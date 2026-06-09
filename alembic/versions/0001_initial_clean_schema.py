@@ -142,8 +142,7 @@ def upgrade() -> None:
         sa.CheckConstraint("weekday >= 0 AND weekday <= 6", name="valid_weekday"),
         sa.CheckConstraint("start_time < end_time", name="valid_time_range"),
         sa.ForeignKeyConstraint(["professional_id"], ["professionals.id"], ondelete="cascade"),
-        sa.PrimaryKeyConstraint("professional_id", "weekday"),
-        sa.UniqueConstraint("professional_id", "weekday", name="uq_professional_weekday"),
+        sa.PrimaryKeyConstraint("professional_id", "weekday", name="uq_professional_weekday"),
     )
     op.create_index(op.f("ix_availabilities_professional_id"), "availabilities", ["professional_id"], unique=False)
 

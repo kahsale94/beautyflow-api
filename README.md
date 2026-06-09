@@ -14,8 +14,10 @@ The project was built with **FastAPI**, **SQLAlchemy**, **PostgreSQL**, and **Al
 - Professional management
 - Service management
 - Weekly professional availability
+- Professional schedule blocks
 - Available time slot generation
 - Appointment creation and management
+- Optional appointment confirmation
 - Appointment status flow: scheduled, canceled, completed
 - Appointment conflict prevention at database level
 - External integration authentication
@@ -155,6 +157,7 @@ The API is versioned under the `/v1` prefix and is organized by business domain:
 | Professionals | `/v1/professionals` | Manages professionals, search, activation, and deletion |
 | Services | `/v1/services` | Manages the service catalog, including duration, price, and status |
 | Availabilities | `/v1/availabilities` | Manages weekly professional availability and available time slots |
+| Schedule Blocks | `/v1/schedule-blocks` | Manages professional unavailability periods |
 | Appointments | `/v1/appointments` | Handles scheduling, updates, cancellation, completion, and conflict validation |
 | Integrations | `/v1/integrations` | Manages external automation integrations |
 | Business Integrations | `/v1/business-integrations` | Links integrations to businesses and stores integration-specific configuration |
@@ -193,7 +196,9 @@ The appointment system validates:
 - Start datetime with timezone
 - Appointment must not be in the past
 - Appointment must fit inside the professional availability range
+- Appointment must not overlap a professional schedule block
 - Appointment must not conflict with another scheduled appointment
+- Business confirmation and client cancellation policies
 
 Available slots are generated using a 15-minute step.
 
@@ -241,6 +246,12 @@ python -m venv venv
 pip install -r requirements.txt
 ```
 
+For a production image or runtime without development tools:
+
+```
+pip install -r requirements-prod.txt
+```
+
 ### 4. Configure environment variables
 
 Create a `.env` file in the project root:
@@ -266,6 +277,11 @@ POSTGRES_PASSWORD=password
 POSTGRES_DB=beautyflow
 
 REDIS_PASSWORD=your_redis_password
+REDIS_URL=redis://:your_redis_password@localhost:6379/0
+
+CORS_ORIGINS=http://localhost:8000
+FORWARDED_ALLOW_IPS=127.0.0.1
+TRUSTED_PROXY_IPS=127.0.0.1
 ```
 
 #### Environment variables
@@ -286,6 +302,10 @@ REDIS_PASSWORD=your_redis_password
 | POSTGRES_PASSWORD | PostgreSQL password used by Docker Compose |
 | POSTGRES_DB | PostgreSQL database name used by Docker Compose |
 | REDIS_PASSWORD | Redis password used by Docker Compose |
+| REDIS_URL | Redis connection URL |
+| CORS_ORIGINS | Comma-separated allowed browser origins |
+| FORWARDED_ALLOW_IPS | Reverse proxies trusted by Uvicorn |
+| TRUSTED_PROXY_IPS | Reverse proxies trusted for client IP rate limiting |
 
 ### 5. Run database migrations
 
@@ -313,6 +333,18 @@ http://localhost:8000/docs
 
 In production mode, API documentation is disabled.
 
+### Production requirements
+
+- Use unique JWT secrets with at least 32 characters.
+- Set `ENVIRONMENT=production`.
+- Set explicit HTTPS origins in `CORS_ORIGINS`.
+- Keep authentication cookies marked as `Secure`.
+- Configure `FORWARDED_ALLOW_IPS` and `TRUSTED_PROXY_IPS` with only the reverse proxy addresses.
+- Create the external n8n network, or set `BEAUTYFLOW_EXTERNAL_NETWORK`.
+- Run `alembic upgrade head` before starting the backend.
+- Route traffic only after `/health/ready` returns HTTP 200.
+- Keep the database backup and rollback procedure ready before applying migrations.
+
 ## 🐳 Running with Docker Compose
 
 The project includes a `docker-compose.yml` file with:
@@ -322,12 +354,14 @@ The project includes a `docker-compose.yml` file with:
 - Migration container
 - Backend container
 
-Before running Docker Compose, make sure the external networks exist:
+Before running Docker Compose, create the external integration network:
 
 ```
-docker network create beautyflow-network
-docker network create n8n-network (for connection with n8n workflow)
+docker network create n8n-network
 ```
+
+The private application network is created automatically. To use a different
+external network name, set `BEAUTYFLOW_EXTERNAL_NETWORK`.
 
 Then run:
 
@@ -364,20 +398,15 @@ This API was designed as the backend foundation for a scheduling and business ma
 
 For larger production scenarios, the project can be improved with:
 
-- Automated tests
-- CI/CD pipeline
-- More restrictive CORS configuration
 - Centralized structured logging
-- Redis-based distributed rate limiting
 - Background jobs for asynchronous tasks
 - Monitoring and observability
 - More detailed API documentation
+- End-to-end browser tests for the admin dashboard
 
 ## 🔮 Next Steps
 
-- Add automated tests with pytest
-- Improve logging strategy
-- Implement CI/CD
 - Add production monitoring
-- Improve rate limiting with Redis
-- Add admin dashboard
+- Add centralized log aggregation and alerting
+- Add backup restoration drills
+- Expand end-to-end coverage

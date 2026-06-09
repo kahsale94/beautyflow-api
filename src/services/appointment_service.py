@@ -11,7 +11,10 @@ from src.schemas.appointment_schema import AppointmentStatus
 from src.schemas import AppointmentCreate, AppointmentUpdate, AppointmentResponse
 from src.repositories import (AppointmentRepository, ProfessionalRepository, ServiceRepository,
     AvailabilityRepository, ClientRepository, BusinessRepository, ProfessionalServiceRepository,
+    ScheduleBlockRepository,
 )
+from src.services.scheduling_lock import acquire_schedule_lock
+
 
 class ProfessionalNotAvailableError(Exception):
     pass
@@ -26,6 +29,9 @@ class ProfessionalServiceMismatchError(Exception):
     pass
 
 class AppointmentTimeConflictError(Exception):
+    pass
+
+class AppointmentBlockedByScheduleBlockError(Exception):
     pass
 
 class AppointmentNotFoundError(Exception):
@@ -52,6 +58,15 @@ class AppointmentMaximumScheduleWindowError(Exception):
 class AppointmentInvalidSlotIntervalError(Exception):
     pass
 
+class AppointmentClientCancellationDisabledError(Exception):
+    pass
+
+class AppointmentCancellationDeadlineError(Exception):
+    pass
+
+class AppointmentConfirmationPendingError(Exception):
+    pass
+
 class InvalidBusinessTimezoneError(Exception):
     pass
 
@@ -68,6 +83,7 @@ class AppointmentService:
         client_repo: ClientRepository,
         business_repo: BusinessRepository,
         professional_service_repo: ProfessionalServiceRepository,
+        schedule_block_repo: ScheduleBlockRepository,
     ):
         self.db = db
         self.appointment_repo = appointment_repo
@@ -77,6 +93,7 @@ class AppointmentService:
         self.client_repo = client_repo
         self.business_repo = business_repo
         self.professional_service_repo = professional_service_repo
+        self.schedule_block_repo = schedule_block_repo
 
     def _get_integrity_constraint_name(self, exc: IntegrityError) -> str | None:
         try:
@@ -114,10 +131,9 @@ class AppointmentService:
         except Exception as exc:
             raise InvalidBusinessTimezoneError() from exc
 
-    def _is_aligned_to_slot(self, start_datetime: datetime, availability_start_time, slot_interval_minutes: int) -> bool:
+    def _is_aligned_to_slot(self, start_datetime: datetime, slot_interval_minutes: int) -> bool:
         start_minutes = start_datetime.hour * 60 + start_datetime.minute
-        availability_minutes = availability_start_time.hour * 60 + availability_start_time.minute
-        return (start_minutes - availability_minutes) % slot_interval_minutes == 0
+        return start_minutes % slot_interval_minutes == 0
 
     def _validate_professional(self, business_id: int, professional_id: int):
         professional = self.professional_repo.get_by_id(self.db, business_id, professional_id)
@@ -194,7 +210,7 @@ class AppointmentService:
             raise ProfessionalNotAvailableError()
 
         slot_interval_minutes = business.slot_interval_minutes or 15
-        if not self._is_aligned_to_slot(start_datetime, availability.start_time, slot_interval_minutes):
+        if not self._is_aligned_to_slot(start_datetime, slot_interval_minutes):
             raise AppointmentInvalidSlotIntervalError()
 
         start_time = start_datetime.time()
@@ -205,6 +221,18 @@ class AppointmentService:
 
         if not (availability.start_time <= start_time and end_time <= availability.end_time):
             raise ProfessionalNotAvailableError()
+
+        acquire_schedule_lock(self.db, business_id, professional_id)
+
+        active_blocks = self.schedule_block_repo.get_active_by_professional_period(
+            self.db,
+            business_id,
+            professional_id,
+            start_datetime,
+            end_datetime,
+        )
+        if active_blocks:
+            raise AppointmentBlockedByScheduleBlockError()
 
         return start_datetime, end_datetime
     
@@ -220,6 +248,7 @@ class AppointmentService:
                 end_datetime = appointment.end_datetime.astimezone(business_tz),
                 created_at = appointment.created_at,
                 status = appointment.status,
+                confirmation_pending = appointment.confirmation_pending,
             )
 
         if isinstance(appointment_or_list, list):
@@ -303,6 +332,7 @@ class AppointmentService:
     
     def create(self, business_id: int, data: AppointmentCreate):
         start_datetime, end_datetime = self._validate_appointment(business_id, data.client_id, data.professional_id, data.service_id, data.start_datetime)
+        business = self._get_business_or_raise(business_id)
 
         appointment = Appointment(
             business_id = business_id,
@@ -312,6 +342,7 @@ class AppointmentService:
             start_datetime = start_datetime,
             end_datetime = end_datetime,
             status = AppointmentStatus.scheduled,
+            confirmation_pending = business.appointment_confirmation_required,
         )
 
         self.appointment_repo.add(self.db, appointment)
@@ -363,12 +394,15 @@ class AppointmentService:
         if appointment.status == AppointmentStatus.completed:
             raise AppointmentAlreadyCompletedError()
 
+        if appointment.confirmation_pending:
+            raise AppointmentConfirmationPendingError()
+
         appointment.status = AppointmentStatus.completed
         self._commit_or_raise_conflict()
 
         return
 
-    def cancel(self, business_id: int, appointment_id: int):
+    def confirm(self, business_id: int, appointment_id: int):
         appointment = self._get_appointment_or_raise(business_id, appointment_id)
 
         if appointment.status == AppointmentStatus.canceled:
@@ -376,6 +410,33 @@ class AppointmentService:
 
         if appointment.status == AppointmentStatus.completed:
             raise AppointmentAlreadyCompletedError()
+
+        appointment.confirmation_pending = False
+        self.db.commit()
+
+        return
+
+    def cancel(self, business_id: int, appointment_id: int, enforce_client_policy: bool = False):
+        appointment = self._get_appointment_or_raise(business_id, appointment_id)
+
+        if appointment.status == AppointmentStatus.canceled:
+            raise AppointmentAlreadyCanceledError()
+
+        if appointment.status == AppointmentStatus.completed:
+            raise AppointmentAlreadyCompletedError()
+
+        if enforce_client_policy:
+            business = self._get_business_or_raise(business_id)
+            if not business.allow_client_cancel:
+                raise AppointmentClientCancellationDisabledError()
+
+            business_tz = self._get_business_timezone(business_id)
+            now = datetime.now(business_tz)
+            cancellation_deadline = appointment.start_datetime.astimezone(business_tz) - timedelta(
+                hours=business.cancel_limit_hours or 0
+            )
+            if now > cancellation_deadline:
+                raise AppointmentCancellationDeadlineError()
 
         appointment.status = AppointmentStatus.canceled
         self._commit_or_raise_conflict()
@@ -404,4 +465,5 @@ def get_appointment_service(db: DataBaseDep):
         ClientRepository(),
         BusinessRepository(),
         ProfessionalServiceRepository(),
+        ScheduleBlockRepository(),
     )

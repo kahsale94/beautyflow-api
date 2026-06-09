@@ -8,6 +8,7 @@ from src.schemas import (AvailabilityCreate, AvailabilityUpdate, AvailabilityRes
 from src.dependecies import AvailabilityServiceDep, BusinessScopeDep, UserOrBusinessIntegrationDep, AdminDep
 from src.services.availability_service import (ProfessionalNotFoundError, InvalidTimeRangeError, AvailabilityAlreadyExistsError,
     AvailabilityNotFoundError, ProfessionalUnavailableError, ServiceNotFoundError, ProfessionalServiceMismatchError, DatetimeFormatError,
+    BusinessNotAvailableForBookingError,
 )
 
 router = APIRouter(prefix="/availabilities", tags=["V1 ➔ Availabilities"])
@@ -25,6 +26,9 @@ def check_and_suggest_availability(data: AvailabilityCheckAndSuggestRequest, bus
 
     except ProfessionalServiceMismatchError:
         raise HTTPException(status_code=400, detail="Este profissional não executa o serviço informado!")
+
+    except BusinessNotAvailableForBookingError:
+        raise HTTPException(status_code=403, detail="Agendamento desabilitado para esta empresa!")
 
     except DatetimeFormatError:
         raise HTTPException(status_code=400, detail="Formato de data invalido! Envie timezone no datetime.")
@@ -48,6 +52,9 @@ def get_availability_slots(professional_id: int, service_id: int, date: date, bu
 
     except ProfessionalServiceMismatchError:
         raise HTTPException(status_code=400, detail="Este profissional não executa o serviço informado!")
+
+    except BusinessNotAvailableForBookingError:
+        raise HTTPException(status_code=403, detail="Agendamento desabilitado para esta empresa!")
 
     except AvailabilityNotFoundError:
         raise HTTPException(status_code=404, detail="Profissional não trabalha nesse dia!")

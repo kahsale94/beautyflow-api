@@ -21,8 +21,7 @@
             </header>
             <p>
                 Status:
-                <span class="badge {{ 'scheduled' if item.is_active else 'canceled' }}">{{ 'ativa' if item.is_active
-                    else 'inativa' }}</span>
+                <span class="badge {{ 'success' if item.is_active else 'danger' }}">{{ 'ativa' if item.is_active else 'inativa' }}</span>
             </p>
             <p class="muted">Criada em {{ item.created_at.strftime('%d/%m/%Y') }}</p>
             {% if session.is_super_admin %}

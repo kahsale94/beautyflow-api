@@ -4,7 +4,8 @@ import logging
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from src.core import (SENSITIVE_HEADER_NAMES, get_forwarded_for, get_real_ip)
+from src.core import SENSITIVE_HEADER_NAMES, get_forwarded_for, get_real_ip
+
 
 logger = logging.getLogger("beautyflow.requests")
 

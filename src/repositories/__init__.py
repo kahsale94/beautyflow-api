@@ -4,6 +4,7 @@ from .service_repo import ServiceRepository
 from .business_repo import BusinessRepository
 from .integration_repo import IntegrationRepository
 from .appointment_repo import AppointmentRepository
+from .schedule_block_repo import ScheduleBlockRepository
 from .availability_repo import AvailabilityRepository
 from .professional_repo import ProfessionalRepository
 from .professional_service_repo import ProfessionalServiceRepository

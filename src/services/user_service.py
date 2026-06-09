@@ -1,11 +1,15 @@
+from datetime import datetime, timezone
+
+from sqlalchemy import update
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
-from src.models import User
 from src.core import DataBaseDep
 from src.security import hash, verify_hash
 from src.repositories import UserRepository
+from src.models import User, UserRefreshToken
 from src.schemas import UserCreate, UserUpdate
+
 
 class UserAlreadyExistsError(Exception):
     pass
@@ -25,6 +29,16 @@ class UserService:
     ):
         self.db = db
         self.user_repo = user_repo
+
+    def _revoke_refresh_tokens(self, user_id: int) -> None:
+        self.db.execute(
+            update(UserRefreshToken)
+            .where(
+                UserRefreshToken.user_id == user_id,
+                UserRefreshToken.revoked_at.is_(None),
+            )
+            .values(revoked_at=datetime.now(timezone.utc))
+        )
 
     def _get_valid(self, business_id: int, user_id: int) -> User:
         user = self.user_repo.get_by_id(self.db, business_id, user_id)
@@ -83,6 +97,11 @@ class UserService:
         if "email" in update_data and update_data["email"] is not None:
             update_data["email"] = str(update_data["email"]).strip().lower()
 
+        password = update_data.pop("password", None)
+        if password:
+            user.password_hash = hash(password)
+            self._revoke_refresh_tokens(user.id)
+
         for field, value in update_data.items():
             setattr(user, field, value)
 
@@ -105,6 +124,7 @@ class UserService:
             raise InvalidCurrentPasswordError()
 
         user.password_hash = hash(new_password)
+        self._revoke_refresh_tokens(user.id)
         self.db.commit()
         self.db.refresh(user)
 
@@ -114,6 +134,7 @@ class UserService:
         user = self._get_valid(business_id, user_id)
 
         user.is_active = False
+        self._revoke_refresh_tokens(user.id)
 
         self.db.commit()
 

@@ -4,6 +4,7 @@ from pydantic import BaseModel, ConfigDict
 
 from src.models.appointment_model import AppointmentStatus
 
+
 class AppointmentCreate(BaseModel):
     client_id: int
     professional_id: int
@@ -26,5 +27,6 @@ class AppointmentResponse(BaseModel):
     end_datetime: datetime
     created_at: datetime
     status: AppointmentStatus
+    confirmation_pending: bool
 
     model_config = ConfigDict(from_attributes=True)

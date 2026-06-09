@@ -1,0 +1,112 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: beautyflow
+          POSTGRES_PASSWORD: beautyflow
+          POSTGRES_DB: beautyflow_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U beautyflow -d beautyflow_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7.2-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      ENVIRONMENT: development
+      DATABASE_URL: postgresql+psycopg://beautyflow:beautyflow@localhost:5432/beautyflow_test
+      ALGORITHM: HS256
+      USER_SECRET_KEY: ci-user-secret-key-with-at-least-32-characters
+      INTEGRATION_SECRET_KEY: ci-integration-secret-key-with-at-least-32-characters
+      BUSINESS_INTEGRATION_SECRET_KEY: ci-business-integration-secret-key-with-at-least-32-characters
+      USER_ACCESS_TOKEN_EXPIRE_MINUTES: "30"
+      USER_REFRESH_TOKEN_EXPIRE_DAYS: "7"
+      INTEGRATION_TOKEN_EXPIRE_DAYS: "30"
+      BUSINESS_INTEGRATION_TOKEN_EXPIRE_MINUTES: "30"
+      CORS_ORIGINS: http://localhost:8000
+      REDIS_URL: redis://localhost:6379/0
+      POSTGRES_USER: beautyflow
+      POSTGRES_PASSWORD: beautyflow
+      POSTGRES_DB: beautyflow_test
+      REDIS_PASSWORD: beautyflow
+      BEAUTYFLOW_EXTERNAL_NETWORK: beautyflow-network-ext
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pip-audit
+
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Compile Python
+        run: python -m compileall -q src tests alembic
+
+      - name: Run tests
+        run: pytest -q
+
+      - name: Validate Jinja templates
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from jinja2 import Environment
+
+          environment = Environment()
+          templates = list(Path("src/templates").rglob("*.html"))
+          for template in templates:
+              environment.parse(template.read_text(encoding="utf-8"))
+          print(f"{len(templates)} templates validated")
+          PY
+
+      - name: Validate JavaScript
+        run: deno check src/static/admin/js/admin.js src/static/admin/js/calendar.js
+
+      - name: Audit production dependencies
+        run: pip-audit -r requirements-prod.txt
+
+      - name: Apply and verify migrations
+        run: |
+          alembic upgrade head
+          alembic check
+
+      - name: Validate Compose
+        run: docker compose config --quiet
+
+      - name: Build production image
+        run: docker build -t beautyflow-api:ci .

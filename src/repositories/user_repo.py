@@ -27,7 +27,7 @@ class UserRepository:
                 User.is_active == True,
                 User.business_id == business_id,
                 (
-                    User.normalized_name.ilike(f"%{user_email}%") | (similarity_score > 0.4)
+                    User.email.ilike(f"%{user_email}%") | (similarity_score > 0.4)
                 ),
             )
             .order_by(similarity_score.desc())

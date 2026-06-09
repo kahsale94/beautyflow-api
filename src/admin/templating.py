@@ -8,9 +8,8 @@ from fastapi.templating import Jinja2Templates
 from fastapi.responses import RedirectResponse, Response
 
 from .dependencies import AdminSession
-from src.core import (ADMIN_ACCESS_COOKIE, ADMIN_BUSINESS_COOKIE, ADMIN_COOKIE_PATH,
-    ADMIN_COOKIE_SAMESITE, ADMIN_COOKIE_SECURE, ADMIN_CSRF_COOKIE, ADMIN_FLASH_COOKIE,
-    ADMIN_REFRESH_COOKIE, USER_ACCESS_TOKEN_EXPIRE_MINUTES, USER_REFRESH_TOKEN_EXPIRE_DAYS
+from src.core import (ADMIN_ACCESS_COOKIE, ADMIN_BUSINESS_COOKIE, ADMIN_COOKIE_PATH, ADMIN_COOKIE_SAMESITE,
+    ADMIN_COOKIE_SECURE, ADMIN_CSRF_COOKIE, ADMIN_FLASH_COOKIE, ADMIN_REFRESH_COOKIE, USER_ACCESS_TOKEN_EXPIRE_MINUTES, USER_REFRESH_TOKEN_EXPIRE_DAYS
 )
 
 DEFAULT_ADMIN_TIMEZONE = "America/Sao_Paulo"
@@ -152,7 +151,12 @@ def render(request: Request, template_name: str, context: dict | None = None, *,
             "weekdays": WEEKDAYS,
         }
     )
-    response = templates.TemplateResponse(template_name, context, status_code=status_code)
+    response = templates.TemplateResponse(
+        request,
+        template_name,
+        context,
+        status_code=status_code,
+    )
     response.delete_cookie(ADMIN_FLASH_COOKIE, path="/admin")
 
     if session:

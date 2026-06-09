@@ -34,7 +34,7 @@ async def select_business_action(request: Request, business_service: BusinessSer
     except (TypeError, ValueError, BusinessNotFoundError):
         return redirect_with_flash("/admin/businesses", "Empresa inválida ou inativa.", "error", request=request)
 
-    response = redirect_with_flash("/admin", "Empresa selecionada com sucesso.")
+    response = redirect_with_flash("/admin", "Empresa selecionada com sucesso.", request=request)
     set_business_cookie(response, business_id)
 
     return response

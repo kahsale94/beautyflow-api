@@ -22,8 +22,46 @@ window.initializeAdminDateTimePickers = function (root = document) {
     });
 };
 
+function initializeScheduleBlockForms(root = document) {
+    root.querySelectorAll('.schedule-block-form').forEach(function (form) {
+        const allDayToggle = form.querySelector('[data-schedule-block-all-day]');
+        const durationInput = form.querySelector('[data-schedule-block-duration]');
+        const durationField = form.querySelector('[data-schedule-block-duration-field]');
+
+        if (!(allDayToggle instanceof HTMLInputElement) || !(durationInput instanceof HTMLInputElement)) return;
+        if (form.dataset.scheduleBlockInitialized === 'true') return;
+
+        const defaultDuration = durationInput.value || '1';
+        form.dataset.scheduleBlockInitialized = 'true';
+
+        function syncAllDayState() {
+            if (allDayToggle.checked) {
+                durationInput.dataset.previousValue = durationInput.value || durationInput.dataset.previousValue || defaultDuration;
+                durationInput.value = '';
+                durationInput.disabled = true;
+                durationInput.required = false;
+                if (durationField instanceof HTMLElement) durationField.classList.add('is-disabled');
+                return;
+            }
+
+            durationInput.disabled = false;
+            durationInput.required = true;
+            if (!durationInput.value) {
+                durationInput.value = durationInput.dataset.previousValue || defaultDuration;
+            }
+            if (durationField instanceof HTMLElement) durationField.classList.remove('is-disabled');
+        }
+
+        allDayToggle.addEventListener('change', syncAllDayState);
+        syncAllDayState();
+    });
+}
+
+window.initializeScheduleBlockForms = initializeScheduleBlockForms;
+
 document.addEventListener('DOMContentLoaded', function () {
     window.initializeAdminDateTimePickers();
+    window.initializeScheduleBlockForms();
 
     const calendarEl = document.getElementById('calendar');
     if (!calendarEl || !window.FullCalendar) return;
@@ -32,6 +70,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const professionalFilter = document.getElementById('calendar-professional-filter');
     const monthStrip = document.getElementById('calendar-month-strip');
     const mobileCalendarQuery = window.matchMedia('(max-width: 760px)');
+    const scheduleBlockEventColor = '#cbd5e1';
 
     const desktopToolbar = {
         left: 'prev,next today',
@@ -113,6 +152,36 @@ document.addEventListener('DOMContentLoaded', function () {
         return normalizedStatus(props.status || (event && event.status));
     }
 
+    function eventProps(infoOrEvent) {
+        const event = infoOrEvent && infoOrEvent.event ? infoOrEvent.event : infoOrEvent;
+        return event && event.extendedProps ? event.extendedProps : {};
+    }
+
+    function eventType(infoOrEvent) {
+        const event = infoOrEvent && infoOrEvent.event ? infoOrEvent.event : infoOrEvent;
+        const props = eventProps(infoOrEvent);
+        return String(props.type || props.event_type || (event && event.type) || 'appointment');
+    }
+
+    function isScheduleBlockEvent(infoOrEvent) {
+        return eventType(infoOrEvent) === 'schedule_block';
+    }
+
+    function scheduleBlockStatus(infoOrEvent) {
+        const props = eventProps(infoOrEvent);
+        return String(props.status || 'active').trim().toLowerCase();
+    }
+
+    function scheduleBlockId(infoOrEvent) {
+        const event = infoOrEvent && infoOrEvent.event ? infoOrEvent.event : infoOrEvent;
+        const props = eventProps(infoOrEvent);
+        const explicitId = props.scheduleBlockId || props.schedule_block_id;
+        if (explicitId) return explicitId;
+
+        const rawId = event && event.id ? String(event.id) : '';
+        return rawId.startsWith('schedule-block-') ? rawId.replace('schedule-block-', '') : rawId;
+    }
+
     function applyAppointmentColorToElement(element, status) {
         if (!element) return;
         const normalized = normalizedStatus(status);
@@ -124,6 +193,18 @@ document.addEventListener('DOMContentLoaded', function () {
         element.style.color = '#0f172a';
         element.classList.remove('appointment-status-scheduled', 'appointment-status-completed', 'appointment-status-canceled');
         element.classList.add(`appointment-status-${normalized}`);
+    }
+
+    function applyScheduleBlockColorToElement(element, status) {
+        if (!element) return;
+        const normalized = String(status || 'active').replace(/[^a-z0-9_-]/g, '-');
+
+        element.style.setProperty('--bf-calendar-event-bg', scheduleBlockEventColor);
+        element.style.backgroundColor = scheduleBlockEventColor;
+        element.style.borderColor = scheduleBlockEventColor;
+        element.style.color = '#0f172a';
+        element.classList.remove('appointment-status-scheduled', 'appointment-status-completed', 'appointment-status-canceled');
+        element.classList.add('schedule-block-event', `schedule-block-status-${normalized}`);
     }
 
     function applyAppointmentStatusToEvent(event, status) {
@@ -245,9 +326,34 @@ document.addEventListener('DOMContentLoaded', function () {
         },
         eventDataTransform: function (eventData) {
             const props = eventData.extendedProps || {};
+            const incomingClasses = Array.isArray(eventData.classNames) ? eventData.classNames : [];
+            const rawType = props.type || props.event_type || eventData.type;
+
+            if (rawType === 'schedule_block') {
+                const blockStatus = String(props.status || eventData.status || 'active').replace(/[^a-z0-9_-]/g, '-');
+                return {
+                    ...eventData,
+                    backgroundColor: scheduleBlockEventColor,
+                    borderColor: scheduleBlockEventColor,
+                    textColor: '#0f172a',
+                    classNames: [
+                        ...incomingClasses.filter(className => !String(className).startsWith('schedule-block-status-')),
+                        'bf-calendar-event-shell',
+                        'schedule-block-event',
+                        `schedule-block-status-${blockStatus}`
+                    ],
+                    extendedProps: {
+                        ...props,
+                        type: 'schedule_block',
+                        status: props.status || eventData.status || 'active',
+                        scheduleBlockId: props.scheduleBlockId || props.schedule_block_id || eventData.scheduleBlockId || eventData.schedule_block_id,
+                        schedule_block_id: props.schedule_block_id || props.scheduleBlockId || eventData.schedule_block_id || eventData.scheduleBlockId
+                    }
+                };
+            }
+
             const normalized = normalizedStatus(props.status || eventData.status);
             const eventColor = appointmentColor(normalized);
-            const incomingClasses = Array.isArray(eventData.classNames) ? eventData.classNames : [];
 
             return {
                 ...eventData,
@@ -266,11 +372,8 @@ document.addEventListener('DOMContentLoaded', function () {
             };
         },
         eventContent: function (info) {
-            const props = info.event.extendedProps || {};
+            const props = eventProps(info);
             const startTime = info.timeText || '';
-            const client = props.client || info.event.title || 'Cliente';
-            const service = props.service || 'Serviço';
-            const professional = props.professional || '';
             const isMonth = info.view.type === 'dayGridMonth';
             const wrapper = document.createElement('div');
             wrapper.className = isMonth ? 'bf-calendar-event bf-calendar-event--month' : 'bf-calendar-event bf-calendar-event--time';
@@ -283,6 +386,24 @@ document.addEventListener('DOMContentLoaded', function () {
                 wrapper.appendChild(item);
             }
 
+            if (isScheduleBlockEvent(info)) {
+                const reasonLabel = props.reasonLabel || props.reason_label || 'Motivo';
+                const professional = props.professional || '';
+                const scheduleLabel = info.event.allDay ? 'Dia inteiro' : startTime;
+
+                appendText('bf-calendar-event-time', scheduleLabel);
+                appendText('bf-calendar-event-title', info.event.title || `Agenda fechada — ${reasonLabel}`);
+                if (!isMonth) {
+                    appendText('bf-calendar-event-subtitle', professional);
+                }
+
+                return { domNodes: [wrapper] };
+            }
+
+            const client = props.client || info.event.title || 'Cliente';
+            const service = props.service || 'Serviço';
+            const professional = props.professional || '';
+
             appendText('bf-calendar-event-time', startTime);
             appendText('bf-calendar-event-title', client);
             if (!isMonth) {
@@ -292,14 +413,32 @@ document.addEventListener('DOMContentLoaded', function () {
             return { domNodes: [wrapper] };
         },
         eventDidMount: function (info) {
-            const props = info.event.extendedProps || {};
+            const props = eventProps(info);
             const startTime = info.timeText || '';
+
+            if (isScheduleBlockEvent(info)) {
+                applyScheduleBlockColorToElement(info.el, scheduleBlockStatus(info));
+                info.el.title = [info.event.allDay ? 'Dia inteiro' : startTime, 'Agenda fechada', props.reasonLabel || props.reason_label, props.professional]
+                    .filter(Boolean)
+                    .join(' • ');
+                return;
+            }
+
             applyAppointmentColorToElement(info.el, eventStatus(info));
             info.el.title = [startTime, props.client, props.service, props.professional]
                 .filter(Boolean)
                 .join(' • ');
         },
         eventClassNames: function (info) {
+            if (isScheduleBlockEvent(info)) {
+                const blockStatus = scheduleBlockStatus(info).replace(/[^a-z0-9_-]/g, '-');
+                return [
+                    'bf-calendar-event-shell',
+                    'schedule-block-event',
+                    `schedule-block-status-${blockStatus}`
+                ];
+            }
+
             return [
                 'bf-calendar-event-shell',
                 `appointment-status-${statusClassName(eventStatus(info))}`
@@ -313,7 +452,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (professionalFilter && professionalFilter.value) {
                 params.set('professional_id', professionalFilter.value);
             }
-            fetch(`${eventsUrl}?${params.toString()}`, { credentials: 'same-origin' })
+            fetch(`${eventsUrl}?${params.toString()}`, { credentials: 'same-origin', cache: 'no-store' })
                 .then(response => {
                     if (!response.ok) throw new Error('Erro ao carregar eventos');
                     return response.json();
@@ -323,19 +462,30 @@ document.addEventListener('DOMContentLoaded', function () {
         },
         eventClick: function (info) {
             info.jsEvent.preventDefault();
-            fetch(`/admin/appointments/${info.event.id}/details`, { credentials: 'same-origin' })
-                .then(response => response.text())
+
+            const blockId = scheduleBlockId(info);
+            const detailUrl = isScheduleBlockEvent(info)
+                ? `/admin/appointments/blocks/${blockId}/details`
+                : `/admin/appointments/${info.event.id}/details`;
+
+            fetch(detailUrl, { credentials: 'same-origin' })
+                .then(response => {
+                    if (!response.ok) throw new Error('Erro ao carregar detalhes');
+                    return response.text();
+                })
                 .then(html => {
-                    const freshStatus = extractStatusFromDetailsHtml(html);
-                    if (freshStatus) {
-                        applyAppointmentStatusToEvent(info.event, freshStatus);
+                    if (!isScheduleBlockEvent(info)) {
+                        const freshStatus = extractStatusFromDetailsHtml(html);
+                        if (freshStatus) {
+                            applyAppointmentStatusToEvent(info.event, freshStatus);
+                        }
                     }
 
                     window.openAdminModal(html);
-                    const content = document.getElementById('modal-content');
-                    if (content && typeof window.initializeAdminDateTimePickers === 'function') {
-                        window.initializeAdminDateTimePickers(content);
-                    }
+                })
+                .catch(error => {
+                    console.warn(error);
+                    window.openAdminModal('<p class="empty">Não foi possível carregar os detalhes.</p>');
                 });
         }
     });

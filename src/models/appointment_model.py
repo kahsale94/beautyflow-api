@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy.sql import text
 from sqlalchemy.dialects.postgresql import ExcludeConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import CheckConstraint, DateTime, Enum as SAEnum, func
+from sqlalchemy import Boolean, CheckConstraint, DateTime, Enum as SAEnum, func
 
 from .base_model import Base, intpk, business_fk, professional_fk, service_fk, client_fk
 
@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from .service_model import Service
     from .business_model import Business
     from .professional_model import Professional
+
 
 class AppointmentStatus(str, PyEnum):
     scheduled = "scheduled"
@@ -41,6 +42,7 @@ class Appointment(Base):
     end_datetime: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     status: Mapped[AppointmentStatus] = mapped_column(SAEnum(AppointmentStatus, name="appointmentstatus"), nullable=False, default=AppointmentStatus.scheduled, server_default=AppointmentStatus.scheduled.value)
+    confirmation_pending: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
 
     client: Mapped["Client"] = relationship(back_populates="appointments")
     professional: Mapped["Professional"] = relationship(back_populates="appointments")

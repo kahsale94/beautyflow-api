@@ -2,6 +2,7 @@ from datetime import date, datetime, time
 
 from pydantic import BaseModel, ConfigDict, Field
 
+
 class AvailabilityCreate(BaseModel):
     professional_id: int
     weekday: int = Field(ge=0, le=6)
@@ -33,7 +34,7 @@ class AvailabilityCheckAndSuggestResponse(BaseModel):
     requested_end: datetime
     available: bool
     reason: str | None = None
-    suggestions: list[AvailabilitySuggestionResponse] = []
+    suggestions: list[AvailabilitySuggestionResponse] = Field(default_factory=list)
 
 class AvailabilityResponse(BaseModel):
     professional_id: int

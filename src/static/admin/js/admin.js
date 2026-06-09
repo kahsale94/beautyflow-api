@@ -9,13 +9,13 @@ document.addEventListener('submit', function (event) {
     }
 
     if (form.id) {
-        const selector = `[form="${window.CSS && CSS.escape ? CSS.escape(form.id) : form.id}"][disabled]`;
+        const selector = `[form="${window.CSS && CSS.escape ? CSS.escape(form.id) : form.id}"][data-editable][disabled]`;
         document.querySelectorAll(selector).forEach(function (field) {
             field.removeAttribute('disabled');
         });
     }
 
-    form.querySelectorAll('[disabled]').forEach(function (field) {
+    form.querySelectorAll('[data-editable][disabled]').forEach(function (field) {
         field.removeAttribute('disabled');
     });
 });
@@ -379,5 +379,8 @@ window.openAdminModal = function (html) {
 
     if (typeof window.initializeAdminDateTimePickers === 'function') {
         window.initializeAdminDateTimePickers(content);
+    }
+    if (typeof window.initializeScheduleBlockForms === 'function') {
+        window.initializeScheduleBlockForms(content);
     }
 };

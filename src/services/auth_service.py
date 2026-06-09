@@ -8,8 +8,8 @@ from sqlalchemy.orm import Session
 
 from src.utils import normalize_phone
 from src.core import DataBaseDep, USER_SECRET_KEY
+from src.models import User, BusinessIntegration, UserRefreshToken
 from src.repositories import BusinessRepository, IntegrationRepository
-from src.models import User, BusinessIntegration, UserRefreshToken, Integration
 from src.security import RefreshRequest, TokenManager, verify_hash, create_user_access_token, create_user_refresh_token, create_business_integration_token
 
 class InvalidCredentialError(Exception):
@@ -109,7 +109,7 @@ class AuthService:
             select(UserRefreshToken).where(
                 UserRefreshToken.user_id == user.id,
                 UserRefreshToken.jti_hash == current_jti_hash,
-            )
+            ).with_for_update()
         ).one_or_none()
 
         if not refresh_record:

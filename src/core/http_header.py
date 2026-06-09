@@ -3,6 +3,7 @@ from starlette.responses import Response
 
 from src.core.config import ENVIRONMENT
 
+
 SENSITIVE_HEADER_NAMES = {
     "authorization",
     "cookie",
@@ -19,10 +20,10 @@ SECURITY_HEADERS = {
 
 ADMIN_CONTENT_SECURITY_POLICY = (
     "default-src 'self'; "
-    "script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net https://static.cloudflareinsights.com; "
-    "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+    "script-src 'self' https://static.cloudflareinsights.com; "
+    "style-src 'self' 'unsafe-inline'; "
     "img-src 'self' data:; "
-    "font-src 'self' data: https://cdn.jsdelivr.net; "
+    "font-src 'self' data:; "
     "connect-src 'self' https://cloudflareinsights.com; "
     "frame-ancestors 'self'; "
     "base-uri 'self'; "

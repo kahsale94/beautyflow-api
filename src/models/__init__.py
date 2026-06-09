@@ -4,6 +4,7 @@ from .client_model import Client
 from .service_model import Service
 from .business_model import Business
 from .appointment_model import Appointment
+from .schedule_block_model import ScheduleBlock
 from .integration_model import Integration
 from .availability_model import Availability
 from .professional_model import Professional

@@ -6,12 +6,12 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
 from src.core import DataBaseDep
-from src.models import Availability, Appointment
+from src.models import Availability
 from src.schemas import (AvailabilityCreate, AvailabilityUpdate, AvailabilitySlotsResponse,
     AvailabilityCheckAndSuggestRequest, AvailabilityCheckAndSuggestResponse, AvailabilitySuggestionResponse,
 )
 from src.repositories import (AvailabilityRepository, ProfessionalRepository, AppointmentRepository,
-    ServiceRepository, ProfessionalServiceRepository
+    ServiceRepository, ProfessionalServiceRepository, ScheduleBlockRepository
 )
 
 class ProfessionalNotFoundError(Exception):
@@ -38,6 +38,9 @@ class ProfessionalServiceMismatchError(Exception):
 class DatetimeFormatError(Exception):
     pass
 
+class BusinessNotAvailableForBookingError(Exception):
+    pass
+
 class AvailabilityService:
 
     SLOT_STEP_MINUTES = 15
@@ -50,6 +53,7 @@ class AvailabilityService:
         appointment_repo: AppointmentRepository,
         service_repo: ServiceRepository,
         professional_service_repo: ProfessionalServiceRepository,
+        schedule_block_repo: ScheduleBlockRepository,
     ):
         self.db = db
         self.availability_repo = availability_repo
@@ -57,6 +61,7 @@ class AvailabilityService:
         self.appointment_repo = appointment_repo
         self.service_repo = service_repo
         self.professional_service_repo = professional_service_repo
+        self.schedule_block_repo = schedule_block_repo
 
     def _validate_professional(self, business_id: int, professional_id: int):
         professional = self.professional_repo.get_by_id(self.db, business_id, professional_id)
@@ -84,11 +89,10 @@ class AvailabilityService:
         professional = self._validate_professional(business_id, professional_id)
         service = self._validate_service(business_id, service_id)
 
-        professional_service = self.professional_service_repo.get_by_ids(
-            self.db,
-            professional_id,
-            service_id,
-        )
+        if not professional.business.booking_enabled:
+            raise BusinessNotAvailableForBookingError()
+
+        professional_service = self.professional_service_repo.get_by_ids(self.db, professional_id, service_id)
 
         if not professional_service:
             raise ProfessionalServiceMismatchError()
@@ -131,22 +135,30 @@ class AvailabilityService:
     
         return slots
 
-    def _build_gaps(self, start: datetime, end: datetime, appointments: Sequence[Appointment], tz: ZoneInfo):
+    def _build_gaps(self, start: datetime, end: datetime, busy_items: Sequence, tz: ZoneInfo):
         gaps = []
         cursor = start
-    
-        for appt in appointments:
-            appt_start = appt.start_datetime.astimezone(tz)
-            appt_end = appt.end_datetime.astimezone(tz)
-    
-            if cursor < appt_start:
-                gaps.append((cursor, appt_start))
-    
-            cursor = max(cursor, appt_end)
-    
+
+        sorted_busy_items = sorted(busy_items, key=lambda item: item.start_datetime)
+
+        for item in sorted_busy_items:
+            item_start = item.start_datetime.astimezone(tz)
+            item_end = item.end_datetime.astimezone(tz)
+
+            if item_end <= start or item_start >= end:
+                continue
+
+            item_start = max(item_start, start)
+            item_end = min(item_end, end)
+
+            if cursor < item_start:
+                gaps.append((cursor, item_start))
+
+            cursor = max(cursor, item_end)
+
         if cursor < end:
             gaps.append((cursor, end))
-    
+
         return gaps
 
     def _get_slot_datetimes_for_date(self, business_id: int, professional, service, target_date: date, now: datetime):
@@ -179,8 +191,15 @@ class AvailabilityService:
             start_of_day,
             end_of_day,
         )
+        schedule_blocks = self.schedule_block_repo.get_active_by_professional_and_date(
+            self.db,
+            business_id,
+            professional.id,
+            start_of_day,
+            end_of_day,
+        )
 
-        gaps = self._build_gaps(start_dt, end_dt, appointments, tz)
+        gaps = self._build_gaps(start_dt, end_dt, [*appointments, *schedule_blocks], tz)
 
         slot_step_minutes = professional.business.slot_interval_minutes or self.SLOT_STEP_MINUTES
         minimum_notice_minutes = professional.business.minimum_notice_minutes or 0
@@ -431,4 +450,5 @@ def get_availability_service(db: DataBaseDep):
         AppointmentRepository(),
         ServiceRepository(),
         ProfessionalServiceRepository(),
+        ScheduleBlockRepository(),
     )

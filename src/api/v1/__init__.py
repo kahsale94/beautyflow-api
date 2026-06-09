@@ -7,6 +7,7 @@ from .service_routes import router as service_router
 from .business_routes import router as business_router
 from .integration_routes import router as integration_router
 from .appointment_routes import router as appointment_router
+from .schedule_block_routes import router as schedule_block_router
 from .availability_routes import router as availability_router
 from .professional_routes import router as professional_router
 from .professional_service_routes import router as professional_service_router
@@ -20,6 +21,7 @@ router.include_router(client_router)
 router.include_router(service_router)
 router.include_router(business_router)
 router.include_router(appointment_router)
+router.include_router(schedule_block_router)
 router.include_router(integration_router)
 router.include_router(availability_router)
 router.include_router(professional_router)

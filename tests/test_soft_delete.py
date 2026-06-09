@@ -1,5 +1,6 @@
 from pathlib import Path
 
+
 ROOT = Path(__file__).resolve().parents[1]
 
 def read_source(relative_path: str) -> str:

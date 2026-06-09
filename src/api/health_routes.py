@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 from sqlalchemy import text
@@ -7,15 +8,18 @@ from starlette.responses import JSONResponse
 from src.core import REDIS_URL
 from src.core.database import engine
 
+
 router = APIRouter(tags=["Health"])
+logger = logging.getLogger("beautyflow.health")
 
 def _check_db() -> tuple[bool, str | None]:
     try:
         with engine.connect() as connection:
             connection.execute(text("SELECT 1"))
         return True, None
-    except Exception as exc:
-        return False, str(exc)
+    except Exception:
+        logger.exception("Database readiness check failed")
+        return False, "unavailable"
 
 def _check_redis() -> tuple[bool, str | None]:
     if not REDIS_URL:
@@ -27,8 +31,9 @@ def _check_redis() -> tuple[bool, str | None]:
         client.ping()
         client.close()
         return True, None
-    except Exception as exc:
-        return False, str(exc)
+    except Exception:
+        logger.exception("Redis readiness check failed")
+        return False, "unavailable"
 
 def _check_migration_head() -> tuple[bool, dict]:
     try:
@@ -53,8 +58,9 @@ def _check_migration_head() -> tuple[bool, dict]:
             "current_revision": current_revision,
             "expected_head": expected_head,
         }
-    except Exception as exc:
-        return False, {"error": str(exc)}
+    except Exception:
+        logger.exception("Migration readiness check failed")
+        return False, {"error": "unavailable"}
 
 @router.get("/health/live")
 def live():

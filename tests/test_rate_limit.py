@@ -1,5 +1,6 @@
 from pathlib import Path
 
+
 ROOT = Path(__file__).resolve().parents[1]
 
 def read_source(relative_path: str) -> str:
@@ -20,3 +21,5 @@ def test_rate_limit_falls_back_when_redis_fails():
     assert "Redis rate limit unavailable" in source
     assert "allowed = self._allow_in_memory(key, max_requests, window)" in source
     assert "pipeline()" in source
+    assert "await pipe.execute()" in source
+    assert "MAX_IN_MEMORY_KEYS" in source

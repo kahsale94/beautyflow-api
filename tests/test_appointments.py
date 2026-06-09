@@ -1,5 +1,12 @@
 from pathlib import Path
 
+import pytest
+from fastapi import HTTPException
+
+from src.api.v1.appointment_routes import _handle_booking_rule_errors
+from src.services.appointment_service import AppointmentAlreadyCompletedError, ProfessionalServiceMismatchError
+
+
 ROOT = Path(__file__).resolve().parents[1]
 
 def read_source(relative_path: str) -> str:
@@ -41,10 +48,11 @@ def test_appointment_period_filter_exists():
     assert "end_datetime: datetime | None = None" in route_source
 
 def test_appointment_route_handles_professional_service_mismatch():
-    source = read_source("src/api/v1/appointment_routes.py")
+    with pytest.raises(HTTPException) as exc_info:
+        _handle_booking_rule_errors(ProfessionalServiceMismatchError())
 
-    assert "except ProfessionalServiceMismatchError" in source
-    assert "Este profissional não executa o serviço informado" in source
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.detail == "Este profissional não executa o serviço informado!"
 
 def test_appointment_create_and_update_reuse_business_booking_rules():
     service_source = read_source("src/services/appointment_service.py")
@@ -73,12 +81,16 @@ def test_update_appointment_rejects_null_required_fields():
 
 def test_cancel_completed_appointment_returns_conflict():
     service_source = read_source("src/services/appointment_service.py")
-    route_source = read_source("src/api/v1/appointment_routes.py")
 
     cancel_slice = service_source[service_source.index("def cancel"):service_source.index("def delete")]
     assert "AppointmentStatus.completed" in cancel_slice
     assert "raise AppointmentAlreadyCompletedError()" in cancel_slice
-    assert "Agendamento já concluído e não pode ser cancelado" in route_source
+
+    with pytest.raises(HTTPException) as exc_info:
+        _handle_booking_rule_errors(AppointmentAlreadyCompletedError())
+
+    assert exc_info.value.status_code == 409
+    assert "não pode ser alterado" in exc_info.value.detail
 
 def test_delete_appointment_is_logical_cancel():
     source = read_source("src/services/appointment_service.py")

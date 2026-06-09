@@ -1,0 +1,37 @@
+<h2>Fechamento de agenda #{{ schedule_block.id }}</h2>
+<div class="details-list">
+    <p>
+        <strong>Status:</strong>
+        <span class="badge {{ 'success' if schedule_block.status.value == 'active' else 'danger' }}">
+            {{ 'Ativo' if schedule_block.status.value == 'active' else 'Cancelado' }}
+        </span>
+    </p>
+    <p>
+        <strong>Profissional:</strong> {{ professional.name if professional else '-' }}
+    </p>
+    <p>
+        <strong>Motivo:</strong> {{ reason_label }}
+    </p>
+    <p>
+        <strong>Tipo:</strong> {{ 'Dia inteiro' if schedule_block.all_day else 'Por horário' }}
+    </p>
+    <p>
+        <strong>Período:</strong>
+        {{ schedule_block.start_datetime|datetime_br(business_timezone) }} -
+        {% if schedule_block.all_day %}
+        {{ schedule_block.end_datetime|datetime_br(business_timezone) }}
+        {% else %}
+        {{ schedule_block.end_datetime|datetime_time(business_timezone) }}
+        {% endif %}
+    </p>
+</div>
+
+{% if schedule_block.status.value == 'active' %}
+<form method="post" action="/admin/appointments/blocks/{{ schedule_block.id }}/cancel"
+    data-confirm="Reabrir a agenda neste período?">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
+    <button class="button success modal-save-button" type="submit">Reabrir agenda</button>
+</form>
+{% else %}
+<p class="empty">Este fechamento já foi cancelado.</p>
+{% endif %}

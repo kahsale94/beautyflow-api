@@ -442,6 +442,7 @@ textarea:focus {
 }
 
 input[readonly],
+input:disabled,
 textarea[readonly],
 select:disabled {
     background: var(--surface-2);
@@ -452,8 +453,11 @@ select:disabled {
 
 input[type="checkbox"],
 input[type="radio"] {
-    width: auto;
-    min-height: auto;
+    width: 16px;
+    height: 16px;
+    min-height: 16px;
+    padding: 0;
+    border-radius: 3px;
     accent-color: var(--primary);
 }
 
@@ -518,14 +522,69 @@ label {
     min-width: 320px;
 }
 
+.appointment-management-grid {
+    align-items: start;
+}
+
+.appointment-management-grid > .card {
+    align-self: start;
+    height: fit-content;
+}
+
+.appointment-create-form-grid,
+.schedule-block-form-grid {
+    align-items: end;
+}
+
 .appointment-create-actions {
     grid-column: 1 / -1;
     display: flex;
     justify-content: flex-end;
 }
 
-.appointment-create-button {
+.appointment-create-button,
+.schedule-block-submit {
     min-width: 180px;
+}
+
+.schedule-block-submit {
+    justify-self: end;
+}
+
+.schedule-block-toggle {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-sm);
+    min-height: 58px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: #fff;
+    cursor: pointer;
+}
+
+.schedule-block-toggle input {
+    flex: 0 0 auto;
+    margin-top: 4px;
+}
+
+[data-schedule-block-duration-field] input {
+    height: 42px;
+}
+
+.schedule-block-toggle span {
+    display: grid;
+    gap: 2px;
+}
+
+.schedule-block-toggle small {
+    color: var(--muted);
+    font-weight: 500;
+    line-height: 1.35;
+}
+
+[data-schedule-block-duration-field].is-disabled {
+    color: var(--muted);
 }
 
 .settings-grid {
@@ -1023,6 +1082,31 @@ tr.is-editing input[data-editable] {
     color: #991b1b;
 }
 
+.badge.pending {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.button:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.badge.info {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.badge.success {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.badge.danger {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
 /* 11. Modal */
 .modal[hidden] {
     display: none;
@@ -1333,6 +1417,12 @@ tr.is-editing input[data-editable] {
     --bf-calendar-event-bg: #86efac;
 }
 
+.fc .schedule-block-event,
+.fc .schedule-block-event .bf-calendar-event,
+.fc .schedule-block-event > td {
+    --bf-calendar-event-bg: #cbd5e1;
+}
+
 .fc .appointment-status-canceled,
 .fc .appointment-status-cancelled,
 .fc .appointment-status-canceled .bf-calendar-event,
@@ -1386,6 +1476,11 @@ tr.is-editing input[data-editable] {
 .fc .fc-list-event.appointment-status-completed > td,
 .fc .fc-list-event.appointment-status-completed:hover > td {
     background: #86efac !important;
+}
+
+.fc .fc-list-event.schedule-block-event > td,
+.fc .fc-list-event.schedule-block-event:hover > td {
+    background: #cbd5e1 !important;
 }
 
 .fc .fc-list-event.appointment-status-canceled .fc-list-event-title,
@@ -1768,12 +1863,17 @@ pre {
     .card-header .button,
     .settings-actions .button,
     .appointment-create-button,
+    .schedule-block-submit,
     .admin-search-card .button {
         width: 100%;
     }
 
     .appointment-create-actions {
         justify-content: stretch;
+    }
+
+    .schedule-block-submit {
+        justify-self: stretch;
     }
 
     .align-end {
@@ -2071,23 +2171,6 @@ pre {
         max-height: 90vh;
         border-radius: 22px 22px 0 0;
         padding: 22px 16px 16px;
-    }
-
-    .modal-close {
-        top: 12px;
-        right: 12px;
-
-        width: 32px;
-        height: 32px;
-        min-width: 32px;
-        min-height: 32px;
-        max-width: 32px;
-        max-height: 32px;
-        flex-basis: 32px;
-    }
-
-    .modal-close::before {
-        font-size: 19px;
     }
 
     .modal-actions {

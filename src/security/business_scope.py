@@ -8,6 +8,7 @@ from .authentication import get_current_actor
 from .authorization import require_integration
 from .context import UserContext, BusinessIntegrationContext, IntegrationContext
 
+
 def get_business_scope(actor: UserContext | BusinessIntegrationContext = Depends(get_current_actor),
     x_business_id: int | None = Header(default=None, alias="X-Business-ID"), db: Session = Depends(get_db),
 ) -> int:
@@ -27,6 +28,10 @@ def get_business_scope(actor: UserContext | BusinessIntegrationContext = Depends
 
         if actor.business_id is None:
             raise HTTPException(status_code=403)
+
+        business = db.get(Business, actor.business_id)
+        if not business or not business.is_active:
+            raise HTTPException(status_code=403, detail="Empresa não encontrada ou inativa")
 
         return actor.business_id
     

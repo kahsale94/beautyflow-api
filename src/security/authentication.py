@@ -8,12 +8,12 @@ from fastapi import Depends, HTTPException
 
 from .token import TokenManager
 from .oauth import oauth2_scheme
-from src.models import User, Integration, BusinessIntegration
+from src.models import Business, User, Integration, BusinessIntegration
 from .context import UserContext, IntegrationContext, BusinessIntegrationContext
-from src.core import (
-    get_db, USER_ACCESS_TOKEN_EXPIRE_MINUTES, USER_REFRESH_TOKEN_EXPIRE_DAYS, INTEGRATION_TOKEN_EXPIRE_DAYS,
+from src.core import (get_db, USER_ACCESS_TOKEN_EXPIRE_MINUTES, USER_REFRESH_TOKEN_EXPIRE_DAYS, INTEGRATION_TOKEN_EXPIRE_DAYS,
     BUSINESS_INTEGRATION_TOKEN_EXPIRE_MINUTES, USER_SECRET_KEY, INTEGRATION_SECRET_KEY, BUSINESS_INTEGRATION_SECRET_KEY
 )
+
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -76,9 +76,9 @@ def get_current_actor(db: Session = Depends(get_db), token: str = Depends(oauth2
         raise HTTPException(status_code=401, detail="Token inválido")
 
     if actor_type == "user":
-
-        user_id = int(payload.get("sub"))
-        if not user_id:
+        try:
+            user_id = int(payload.get("sub"))
+        except (TypeError, ValueError):
             raise HTTPException(status_code=401, detail="Token inválido")
 
         user = db.get(User, user_id)
@@ -98,7 +98,10 @@ def get_current_actor(db: Session = Depends(get_db), token: str = Depends(oauth2
         )
 
     if actor_type == "integration":
-        integration_id = int(payload.get("sub"))
+        try:
+            integration_id = int(payload.get("sub"))
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=401, detail="Token inválido")
 
         stmt = select(Integration).where(
             Integration.id == integration_id,
@@ -115,8 +118,11 @@ def get_current_actor(db: Session = Depends(get_db), token: str = Depends(oauth2
         )
 
     if actor_type == "business_integration":
-        integration_id = int(payload.get("sub"))
-        business_id = payload.get("business_id")
+        try:
+            integration_id = int(payload.get("sub"))
+            business_id = int(payload.get("business_id"))
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=401, detail="Token inválido")
 
         stmt = select(BusinessIntegration).where(
             BusinessIntegration.integration_id == integration_id,
@@ -125,13 +131,21 @@ def get_current_actor(db: Session = Depends(get_db), token: str = Depends(oauth2
         )
 
         result = db.scalar(stmt)
-        if not result:
+        business = db.get(Business, business_id)
+        integration = db.get(Integration, integration_id)
+        if (
+            not result
+            or not business
+            or not business.is_active
+            or not integration
+            or not integration.is_active
+        ):
             raise HTTPException(status_code=401, detail="Integração inválida para Empresa!")
 
         return BusinessIntegrationContext(
             type = "business_integration",
             integration_id = integration_id,
-            business_id = int(business_id),
+            business_id = business_id,
         )
 
     raise HTTPException(status_code=401, detail="Token inválido")

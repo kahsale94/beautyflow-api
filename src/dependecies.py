@@ -8,6 +8,7 @@ from src.services.client_service import ClientService, get_client_service
 from src.services.service_service import ServiceService, get_service_service
 from src.services.business_service import BusinessService, get_business_service
 from src.services.appointment_service import AppointmentService, get_appointment_service
+from src.services.schedule_block_service import ScheduleBlockService, get_schedule_block_service
 from src.services.integration_service import IntegrationService, get_integration_service
 from src.services.availability_service import AvailabilityService, get_availability_service
 from src.services.professional_service import ProfessionalService, get_professional_service
@@ -34,6 +35,7 @@ ClientServiceDep = Annotated[ClientService, Depends(get_client_service)]
 ServiceServiceDep = Annotated[ServiceService, Depends(get_service_service)]
 BusinessServiceDep = Annotated[BusinessService, Depends(get_business_service)]
 AppointmentServiceDep = Annotated[AppointmentService, Depends(get_appointment_service)]
+ScheduleBlockServiceDep = Annotated[ScheduleBlockService, Depends(get_schedule_block_service)]
 IntegrationServiceDep = Annotated[IntegrationService, Depends(get_integration_service)]
 AvailabilityServiceDep = Annotated[AvailabilityService, Depends(get_availability_service)]
 ProfessionalServiceDep = Annotated[ProfessionalService, Depends(get_professional_service)]

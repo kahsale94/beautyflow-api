@@ -9,8 +9,10 @@ if TYPE_CHECKING:
     from .service_model import Service
     from .business_model import Business
     from .appointment_model import Appointment
+    from .schedule_block_model import ScheduleBlock
     from .availability_model import Availability
     from .professional_service_model import ProfessionalService
+
 
 class Professional(Base):
     __tablename__ = "professionals"
@@ -37,6 +39,7 @@ class Professional(Base):
 
     business: Mapped["Business"] = relationship(back_populates="professionals")
     appointments: Mapped[list["Appointment"]] = relationship(back_populates="professional", cascade="all, delete-orphan")
+    schedule_blocks: Mapped[list["ScheduleBlock"]] = relationship(back_populates="professional", cascade="all, delete-orphan")
     availabilities: Mapped[list["Availability"]] = relationship(back_populates="professional", cascade="all, delete-orphan")
 
     services: Mapped[list["Service"]] = relationship(secondary="professional_services", viewonly=True)

@@ -2,6 +2,7 @@ import os
 
 from dotenv import load_dotenv
 
+
 load_dotenv()
 
 def get_required_env(name: str) -> str:
@@ -64,3 +65,34 @@ RATE_LIMIT_WINDOW_SECONDS = get_optional_int_env("RATE_LIMIT_WINDOW_SECONDS", 60
 RATE_LIMIT_AUTH_MAX_REQUESTS = get_optional_int_env("RATE_LIMIT_AUTH_MAX_REQUESTS", 10)
 RATE_LIMIT_AUTH_WINDOW_SECONDS = get_optional_int_env("RATE_LIMIT_AUTH_WINDOW_SECONDS", 60)
 TRUSTED_PROXY_IPS = get_env_list("TRUSTED_PROXY_IPS")
+
+if ALGORITHM not in {"HS256", "HS384", "HS512"}:
+    raise RuntimeError("ALGORITHM deve usar HS256, HS384 ou HS512")
+
+if USER_REFRESH_COOKIE_SAMESITE not in {"lax", "strict", "none"}:
+    raise RuntimeError("USER_REFRESH_COOKIE_SAMESITE inválido")
+
+if ADMIN_COOKIE_SAMESITE not in {"lax", "strict", "none"}:
+    raise RuntimeError("ADMIN_COOKIE_SAMESITE inválido")
+
+if USER_REFRESH_COOKIE_SAMESITE == "none" and not USER_REFRESH_COOKIE_SECURE:
+    raise RuntimeError("USER_REFRESH_COOKIE_SAMESITE=none exige cookie Secure")
+
+if ADMIN_COOKIE_SAMESITE == "none" and not ADMIN_COOKIE_SECURE:
+    raise RuntimeError("ADMIN_COOKIE_SAMESITE=none exige cookie Secure")
+
+if ENVIRONMENT == "production":
+    weak_secrets = [
+        name
+        for name, value in {
+            "USER_SECRET_KEY": USER_SECRET_KEY,
+            "INTEGRATION_SECRET_KEY": INTEGRATION_SECRET_KEY,
+            "BUSINESS_INTEGRATION_SECRET_KEY": BUSINESS_INTEGRATION_SECRET_KEY,
+        }.items()
+        if len(value) < 32
+    ]
+    if weak_secrets:
+        raise RuntimeError(f"Segredos JWT devem ter ao menos 32 caracteres: {', '.join(weak_secrets)}")
+
+    if not USER_REFRESH_COOKIE_SECURE or not ADMIN_COOKIE_SECURE:
+        raise RuntimeError("Cookies de autenticação devem ser Secure em produção")

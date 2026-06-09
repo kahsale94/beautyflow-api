@@ -47,13 +47,7 @@ class IntegrationService:
     
     def get_by_name(self, integration_name: str):
         result = self.integration_repo.get_by_name(self.db, integration_name)
-        if (
-            not result
-            or not result.is_active
-        ):
-            raise IntegrationNotFoundError()
-
-        return [result]
+        return result
 
     def create(self, data: IntegrationCreate):
         integration = Integration(

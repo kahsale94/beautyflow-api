@@ -56,7 +56,6 @@
                 <label>Email
                     <input name="email" type="email" value="{{ business.email or '' }}" />
                 </label>
-                </label>
                 <label>Estado
                     <select name="state" data-business-state data-current-value="{{ business.state or '' }}">
                         {% if business.state %}
@@ -77,6 +76,7 @@
                 </label>
                 <label>Endereço
                     <input name="address" value="{{ business.address or '' }}" />
+                </label>
             </div>
         </div>
     </section>

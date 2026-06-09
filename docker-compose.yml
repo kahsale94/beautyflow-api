@@ -45,7 +45,6 @@ services:
     db-migrate:
         build: .
         restart: "no"
-        exclude_from_hc: true
         command: alembic upgrade head
         depends_on:
             db-postgres:
@@ -70,7 +69,7 @@ services:
             db-migrate:
                 condition: service_completed_successfully
         healthcheck:
-            test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health/live', timeout=5).read()\" || exit 1"]
+            test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready', timeout=5).read()\" || exit 1"]
             interval: 30s
             timeout: 10s
             retries: 3
@@ -123,6 +122,8 @@ volumes:
 
 networks:
     beautyflow-network:
-        external: true
+        driver: bridge
+        internal: true
     beautyflow-network-ext:
+        name: ${BEAUTYFLOW_EXTERNAL_NETWORK:-beautyflow-network-ext}
         external: true
