@@ -66,6 +66,15 @@ def test_production_image_excludes_local_workspace_state():
     assert "n8nac-config.json" in dockerignore
     assert "workflows/" in dockerignore
 
+def test_pytest_and_ci_include_the_repository_root():
+    root = STATIC_ROOT.parents[1]
+    pytest_config = (root / "pytest.ini").read_text(encoding="utf-8")
+    ci_workflow = (root / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+
+    assert "pythonpath = ." in pytest_config
+    assert "testpaths = tests" in pytest_config
+    assert "run: python -m pytest -q" in ci_workflow
+
 def test_admin_pages_are_not_cached():
     request = Request(
         {
