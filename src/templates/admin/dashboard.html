@@ -1,11 +1,11 @@
 {% extends "admin/base.html" %}
 
-{% block title %}Dashboard - Beautyflow Admin{%endblock %}
+{% block title %}Visão geral - Beautyflow{%endblock %}
 
 {% block content %}
 <header class="page-header">
     <div>
-        <h1>Dashboard</h1>
+        <h1>Visão geral</h1>
         <p class="muted">Visão geral de {{ business.name }}.</p>
     </div>
 </header>
@@ -61,7 +61,7 @@
                     appointment.end_datetime.strftime('%H:%M') }}
                 </td>
                 <td data-label="Status">
-                    <span class="badge {{ appointment.status.value }}">{{ appointment.status.value }}</span>
+                    <span class="badge {{ appointment.status.value }}">{{ appointment.status|admin_label }}</span>
                 </td>
                 <td data-label="Cliente">
                     {{ client.name if client and client.name else client.phone if client else '#' ~ appointment.client_id }}

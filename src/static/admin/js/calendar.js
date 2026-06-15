@@ -59,9 +59,70 @@ function initializeScheduleBlockForms(root = document) {
 
 window.initializeScheduleBlockForms = initializeScheduleBlockForms;
 
+function initializeAppointmentServiceFilters(root = document) {
+    root.querySelectorAll('[data-appointment-service-filter]').forEach(function (form) {
+        if (!(form instanceof HTMLFormElement) || form.dataset.appointmentServiceFilterInitialized === 'true') return;
+
+        const professionalSelect = form.querySelector('[data-appointment-professional]');
+        const serviceSelect = form.querySelector('[data-appointment-service]');
+        if (!(professionalSelect instanceof HTMLSelectElement) || !(serviceSelect instanceof HTMLSelectElement)) return;
+
+        const serviceOptions = Array.from(serviceSelect.options).map(function (option) {
+            return option.cloneNode(true);
+        });
+        const submitButton = form.querySelector('[data-appointment-submit]')
+            || (form.id ? root.querySelector(`[data-appointment-submit][form="${form.id}"]`) : null);
+
+        form.dataset.appointmentServiceFilterInitialized = 'true';
+
+        function syncServices() {
+            const professionalId = professionalSelect.value;
+            const currentServiceId = serviceSelect.value;
+            const availableOptions = serviceOptions.filter(function (option) {
+                const professionalIds = String(option.dataset.professionalIds || '')
+                    .split(',')
+                    .filter(Boolean);
+                return professionalIds.includes(professionalId);
+            });
+
+            serviceSelect.replaceChildren();
+
+            if (!availableOptions.length) {
+                const emptyOption = document.createElement('option');
+                emptyOption.value = '';
+                emptyOption.textContent = 'Nenhum serviço disponível';
+                serviceSelect.appendChild(emptyOption);
+                serviceSelect.disabled = true;
+                serviceSelect.required = false;
+                if (submitButton instanceof HTMLButtonElement) submitButton.disabled = true;
+                return;
+            }
+
+            availableOptions.forEach(function (option) {
+                serviceSelect.appendChild(option.cloneNode(true));
+            });
+
+            serviceSelect.disabled = false;
+            serviceSelect.required = true;
+            if (availableOptions.some(function (option) { return option.value === currentServiceId; })) {
+                serviceSelect.value = currentServiceId;
+            } else {
+                serviceSelect.selectedIndex = 0;
+            }
+            if (submitButton instanceof HTMLButtonElement) submitButton.disabled = false;
+        }
+
+        professionalSelect.addEventListener('change', syncServices);
+        syncServices();
+    });
+}
+
+window.initializeAppointmentServiceFilters = initializeAppointmentServiceFilters;
+
 document.addEventListener('DOMContentLoaded', function () {
     window.initializeAdminDateTimePickers();
     window.initializeScheduleBlockForms();
+    window.initializeAppointmentServiceFilters();
 
     const calendarEl = document.getElementById('calendar');
     if (!calendarEl || !window.FullCalendar) return;
@@ -482,6 +543,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
 
                     window.openAdminModal(html);
+                    window.initializeAppointmentServiceFilters(document.getElementById('modal-content'));
                 })
                 .catch(error => {
                     console.warn(error);

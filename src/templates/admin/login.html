@@ -1,11 +1,11 @@
 {% extends "admin/base.html" %}
 
-{% block title %}Login - Beautyflow Admin{%endblock %}
+{% block title %}Acesso - Beautyflow{%endblock %}
 
 {% block content %}
 <section class="auth-card">
     <h1>Entrar no painel</h1>
-    <p class="muted">Acesse com um usuário admin ou super_admin.</p>
+    <p class="muted">Acesse com um usuário administrador ou superadministrador.</p>
     <form method="post" action="/admin/login" class="stack">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
         <label>Email

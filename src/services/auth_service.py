@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from src.utils import normalize_phone
 from src.core import DataBaseDep, USER_SECRET_KEY
-from src.models import User, BusinessIntegration, UserRefreshToken
+from src.models import EvolutionInstance, User, BusinessIntegration, UserRefreshToken
 from src.repositories import BusinessRepository, IntegrationRepository
 from src.security import RefreshRequest, TokenManager, verify_hash, create_user_access_token, create_user_refresh_token, create_business_integration_token
 
@@ -184,6 +184,43 @@ class AuthService:
             raise DeactivatedLinkError()
 
         return create_business_integration_token(business_integration.business_id, business_integration.integration_id)
+
+    def get_business_integration_token_by_instance(self, instance_name: str, integration_id: int):
+        integration = self.integration_repo.get_by_id(self.db, integration_id)
+        if not integration or not integration.is_active:
+            raise IntegrationNotFoundError()
+
+        normalized_instance_name = instance_name.strip()
+        if not normalized_instance_name or len(normalized_instance_name) > 100:
+            raise BusinessNotFoundError()
+
+        evolution_instance = self.db.scalars(
+            select(EvolutionInstance).where(
+                EvolutionInstance.instance_name == normalized_instance_name,
+                EvolutionInstance.integration_id == integration.id,
+            )
+        ).one_or_none()
+        if not evolution_instance:
+            raise BusinessNotFoundError()
+
+        business = self.business_repo.get_by_id(self.db, evolution_instance.business_id)
+        if not business or not business.is_active:
+            raise BusinessNotFoundError()
+
+        business_integration = self.db.scalars(
+            select(BusinessIntegration).where(
+                BusinessIntegration.integration_id == integration.id,
+                BusinessIntegration.business_id == business.id,
+                BusinessIntegration.is_active == True,
+            )
+        ).one_or_none()
+        if not business_integration:
+            raise DeactivatedLinkError()
+
+        return create_business_integration_token(
+            business_integration.business_id,
+            business_integration.integration_id,
+        )
 
 def get_auth_service(db: DataBaseDep):
     return AuthService(

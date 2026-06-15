@@ -56,7 +56,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if not allowed:
             return JSONResponse(
                 status_code=429,
-                content={"detail": "Too many requests"},
+                content={"detail": "Muitas requisições. Tente novamente em instantes."},
             )
 
         return await call_next(request)

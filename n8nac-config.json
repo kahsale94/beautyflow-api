@@ -1,0 +1,32 @@
+{
+  "version": 4,
+  "activeEnvironmentId": "mine",
+  "environmentTargets": [
+    {
+      "id": "beautyflow",
+      "name": "beautyflow",
+      "kind": "external-instance",
+      "url": "https://n8n.techlegacy.com.br"
+    }
+  ],
+  "environments": [
+    {
+      "id": "mine",
+      "name": "beautyflow",
+      "syncSlug": "mine",
+      "environmentTargetId": "beautyflow",
+      "projectId": "personal",
+      "projectName": "Personal",
+      "workflowsPath": "workflows",
+      "folderSync": true,
+      "nativeMcp": {
+        "enabled": true,
+        "url": "https://n8n.techlegacy.com.br/mcp-server/http",
+        "mode": "assist",
+        "allowRemoteExposure": false,
+        "allowExecutionData": false,
+        "requireSyncBack": true
+      }
+    }
+  ]
+}

@@ -52,3 +52,4 @@ def apply_security_headers(request: Request, response: Response) -> None:
 
     if request.url.path.startswith("/admin"):
         response.headers.setdefault("Content-Security-Policy", ADMIN_CONTENT_SECURITY_POLICY)
+        response.headers.setdefault("Cache-Control", "no-store")

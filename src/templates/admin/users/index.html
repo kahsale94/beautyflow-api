@@ -1,6 +1,6 @@
 {% extends "admin/base.html" %}
 
-{% block title %}Usuários - Beautyflow Admin{%endblock %}
+{% block title %}Usuários - Beautyflow{%endblock %}
 
 {% block content %}
 <header class="page-header">
@@ -20,7 +20,7 @@
         <label>Papel
             <select name="role">
                 {% for role in roles %}
-                <option value="{{ role.value }}">{{ role.value }}</option>
+                <option value="{{ role.value }}">{{ role|admin_label }}</option>
                 {% endfor %}
             </select>
         </label>
@@ -36,7 +36,7 @@
 {% else %}
 <p class="notice">
     Você pode visualizar usuários. Criação e alteração seguem restritas ao
-    super_admin.
+    superadministrador.
 </p>
 <form method="get" action="/admin/users" class="card stack admin-search-card">
     <h2>Buscar</h2>
@@ -81,7 +81,7 @@
                     <select form="user-form-{{ user.id }}" name="role" disabled data-editable>
                         {% for role in roles %}
                         <option value="{{ role.value }}" {% if role == user.role %}selected{% endif %}>
-                            {{ role.value }}
+                            {{ role|admin_label }}
                         </option>
                         {% endfor %}
                     </select>
@@ -113,7 +113,7 @@
                 {% else %}
                 <td data-label="ID">#{{ user.id }}</td>
                 <td data-label="Email">{{ user.email }}</td>
-                <td data-label="Papel">{{ user.role.value }}</td>
+                <td data-label="Papel">{{ user.role|admin_label }}</td>
                 <td data-label="Status">{{ 'Ativo' if user.is_active else 'Inativo' }}</td>
                 <td data-label="Ações">-</td>
                 {% endif %}

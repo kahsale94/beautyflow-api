@@ -30,6 +30,15 @@ from .config import (
     RATE_LIMIT_AUTH_MAX_REQUESTS,
     RATE_LIMIT_AUTH_WINDOW_SECONDS,
     TRUSTED_PROXY_IPS,
+    N8N_ERROR_WEBHOOK_URL,
+    N8N_WEBHOOK_HEADER,
+    N8N_WEBHOOK_SECRET,
+    EVOLUTION_API_URL,
+    EVOLUTION_API_KEY,
+    EVOLUTION_WEBHOOK_URL,
+    EVOLUTION_INSTANCE_PREFIX,
+    EVOLUTION_REQUEST_TIMEOUT_SECONDS,
 )
 from .logging import configure_logging
 from .http_header import apply_security_headers, get_forwarded_for, get_real_ip, SENSITIVE_HEADER_NAMES
+from .error_reporting import build_error_payload, report_unhandled_exception

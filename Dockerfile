@@ -5,7 +5,9 @@ WORKDIR /app
 COPY requirements-prod.txt .
 RUN pip install --no-cache-dir -r requirements-prod.txt
 
-COPY . .
+COPY src ./src
+COPY alembic ./alembic
+COPY alembic.ini .
 
 RUN adduser --disabled-password --gecos "" appuser
 USER appuser

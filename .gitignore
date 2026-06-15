@@ -2,6 +2,8 @@
 z_files/
 docker-compose_dev.yml
 .tmp.driveupload/
+.n8nac/
+workflows/.n8n-sync-events.jsonl
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

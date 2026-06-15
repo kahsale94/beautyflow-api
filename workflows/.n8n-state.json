@@ -1,0 +1,49 @@
+{
+  "workflows": {
+    "HH6KPg5oLoi1L6IG": {
+      "lastSyncedHash": "4df86b8e5fee17f393f2ca974b20c53aea3f3315ab16de1af48f9d57cfb2fdb1",
+      "lastSyncedAt": "2026-06-15T19:26:34.896Z",
+      "filename": "main agent_HH6KPg5o.workflow.ts"
+    },
+    "p2z28Yex6r93HRT0": {
+      "lastSyncedHash": "feef87ae373f0db0b8326887de20bf218740208abc25ca1a220d124cb3ba4d18",
+      "lastSyncedAt": "2026-06-15T19:25:07.546Z",
+      "filename": "clients.workflow.ts"
+    },
+    "j71qqEVnWkAMmhB3": {
+      "lastSyncedHash": "1f6b0ca07183aa75cc49834aadff4d67ef35b281a41ecd9a5950bb8f9a092d8b",
+      "lastSyncedAt": "2026-06-15T19:25:05.831Z",
+      "filename": "appointments.workflow.ts"
+    },
+    "bFSJIIiJrsHfBGcU": {
+      "lastSyncedHash": "9011d24f7ed09f6ba5374cf4c52fc76a87482d86da76112b9c0945aa88a41eb2",
+      "lastSyncedAt": "2026-06-15T19:25:10.606Z",
+      "filename": "professionals.workflow.ts"
+    },
+    "JUmgL8OgChZeJAWe": {
+      "lastSyncedHash": "7ad13f4c5f4e5934cc0e346beb1561cc74a353f1a2acbe562417ffe80eb766da",
+      "lastSyncedAt": "2026-06-15T19:25:10.685Z",
+      "filename": "services.workflow.ts"
+    },
+    "bWdz3xBVwmycvfwW": {
+      "lastSyncedHash": "463098ba0bfac174286a719e57ef6a42fab3e45447d13894fad23a46e70f0702",
+      "lastSyncedAt": "2026-06-15T19:25:10.910Z",
+      "filename": "error.workflow.ts"
+    },
+    "fI4FYgDFzKREs8oI": {
+      "lastSyncedHash": "e85ca91b08f387ebf789c1a553155a3d7abedfbb37f05b1d77ebefd13953872d",
+      "lastSyncedAt": "2026-06-15T19:25:08.017Z",
+      "filename": "businesses.workflow.ts"
+    },
+    "2BBY2GXe0CWMszlt": {
+      "lastSyncedHash": "eede24061fc10d9602dcc2d82c9e746ead820e178ae60ccb5275391d33512e0a",
+      "lastSyncedAt": "2026-06-15T19:25:09.378Z",
+      "filename": "pending state.workflow.ts"
+    },
+    "Mt6dV4M7Z3aoPihh": {
+      "lastSyncedHash": "1f642981b97145669f63d6bd65f025485436b98941b0885ac79ee71e247a0b54",
+      "lastSyncedAt": "2026-06-15T19:25:06.092Z",
+      "filename": "availabilities.workflow.ts"
+    }
+  }
+}

@@ -1,12 +1,16 @@
 {% extends "admin/base.html" %}
 
-{% block title %}Calendário - Beautyflow Admin{% endblock %}
+{% block title %}Calendário - Beautyflow{% endblock %}
 
 {% block head %}
-<link rel="stylesheet" href="{{ url_for('static', path='admin/vendor/flatpickr/flatpickr.min.css') }}" />
-<script src="{{ url_for('static', path='admin/vendor/fullcalendar/index.global.min.js') }}"></script>
-<script src="{{ url_for('static', path='admin/vendor/flatpickr/flatpickr.min.js') }}"></script>
-<script src="{{ url_for('static', path='admin/vendor/flatpickr/l10n/pt.js') }}"></script>
+<link rel="stylesheet"
+    href="{{ url_for('static', path='admin/vendor/flatpickr/flatpickr.min.css') }}?v={{ static_version('admin/vendor/flatpickr/flatpickr.min.css') }}" />
+<script
+    src="{{ url_for('static', path='admin/vendor/fullcalendar/index.global.min.js') }}?v={{ static_version('admin/vendor/fullcalendar/index.global.min.js') }}"></script>
+<script
+    src="{{ url_for('static', path='admin/vendor/flatpickr/flatpickr.min.js') }}?v={{ static_version('admin/vendor/flatpickr/flatpickr.min.js') }}"></script>
+<script
+    src="{{ url_for('static', path='admin/vendor/flatpickr/l10n/pt.js') }}?v={{ static_version('admin/vendor/flatpickr/l10n/pt.js') }}"></script>
 {% endblock %}
 
 {% block content %}
@@ -18,7 +22,8 @@
 </header>
 
 <section class="grid two-columns appointment-management-grid">
-    <form method="post" action="/admin/appointments" class="card stack appointment-create-card">
+    <form method="post" action="/admin/appointments" class="card stack appointment-create-card"
+        data-appointment-service-filter>
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
         <h2>Novo agendamento</h2>
         <div class="form-grid compact-grid appointment-create-form-grid">
@@ -32,16 +37,17 @@
                 </select>
             </label>
             <label>Profissional
-                <select name="professional_id" required id="professional-filter-source">
+                <select name="professional_id" required data-appointment-professional>
                     {% for professional in professionals %}
                     <option value="{{ professional.id }}">{{ professional.name }}</option>
                     {% endfor %}
                 </select>
             </label>
             <label>Serviço
-                <select name="service_id" required>
+                <select name="service_id" required data-appointment-service>
                     {% for service in services %}
-                    <option value="{{ service.id }}">
+                    <option value="{{ service.id }}"
+                        data-professional-ids="{{ service_professional_ids.get(service.id, [])|join(',') }}">
                         {{ service.name }} — {{ service.duration_minutes }} min
                     </option>
                     {% endfor %}
@@ -61,7 +67,8 @@
             </label>
         </div>
         <div class="appointment-create-actions">
-            <button class="button primary appointment-create-button" type="submit">Criar</button>
+            <button class="button primary appointment-create-button" type="submit"
+                data-appointment-submit>Criar</button>
         </div>
     </form>
 
@@ -142,5 +149,6 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', path='admin/js/calendar.js') }}"></script>
+<script
+    src="{{ url_for('static', path='admin/js/calendar.js') }}?v={{ static_version('admin/js/calendar.js') }}"></script>
 {% endblock %}

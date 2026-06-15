@@ -14,6 +14,7 @@ from src.services.availability_service import AvailabilityService, get_availabil
 from src.services.professional_service import ProfessionalService, get_professional_service
 from src.services.professional_service_link_service import ProfessionalServiceLinkService, get_professional_service_link_service
 from src.services.business_integration_service import BusinessIntegrationService, get_business_integration_service
+from src.services.evolution_instance_service import EvolutionInstanceService, get_evolution_instance_service
 from src.security import (require_user, require_super_admin, UserContext, get_business_scope, require_admin, IntegrationContext, 
 require_integration, get_business_phone, require_business_integration, BusinessIntegrationContext, require_user_or_business_integration)
 
@@ -41,3 +42,4 @@ AvailabilityServiceDep = Annotated[AvailabilityService, Depends(get_availability
 ProfessionalServiceDep = Annotated[ProfessionalService, Depends(get_professional_service)]
 ProfessionalServiceLinkServiceDep = Annotated[ProfessionalServiceLinkService, Depends(get_professional_service_link_service)]
 BusinessIntegrationServiceDep = Annotated[BusinessIntegrationService, Depends(get_business_integration_service)]
+EvolutionInstanceServiceDep = Annotated[EvolutionInstanceService, Depends(get_evolution_instance_service)]

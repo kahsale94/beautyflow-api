@@ -2,7 +2,7 @@
 <div class="details-list">
     <p>
         <strong>Status:</strong>
-        <span class="badge {{ appointment.status.value }}">{{ appointment.status.value }}</span>
+        <span class="badge {{ appointment.status.value }}">{{ appointment.status|admin_label }}</span>
         {% if appointment.confirmation_pending %}
         <span class="badge pending">aguardando confirmação</span>
         {% endif %}
@@ -21,7 +21,8 @@
     </p>
 </div>
 
-<form id="appointment-update-form-{{ appointment.id }}" method="post" action="/admin/appointments/{{ appointment.id }}" class="stack compact-form">
+<form id="appointment-update-form-{{ appointment.id }}" method="post" action="/admin/appointments/{{ appointment.id }}"
+    class="stack compact-form" data-appointment-service-filter>
     <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
     <label>Cliente
         <select name="client_id" required>
@@ -33,7 +34,7 @@
         </select>
     </label>
     <label>Profissional
-        <select name="professional_id" required>
+        <select name="professional_id" required data-appointment-professional>
             {% for item in professionals %}
             <option value="{{ item.id }}" {%if item.id == appointment.professional_id %}selected{%endif%}>
                 {{ item.name }}
@@ -42,9 +43,11 @@
         </select>
     </label>
     <label>Serviço
-        <select name="service_id" required>
+        <select name="service_id" required data-appointment-service>
             {% for item in services %}
-            <option value="{{ item.id }}" {%if item.id == appointment.service_id %}selected{%endif%}>
+            <option value="{{ item.id }}"
+                data-professional-ids="{{ service_professional_ids.get(item.id, [])|join(',') }}"
+                {%if item.id == appointment.service_id %}selected{%endif%}>
                 {{ item.name }}
             </option>
             {% endfor %}
@@ -81,6 +84,7 @@
         </button>
     </form>
 </div>
-<button form="appointment-update-form-{{ appointment.id }}" class="button primary modal-save-button" type="submit">
+<button form="appointment-update-form-{{ appointment.id }}" class="button primary modal-save-button" type="submit"
+    data-appointment-submit>
     Salvar alterações
 </button>

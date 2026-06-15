@@ -175,10 +175,20 @@ The project includes an integration layer designed for external automation tools
 1. A global integration is created by a `super_admin`.
 2. The integration receives an API token.
 3. The integration authenticates through `/v1/auth/integration`.
-4. The integration sends the business phone using the `X-Business-Phone` header.
+4. The integration sends the Evolution instance name using the `X-Evolution-Instance` header.
 5. The API validates the business integration link.
 6. A temporary business integration token is returned.
 7. The integration can access allowed business-scoped resources.
+
+`X-Business-Phone` remains supported as a temporary fallback for legacy instances.
+
+### WhatsApp onboarding
+
+Business administrators can provision and connect WhatsApp from `/admin/integrations`.
+The backend creates one deterministic Evolution instance per business, configures the
+authenticated n8n webhook, returns the temporary QR code to the browser, and stores
+only durable connection metadata. QR codes and the global Evolution API key are never
+stored in the database.
 
 This allows external automation flows to interact with the API without using a normal user account.
 
@@ -282,6 +292,10 @@ REDIS_URL=redis://:your_redis_password@localhost:6379/0
 CORS_ORIGINS=http://localhost:8000
 FORWARDED_ALLOW_IPS=127.0.0.1
 TRUSTED_PROXY_IPS=127.0.0.1
+
+N8N_ERROR_WEBHOOK_URL=https://n8n.example.com/webhook/beautyflow-error
+N8N_WEBHOOK_HEADER=X-Beautyflow-Webhook-Secret
+N8N_WEBHOOK_SECRET=use-a-strong-random-secret
 ```
 
 #### Environment variables
@@ -306,6 +320,14 @@ TRUSTED_PROXY_IPS=127.0.0.1
 | CORS_ORIGINS | Comma-separated allowed browser origins |
 | FORWARDED_ALLOW_IPS | Reverse proxies trusted by Uvicorn |
 | TRUSTED_PROXY_IPS | Reverse proxies trusted for client IP rate limiting |
+| N8N_ERROR_WEBHOOK_URL | Authenticated n8n webhook that receives unexpected backend errors |
+| N8N_WEBHOOK_HEADER | Header used to authenticate inbound Beautyflow webhooks |
+| N8N_WEBHOOK_SECRET | Strong shared secret for the configured webhook header |
+| EVOLUTION_API_URL | Base URL of the Evolution API instance |
+| EVOLUTION_API_KEY | Global Evolution API key, available only to the backend |
+| EVOLUTION_WEBHOOK_URL | Production n8n webhook that receives Evolution messages |
+| EVOLUTION_INSTANCE_PREFIX | Environment-specific prefix for generated instance names |
+| EVOLUTION_REQUEST_TIMEOUT_SECONDS | Timeout for Evolution API requests |
 
 ### 5. Run database migrations
 
@@ -340,11 +362,15 @@ In production mode, API documentation is disabled.
 - Set explicit HTTPS origins in `CORS_ORIGINS`.
 - Keep authentication cookies marked as `Secure`.
 - Configure `FORWARDED_ALLOW_IPS` and `TRUSTED_PROXY_IPS` with only the reverse proxy addresses.
+- Configure the authenticated n8n error webhook variables.
+- Configure the Evolution API variables so the backend can provision instances and authenticate the main n8n webhook.
+- Keep paid OpenRouter credits available for the pinned production models.
 - Create the external n8n network, or set `BEAUTYFLOW_EXTERNAL_NETWORK`.
 - Run `alembic upgrade head` before starting the backend.
 - Route traffic only after `/health/ready` returns HTTP 200.
 - Use `/health/live` for the container healthcheck; it only verifies that the API process is responding.
 - Keep the database backup and rollback procedure ready before applying migrations.
+- Complete every mandatory item in `PRODUCTION_CHECKLIST.md` before activating the main workflow.
 
 ## 🐳 Running with Docker Compose
 

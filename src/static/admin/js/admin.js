@@ -219,7 +219,7 @@ async function fetchOptionItems(url) {
     });
 
     if (!response.ok) {
-        throw new Error(`Unable to load options from ${url}`);
+        throw new Error(`Não foi possível carregar as opções de ${url}`);
     }
 
     const payload = await response.json();
@@ -360,9 +360,247 @@ function initializeBusinessExternalOptions() {
     loadStates();
 }
 
+function initializeEvolutionIntegrations() {
+    const cards = document.querySelectorAll('[data-evolution-card]');
+
+    cards.forEach(function (card) {
+        if (!(card instanceof HTMLElement)) return;
+
+        const integrationId = card.dataset.integrationId;
+        const csrfToken = card.dataset.csrfToken || '';
+        const configured = card.dataset.evolutionConfigured === 'true';
+        const statusElement = card.querySelector('[data-evolution-status]');
+        const messageElement = card.querySelector('[data-evolution-message]');
+        const detailsElement = card.querySelector('[data-evolution-details]');
+        const instanceNameElement = card.querySelector('[data-evolution-instance-name]');
+        const phoneElement = card.querySelector('[data-evolution-phone]');
+        const qrContainer = card.querySelector('[data-evolution-qr]');
+        const qrImage = card.querySelector('[data-evolution-qr-image]');
+        const pairingCodeElement = card.querySelector('[data-evolution-pairing-code]');
+        let pollTimer = null;
+        let pollAttempts = 0;
+
+        if (!integrationId || !configured) return;
+
+        function statusLabel(state) {
+            const labels = {
+                open: 'conectado',
+                connected: 'conectado',
+                connecting: 'aguardando conexão',
+                creating: 'criando instância',
+                close: 'desconectado',
+                disconnected: 'desconectado',
+                missing: 'ausente',
+                error: 'erro',
+                not_configured: 'não configurado',
+            };
+            return labels[state] || 'desconhecido';
+        }
+
+        function setMessage(message, isError) {
+            if (!(messageElement instanceof HTMLElement)) return;
+            messageElement.textContent = message || '';
+            messageElement.hidden = !message;
+            messageElement.classList.toggle('error', Boolean(isError));
+        }
+
+        function updateButtons(hasInstance, state) {
+            card.querySelectorAll('[data-evolution-action]').forEach(function (button) {
+                if (!(button instanceof HTMLButtonElement)) return;
+                const action = button.dataset.evolutionAction;
+                if (action === 'connect') {
+                    button.textContent = hasInstance ? 'Reconectar WhatsApp' : 'Conectar WhatsApp';
+                    button.hidden = state === 'open';
+                } else if (action === 'qrcode') {
+                    button.hidden = !hasInstance || state === 'open';
+                } else if (action === 'logout') {
+                    button.hidden = !hasInstance || state !== 'open';
+                } else {
+                    button.hidden = !hasInstance;
+                }
+            });
+        }
+
+        function updateState(payload) {
+            const state = payload.state || 'not_configured';
+            const hasInstance = Boolean(payload.instance_name);
+            card.dataset.instanceState = state;
+
+            if (statusElement instanceof HTMLElement) {
+                statusElement.textContent = statusLabel(state);
+                statusElement.className = `badge evolution-status evolution-status-${state}`;
+            }
+            if (detailsElement instanceof HTMLElement) detailsElement.hidden = !hasInstance;
+            if (instanceNameElement instanceof HTMLElement) {
+                instanceNameElement.textContent = payload.instance_name || '';
+            }
+            if (phoneElement instanceof HTMLElement) {
+                phoneElement.textContent = payload.phone || 'Será identificado após a conexão';
+            }
+
+            updateButtons(hasInstance, state);
+
+            if (state === 'open') {
+                hideQrCode();
+                stopPolling();
+                setMessage('WhatsApp conectado com sucesso.', false);
+            }
+        }
+
+        function showQrCode(payload) {
+            const qrCode = payload.qr_code;
+            const pairingCode = payload.pairing_code;
+
+            if (qrCode && qrImage instanceof HTMLImageElement && qrContainer instanceof HTMLElement) {
+                qrImage.src = qrCode;
+                qrContainer.hidden = false;
+            }
+            if (pairingCodeElement instanceof HTMLElement) {
+                pairingCodeElement.hidden = !pairingCode;
+                pairingCodeElement.textContent = pairingCode ? `Código de pareamento: ${pairingCode}` : '';
+            }
+        }
+
+        function hideQrCode() {
+            if (qrContainer instanceof HTMLElement) qrContainer.hidden = true;
+            if (qrImage instanceof HTMLImageElement) qrImage.removeAttribute('src');
+            if (pairingCodeElement instanceof HTMLElement) pairingCodeElement.hidden = true;
+        }
+
+        function setBusy(busy) {
+            card.querySelectorAll('[data-evolution-action]').forEach(function (button) {
+                if (button instanceof HTMLButtonElement) button.disabled = busy;
+            });
+            card.classList.toggle('is-loading', busy);
+        }
+
+        async function parseResponse(response) {
+            let payload = {};
+            try {
+                payload = await response.json();
+            } catch (error) {
+                payload = {};
+            }
+            if (!response.ok) {
+                throw new Error(payload.detail || 'Não foi possível concluir a operação.');
+            }
+            return payload;
+        }
+
+        async function postAction(action) {
+            const formData = new FormData();
+            formData.set('_csrf_token', csrfToken);
+            const response = await window.fetch(
+                `/admin/integrations/${encodeURIComponent(integrationId)}/whatsapp/${action}`,
+                {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'same-origin',
+                    headers: { 'Accept': 'application/json' },
+                }
+            );
+            return parseResponse(response);
+        }
+
+        async function refreshStatus() {
+            const response = await window.fetch(
+                `/admin/integrations/${encodeURIComponent(integrationId)}/whatsapp/status`,
+                {
+                    credentials: 'same-origin',
+                    headers: { 'Accept': 'application/json' },
+                }
+            );
+            const payload = await parseResponse(response);
+            updateState(payload);
+            return payload;
+        }
+
+        function stopPolling() {
+            if (pollTimer !== null) {
+                window.clearInterval(pollTimer);
+                pollTimer = null;
+            }
+        }
+
+        function startPolling() {
+            stopPolling();
+            pollAttempts = 0;
+            pollTimer = window.setInterval(async function () {
+                pollAttempts += 1;
+                if (pollAttempts > 40) {
+                    stopPolling();
+                    setMessage('O QR expirou. Gere um novo código para continuar.', true);
+                    return;
+                }
+                try {
+                    await refreshStatus();
+                } catch (error) {
+                    stopPolling();
+                    setMessage(error instanceof Error ? error.message : 'Falha ao consultar a conexão.', true);
+                }
+            }, 3000);
+        }
+
+        card.addEventListener('click', async function (event) {
+            const target = event.target;
+            if (!(target instanceof HTMLElement)) return;
+            const button = target.closest('[data-evolution-action]');
+            if (!(button instanceof HTMLButtonElement)) return;
+
+            const action = button.dataset.evolutionAction;
+            if (!action) return;
+            if (action === 'remove' && !window.confirm('Remover definitivamente esta instância da Evolution API?')) {
+                return;
+            }
+            if (action === 'logout' && !window.confirm('Desconectar o WhatsApp desta instância?')) {
+                return;
+            }
+
+            setBusy(true);
+            setMessage('', false);
+            try {
+                const payload = await postAction(action);
+                if (action === 'remove') {
+                    stopPolling();
+                    hideQrCode();
+                    updateState({ state: 'not_configured', instance_name: null, phone: null });
+                    setMessage('Instância removida.', false);
+                    return;
+                }
+
+                updateState(payload);
+                showQrCode(payload);
+                if (action === 'connect' || action === 'qrcode') {
+                    if (payload.state !== 'open') {
+                        setMessage('Escaneie o código QR para concluir a conexão.', false);
+                        startPolling();
+                    }
+                } else if (action === 'logout') {
+                    hideQrCode();
+                    setMessage('WhatsApp desconectado.', false);
+                }
+            } catch (error) {
+                setMessage(error instanceof Error ? error.message : 'Não foi possível concluir a operação.', true);
+            } finally {
+                setBusy(false);
+            }
+        });
+
+        updateButtons(
+            Boolean(instanceNameElement instanceof HTMLElement && instanceNameElement.textContent.trim()),
+            card.dataset.instanceState || 'not_configured'
+        );
+
+        if (['connecting', 'creating'].includes(card.dataset.instanceState || '')) {
+            startPolling();
+        }
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     initializeAdminSidebar();
     initializeBusinessExternalOptions();
+    initializeEvolutionIntegrations();
     document.querySelectorAll('.flash').forEach(function (flash) {
         window.setTimeout(function () {
             if (flash instanceof HTMLElement) flash.remove();

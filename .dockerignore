@@ -1,4 +1,14 @@
 .git
+.github/
+.agents/
+.n8nac/
+.codex/
+n8nac-config.json
+AGENTS.md
+workflows/
+docker-compose*.yml
+README.md
+PRODUCTION_CHECKLIST.md
 .env
 .env.*
 __pycache__/

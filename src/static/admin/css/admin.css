@@ -1154,9 +1154,30 @@ tr.is-editing input[data-editable] {
     background: #fff;
     color: var(--muted);
     cursor: pointer;
-    font-size: 1.4rem;
-    line-height: 1;
+    padding: 0;
+    font-size: 0;
+    line-height: 0;
     transition: background var(--transition), color var(--transition), transform var(--transition);
+}
+
+.modal-close::before,
+.modal-close::after {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 13px;
+    height: 1.5px;
+    border-radius: 999px;
+    background: currentColor;
+    content: "";
+}
+
+.modal-close::before {
+    transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.modal-close::after {
+    transform: translate(-50%, -50%) rotate(-45deg);
 }
 
 .modal-close:hover {
@@ -1610,6 +1631,122 @@ pre {
     background: #111827;
     color: #e5e7eb;
     white-space: pre-wrap;
+}
+
+.whatsapp-integration {
+    display: grid;
+    gap: 14px;
+    margin-top: var(--space-lg);
+    padding-top: var(--space-lg);
+    border-top: 1px solid var(--border);
+}
+
+.whatsapp-integration-header,
+.integration-actions {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-md);
+    flex-wrap: wrap;
+}
+
+.integration-actions {
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.whatsapp-integration-header h3 {
+    margin-bottom: 4px;
+}
+
+.integration-details {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin: 0;
+}
+
+.integration-details div {
+    min-width: 0;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: #f8fafc;
+}
+
+.integration-details dt {
+    color: var(--muted);
+    font-size: .75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.integration-details dd {
+    margin: 4px 0 0;
+    overflow-wrap: anywhere;
+    font-weight: 750;
+}
+
+.evolution-qr {
+    width: min(100%, 360px);
+    margin-inline: auto;
+    padding: 18px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: #fff;
+    text-align: center;
+}
+
+.evolution-qr img {
+    display: block;
+    width: min(100%, 280px);
+    aspect-ratio: 1;
+    margin: 12px auto;
+    object-fit: contain;
+}
+
+.pairing-code {
+    padding: 10px;
+    border-radius: 10px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-weight: 850;
+}
+
+.integration-message {
+    margin: 0;
+    color: var(--muted);
+}
+
+.integration-message[hidden] {
+    display: none;
+}
+
+.integration-message.error {
+    color: #b91c1c;
+    font-weight: 750;
+}
+
+.integration-card.is-loading {
+    opacity: .78;
+}
+
+.evolution-status-open {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.evolution-status-connecting,
+.evolution-status-creating {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.evolution-status-close,
+.evolution-status-missing,
+.evolution-status-error {
+    background: #fee2e2;
+    color: #991b1b;
 }
 
 .flatpickr-calendar,
@@ -2083,6 +2220,10 @@ pre {
         gap: 6px;
     }
 
+    .integration-details {
+        grid-template-columns: 1fr;
+    }
+
     .integration-meta {
         white-space: normal;
     }
@@ -2235,15 +2376,6 @@ pre {
         flex: 0 0 34px;
 
         transition: background var(--transition), color var(--transition), transform var(--transition);
-    }
-
-    .modal-close::before {
-        content: "×";
-        display: block;
-        font-size: 20px;
-        font-weight: 400;
-        line-height: 1;
-        transform: translateY(-1px);
     }
 
     .modal-close:hover {

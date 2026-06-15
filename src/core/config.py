@@ -65,6 +65,14 @@ RATE_LIMIT_WINDOW_SECONDS = get_optional_int_env("RATE_LIMIT_WINDOW_SECONDS", 60
 RATE_LIMIT_AUTH_MAX_REQUESTS = get_optional_int_env("RATE_LIMIT_AUTH_MAX_REQUESTS", 10)
 RATE_LIMIT_AUTH_WINDOW_SECONDS = get_optional_int_env("RATE_LIMIT_AUTH_WINDOW_SECONDS", 60)
 TRUSTED_PROXY_IPS = get_env_list("TRUSTED_PROXY_IPS")
+N8N_ERROR_WEBHOOK_URL = os.getenv("N8N_ERROR_WEBHOOK_URL")
+N8N_WEBHOOK_HEADER = os.getenv("N8N_WEBHOOK_HEADER")
+N8N_WEBHOOK_SECRET = os.getenv("N8N_WEBHOOK_SECRET")
+EVOLUTION_API_URL = os.getenv("EVOLUTION_API_URL")
+EVOLUTION_API_KEY = os.getenv("EVOLUTION_API_KEY")
+EVOLUTION_WEBHOOK_URL = os.getenv("EVOLUTION_WEBHOOK_URL")
+EVOLUTION_INSTANCE_PREFIX = os.getenv("EVOLUTION_INSTANCE_PREFIX", "beautyflow")
+EVOLUTION_REQUEST_TIMEOUT_SECONDS = get_optional_int_env("EVOLUTION_REQUEST_TIMEOUT_SECONDS", 15)
 
 if ALGORITHM not in {"HS256", "HS384", "HS512"}:
     raise RuntimeError("ALGORITHM deve usar HS256, HS384 ou HS512")
@@ -96,3 +104,33 @@ if ENVIRONMENT == "production":
 
     if not USER_REFRESH_COOKIE_SECURE or not ADMIN_COOKIE_SECURE:
         raise RuntimeError("Cookies de autenticação devem ser Secure em produção")
+
+    missing_error_reporting = [
+        name
+        for name, value in {
+            "N8N_ERROR_WEBHOOK_URL": N8N_ERROR_WEBHOOK_URL,
+            "N8N_WEBHOOK_HEADER": N8N_WEBHOOK_HEADER,
+            "N8N_WEBHOOK_SECRET": N8N_WEBHOOK_SECRET,
+        }.items()
+        if not value
+    ]
+    if missing_error_reporting:
+        raise RuntimeError(
+            "Monitoramento de erros obrigatório em produção: "
+            + ", ".join(missing_error_reporting)
+        )
+
+    missing_evolution = [
+        name
+        for name, value in {
+            "EVOLUTION_API_URL": EVOLUTION_API_URL,
+            "EVOLUTION_API_KEY": EVOLUTION_API_KEY,
+            "EVOLUTION_WEBHOOK_URL": EVOLUTION_WEBHOOK_URL,
+        }.items()
+        if not value
+    ]
+    if missing_evolution:
+        raise RuntimeError(
+            "Evolution API obrigatória em produção: "
+            + ", ".join(missing_evolution)
+        )

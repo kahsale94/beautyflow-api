@@ -15,6 +15,7 @@ def test_single_clean_initial_migration_exists():
         "0002_add_schedule_blocks.py",
         "0003_production_hardening.py",
         "0004_add_client_phone_index.py",
+        "0005_add_evolution_instances.py",
     ]
 
     source = read_source("alembic/versions/0001_initial_clean_schema.py")
@@ -46,3 +47,10 @@ def test_single_clean_initial_migration_exists():
     assert 'revision: str = "0004_add_client_phone_index"' in source
     assert 'down_revision: Union[str, None] = "0003_production_hardening"' in source
     assert "ix_clients_phone" in source
+
+    source = read_source("alembic/versions/0005_add_evolution_instances.py")
+    assert 'revision: str = "0005_add_evolution_instances"' in source
+    assert 'down_revision: Union[str, None] = "0004_add_client_phone_index"' in source
+    assert "evolution_instances" in source
+    assert "uq_evolution_instance_business" in source
+    assert "uq_evolution_instance_name" in source

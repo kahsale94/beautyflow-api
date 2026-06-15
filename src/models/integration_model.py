@@ -10,6 +10,7 @@ from .base_model import Base, intpk, name_type
 if TYPE_CHECKING:
     from .business_model import Business
     from .business_integration_model import BusinessIntegration
+    from .evolution_instance_model import EvolutionInstance
 
 class IntegrationType(str, PyEnum):
     automation = "automation"
@@ -26,3 +27,7 @@ class Integration(Base):
 
     businesses: Mapped[list["Business"]] = relationship(secondary="business_integrations", viewonly=True)
     business_integrations: Mapped[list["BusinessIntegration"]] = relationship(back_populates="integration", cascade="all, delete-orphan")
+    evolution_instances: Mapped[list["EvolutionInstance"]] = relationship(
+        back_populates="integration",
+        cascade="all, delete-orphan",
+    )

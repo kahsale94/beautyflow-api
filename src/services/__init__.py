@@ -8,3 +8,4 @@ from .schedule_block_service import ScheduleBlockService, get_schedule_block_ser
 from .integration_service import IntegrationService, get_integration_service
 from .availability_service import AvailabilityService, get_availability_service
 from .professional_service import ProfessionalService, get_professional_service
+from .evolution_instance_service import EvolutionInstanceService, get_evolution_instance_service

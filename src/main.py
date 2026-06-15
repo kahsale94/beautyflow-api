@@ -1,14 +1,20 @@
+import logging
+from uuid import uuid4
+
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 from .api import router as user_router
 from .api.health_routes import router as health_router
 from .admin import router as admin_router
-from .core import ENVIRONMENT, CORS_ORIGINS, configure_logging
+from .core import ENVIRONMENT, CORS_ORIGINS, configure_logging, report_unhandled_exception
 from .middlewares import LoggingMiddleware, RateLimitMiddleware, SecurityHeadersMiddleware
 
 configure_logging()
+logger = logging.getLogger("beautyflow.unhandled")
 
 if ENVIRONMENT == "production":
     app = FastAPI(
@@ -50,6 +56,7 @@ app.add_middleware(
         "Content-Type",
         "X-Business-ID",
         "X-Business-Phone",
+        "X-Evolution-Instance",
         "X-CSRF-Token",
     ],
 )
@@ -57,6 +64,25 @@ app.add_middleware(
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RateLimitMiddleware)
 app.add_middleware(LoggingMiddleware)
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    error_id = uuid4().hex
+    logger.error(
+        "Unhandled application error. error_id=%s method=%s path=%s",
+        error_id,
+        request.method,
+        request.url.path,
+    )
+    await report_unhandled_exception(request, exc, error_id)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "Erro interno inesperado.",
+            "error_id": error_id,
+        },
+    )
 
 app.mount("/static", StaticFiles(directory="src/static"), name="static")
 

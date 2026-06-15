@@ -1,5 +1,8 @@
 import json
+import hashlib
 from datetime import datetime
+from functools import lru_cache
+from pathlib import Path
 from zoneinfo import ZoneInfo
 from urllib.parse import quote, unquote
 
@@ -13,6 +16,7 @@ from src.core import (ADMIN_ACCESS_COOKIE, ADMIN_BUSINESS_COOKIE, ADMIN_COOKIE_P
 )
 
 DEFAULT_ADMIN_TIMEZONE = "America/Sao_Paulo"
+STATIC_ROOT = Path(__file__).resolve().parents[1] / "static"
 
 WEEKDAYS = [
     (0, "Segunda-feira"),
@@ -24,7 +28,44 @@ WEEKDAYS = [
     (6, "Domingo"),
 ]
 
+ADMIN_LABELS = {
+    "scheduled": "Agendado",
+    "canceled": "Cancelado",
+    "cancelled": "Cancelado",
+    "completed": "Concluído",
+    "pending": "Pendente",
+    "active": "Ativo",
+    "inactive": "Inativo",
+    "open": "Conectado",
+    "connected": "Conectado",
+    "connecting": "Aguardando conexão",
+    "creating": "Criando instância",
+    "close": "Desconectado",
+    "disconnected": "Desconectado",
+    "missing": "Ausente",
+    "error": "Erro",
+    "not_configured": "Não configurado",
+    "super_admin": "Superadministrador",
+    "admin": "Administrador",
+    "user": "Usuário",
+    "barbershop": "Barbearia",
+    "salon": "Salão de beleza",
+    "clinic": "Clínica",
+}
+
 templates = Jinja2Templates(directory="src/templates")
+
+@lru_cache(maxsize=64)
+def static_version(path: str) -> str:
+    asset_path = (STATIC_ROOT / path).resolve()
+
+    try:
+        asset_path.relative_to(STATIC_ROOT.resolve())
+        return hashlib.sha256(asset_path.read_bytes()).hexdigest()[:12]
+    except (OSError, ValueError):
+        return "missing"
+
+templates.env.globals["static_version"] = static_version
 
 def safe_timezone(timezone_name: str | None):
     try:
@@ -65,6 +106,13 @@ def datetime_input(value, timezone_name: str | None = None) -> str:
 templates.env.filters["datetime_br"] = datetime_br
 templates.env.filters["datetime_time"] = datetime_time
 templates.env.filters["datetime_input"] = datetime_input
+
+def admin_label(value) -> str:
+    raw_value = getattr(value, "value", value)
+    normalized = str(raw_value or "").strip().lower()
+    return ADMIN_LABELS.get(normalized, normalized.replace("_", " ").capitalize())
+
+templates.env.filters["admin_label"] = admin_label
 
 def attach_csrf_cookie(response: Response, csrf_token: str) -> None:
     response.set_cookie(

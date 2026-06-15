@@ -98,3 +98,23 @@ def test_delete_appointment_is_logical_cancel():
 
     assert "appointment.status = AppointmentStatus.canceled" in delete_slice
     assert "appointment_repo.delete" not in delete_slice
+
+def test_admin_appointment_forms_filter_services_by_professional():
+    route_source = read_source("src/admin/routes/appointments.py")
+    calendar_template = read_source("src/templates/admin/appointments/calendar.html")
+    details_template = read_source("src/templates/admin/appointments/_details.html")
+    calendar_script = read_source("src/static/admin/js/calendar.js")
+
+    assert "ProfessionalServiceLinkServiceDep" in route_source
+    assert '"service_professional_ids"' in route_source
+    assert "data-appointment-service-filter" in calendar_template
+    assert "data-appointment-service-filter" in details_template
+    assert "data-appointment-professional" in calendar_template
+    assert "data-appointment-professional" in details_template
+    assert "data-appointment-service" in calendar_template
+    assert "data-appointment-service" in details_template
+    assert "data-professional-ids" in calendar_template
+    assert "data-professional-ids" in details_template
+    assert "initializeAppointmentServiceFilters" in calendar_script
+    assert "Nenhum serviço disponível" in calendar_script
+    assert "professionalSelect.addEventListener('change', syncServices)" in calendar_script

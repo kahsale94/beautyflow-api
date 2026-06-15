@@ -8,7 +8,10 @@ from fastapi.responses import JSONResponse
 
 from src.schemas import AppointmentCreate, AppointmentUpdate, ScheduleBlockCreate
 from src.utils import form_bool, form_decimal, form_int, form_value, local_datetime_from_form
-from src.dependecies import AppointmentServiceDep, BusinessServiceDep, ClientServiceDep, ProfessionalServiceDep, ScheduleBlockServiceDep, ServiceServiceDep
+from src.dependecies import (AppointmentServiceDep, BusinessServiceDep, ClientServiceDep,
+    ProfessionalServiceDep, ProfessionalServiceLinkServiceDep, ScheduleBlockServiceDep,
+    ServiceServiceDep,
+)
 from src.services.appointment_service import (AppointmentAlreadyCanceledError, AppointmentAlreadyCompletedError,
     AppointmentBlockedByScheduleBlockError, AppointmentNotFoundError, AppointmentTimeConflictError, ClientNotFoundError,
     AppointmentConfirmationPendingError, DatetimeFormatError, ProfessionalNotAvailableError,
@@ -72,6 +75,15 @@ def _slot_duration(interval_minutes: int | None) -> str:
     hours, minutes = divmod(interval, 60)
     return f"{hours:02d}:{minutes:02d}:00"
 
+def _service_professional_ids(business_id: int, professionals, link_service) -> dict[int, list[int]]:
+    result: dict[int, list[int]] = {}
+    for professional in professionals:
+        links = link_service.get_by_professional(business_id, professional.id)
+        for link in links:
+            result.setdefault(link.service_id, []).append(professional.id)
+
+    return result
+
 def _appointment_error_message(exc: Exception) -> str:
     if isinstance(exc, AppointmentBlockedByScheduleBlockError):
         return "Agenda fechada nesse horário."
@@ -130,7 +142,7 @@ def _schedule_block_error_redirect(request: Request, exc: Exception):
 
 @router.get("")
 def calendar_page(request: Request, client_service: ClientServiceDep, professional_service: ProfessionalServiceDep, service_service: ServiceServiceDep,
-    business_service: BusinessServiceDep, session: AdminSessionDep):
+    link_service: ProfessionalServiceLinkServiceDep, business_service: BusinessServiceDep, session: AdminSessionDep):
     business = business_service.get_by_id(session.business_id)
     business_timezone = _safe_timezone_name(business.timezone)
     tz = _safe_timezone(business_timezone)
@@ -138,6 +150,8 @@ def calendar_page(request: Request, client_service: ClientServiceDep, profession
     min_start = now + timedelta(minutes=business.minimum_notice_minutes)
     default_start = _round_up_to_slot(min_start, business.slot_interval_minutes)
     max_start = now + timedelta(days=business.maximum_schedule_days)
+    professionals = professional_service.get_all(session.business_id)
+    services = service_service.get_all(session.business_id)
 
     return render(
         request,
@@ -151,8 +165,13 @@ def calendar_page(request: Request, client_service: ClientServiceDep, profession
             "slot_interval_seconds": business.slot_interval_minutes * 60,
             "slot_duration": _slot_duration(business.slot_interval_minutes),
             "clients": client_service.get_all(session.business_id),
-            "professionals": professional_service.get_all(session.business_id),
-            "services": service_service.get_all(session.business_id),
+            "professionals": professionals,
+            "services": services,
+            "service_professional_ids": _service_professional_ids(
+                session.business_id,
+                professionals,
+                link_service,
+            ),
             "schedule_block_reasons": SCHEDULE_BLOCK_REASON_LABELS,
         },
         session=session,
@@ -311,7 +330,8 @@ async def cancel_schedule_block_action(block_id: int, request: Request, schedule
 
 @router.get("/{appointment_id}/details")
 def appointment_details_fragment(appointment_id: int, request: Request, appointment_service: AppointmentServiceDep, business_service: BusinessServiceDep,
-    client_service: ClientServiceDep, professional_service: ProfessionalServiceDep, service_service: ServiceServiceDep, session: AdminSessionDep):
+    client_service: ClientServiceDep, professional_service: ProfessionalServiceDep, service_service: ServiceServiceDep,
+    link_service: ProfessionalServiceLinkServiceDep, session: AdminSessionDep):
     appointment = appointment_service.get_by_id(session.business_id, appointment_id)
     business = business_service.get_by_id(session.business_id)
     business_timezone = _safe_timezone_name(business.timezone)
@@ -329,6 +349,11 @@ def appointment_details_fragment(appointment_id: int, request: Request, appointm
             "clients": list(clients.values()),
             "professionals": list(professionals.values()),
             "services": list(services.values()),
+            "service_professional_ids": _service_professional_ids(
+                session.business_id,
+                professionals.values(),
+                link_service,
+            ),
             "business_timezone": business_timezone,
             "slot_interval_minutes": business.slot_interval_minutes,
             "slot_interval_seconds": business.slot_interval_minutes * 60,

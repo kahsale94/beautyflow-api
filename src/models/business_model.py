@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from .integration_model import Integration
     from .professional_model import Professional
     from .business_integration_model import BusinessIntegration
+    from .evolution_instance_model import EvolutionInstance
 
 
 class BusinessType(str, PyEnum):
@@ -65,3 +66,8 @@ class Business(Base):
 
     integrations: Mapped[list["Integration"]] = relationship(secondary="business_integrations", viewonly=True)
     business_integrations: Mapped[list["BusinessIntegration"]] = relationship(back_populates="business", cascade="all, delete-orphan")
+    evolution_instance: Mapped[Optional["EvolutionInstance"]] = relationship(
+        back_populates="business",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )

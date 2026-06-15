@@ -1,6 +1,6 @@
 {% extends "admin/base.html" %}
 
-{% block title %}Empresa - Beautyflow Admin{%endblock %}
+{% block title %}Empresa - Beautyflow{%endblock %}
 
 {% block content %}
 <header class="page-header">
@@ -29,7 +29,7 @@
                     <select name="type" required>
                         {% for type in business_types %}
                         <option value="{{ type.value }}" {% if type == business.type %}selected{% endif %}>
-                            {{ type.value }}
+                            {{ type|admin_label }}
                         </option>
                         {% endfor %}
                     </select>

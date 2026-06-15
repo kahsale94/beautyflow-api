@@ -6,6 +6,7 @@ from .business_model import Business
 from .appointment_model import Appointment
 from .schedule_block_model import ScheduleBlock
 from .integration_model import Integration
+from .evolution_instance_model import EvolutionInstance
 from .availability_model import Availability
 from .professional_model import Professional
 from .business_integration_model import BusinessIntegration

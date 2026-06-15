@@ -4,8 +4,9 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{% block title %}Beautyflow Admin{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', path='admin/css/admin.css') }}" />
+    <title>{% block title %}Beautyflow - Painel administrativo{% endblock %}</title>
+    <link rel="stylesheet"
+        href="{{ url_for('static', path='admin/css/admin.css') }}?v={{ static_version('admin/css/admin.css') }}" />
     {% block head %}{% endblock %}
 </head>
 
@@ -29,7 +30,7 @@
     <aside id="admin-sidebar" class="sidebar" aria-label="Menu do administrador">
         <a class="brand" href="/admin/">Beautyflow</a>
         <nav class="nav">
-            <a class="nav-link {{ 'active' if active == 'dashboard' else '' }}" href="/admin/">Dashboard</a>
+            <a class="nav-link {{ 'active' if active == 'dashboard' else '' }}" href="/admin/">Visão geral</a>
             <a class="nav-link {{ 'active' if active == 'appointments' else '' }}"
                 href="/admin/appointments">Calendário</a>
             <a class="nav-link {{ 'active' if active == 'clients' else '' }}" href="/admin/clients">Clientes</a>
@@ -50,15 +51,7 @@
         <div class="sidebar-footer">
             <div class="sidebar-user" aria-label="Usuário logado">
                 <span class="sidebar-user-email" title="{{ session.user.email }}">{{ session.user.email }}</span>
-                <span class="sidebar-user-role">
-                    {% if session.user.role.value == 'super_admin' %}
-                    Super admin
-                    {% elif session.user.role.value == 'admin' %}
-                    Admin
-                    {% else %}
-                    {{ session.user.role.value }}
-                    {% endif %}
-                </span>
+                <span class="sidebar-user-role">{{ session.user.role|admin_label }}</span>
             </div>
             <form method="post" action="/admin/logout" class="logout-form">
                 <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
@@ -77,12 +70,18 @@
     <div id="modal" class="modal" hidden>
         <div class="modal-backdrop" data-close-modal></div>
         <section class="modal-card">
-            <button type="button" class="modal-close" data-close-modal>×</button>
+            <button
+                type="button"
+                class="modal-close"
+                data-close-modal
+                aria-label="Fechar janela"
+                title="Fechar"></button>
             <div id="modal-content"></div>
         </section>
     </div>
 
-    <script src="{{ url_for('static', path='admin/js/admin.js') }}"></script>
+    <script
+        src="{{ url_for('static', path='admin/js/admin.js') }}?v={{ static_version('admin/js/admin.js') }}"></script>
     {% block scripts %}{% endblock %}
 </body>
 
