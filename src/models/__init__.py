@@ -4,6 +4,7 @@ from .client_model import Client
 from .service_model import Service
 from .business_model import Business
 from .appointment_model import Appointment
+from .appointment_reminder_model import AppointmentReminder
 from .schedule_block_model import ScheduleBlock
 from .integration_model import Integration
 from .evolution_instance_model import EvolutionInstance

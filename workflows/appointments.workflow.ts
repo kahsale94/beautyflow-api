@@ -2,7 +2,7 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 
 // <workflow-map>
 // Workflow : appointments
-// Nodes   : 42  |  Connections: 58
+// Nodes   : 44  |  Connections: 59
 //
 // NODE INDEX
 // ──────────────────────────────────────────────────────────────────
@@ -32,10 +32,6 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 // PreContext                         set
 // AppointmentContext                 code
 // ReturnContext                      code
-// GetAll                             httpRequest                [onError→out(1)]
-// Filter                             filter
-// Complete                           httpRequest                [onError→out(1)]
-// ErrorReport15                      stopAndError
 // ErrorReport16                      stopAndError
 // ErrorReport18                      stopAndError
 // ErrorReport19                      stopAndError
@@ -49,6 +45,12 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 // ErrorReport21                      stopAndError
 // ServiceContext                     executeWorkflow
 // ProfessionalContext                executeWorkflow
+// ReminderSchedule                   scheduleTrigger
+// ClaimReminders                     httpRequest                [creds] [retry]
+// SplitReminderClaims                splitOut
+// SendReminder                       evolutionApi               [onError→out(1)] [creds] [retry]
+// MarkReminderSent                   httpRequest                [creds] [retry]
+// MarkReminderFailed                 httpRequest                [creds] [retry]
 //
 // ROUTING MAP
 // ──────────────────────────────────────────────────────────────────
@@ -107,11 +109,12 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 //         .out(1) → GetByClient
 //            → PreContext (↩ loop)
 //           .out(1) → ErrorReport16
-// GetAll
-//    → Filter
-//      → Complete
-//       .out(1) → ErrorReport15
-//   .out(1) → ErrorReport15 (↩ loop)
+// ReminderSchedule
+//    → ClaimReminders
+//      → SplitReminderClaims
+//        → SendReminder
+//          → MarkReminderSent
+//         .out(1) → MarkReminderFailed
 // </workflow-map>
 
 // =====================================================================
@@ -1418,160 +1421,6 @@ return {
     };
 
     @node({
-        id: '6324968b-1694-4be2-a839-7ee4bba46a42',
-        name: 'get all',
-        type: 'n8n-nodes-base.httpRequest',
-        version: 4.3,
-        position: [1232, 6384],
-        onError: 'continueErrorOutput',
-    })
-    GetAll = {
-        url: "={{ $('data handler').first().json.api.url }}/appointments/",
-        sendHeaders: true,
-        headerParameters: {
-            parameters: [
-                {
-                    name: 'Authorization',
-                    value: "={{ $('data handler').first().json.api.token }}",
-                },
-            ],
-        },
-        options: {},
-    };
-
-    @node({
-        id: '9cbc7da1-f701-4067-b31d-ddb570984714',
-        name: 'filter',
-        type: 'n8n-nodes-base.filter',
-        version: 2.3,
-        position: [1440, 6256],
-    })
-    Filter = {
-        conditions: {
-            options: {
-                caseSensitive: true,
-                leftValue: '',
-                typeValidation: 'loose',
-                version: 3,
-            },
-            conditions: [
-                {
-                    id: '46690414-6418-49e2-9886-6de3231be1cb',
-                    leftValue: '={{ $json.status }}',
-                    rightValue: 'scheduled',
-                    operator: {
-                        type: 'string',
-                        operation: 'equals',
-                    },
-                },
-                {
-                    id: 'e2a24989-8752-4da7-b2cd-e59921eaf555',
-                    leftValue: '={{ $json.start_datetime }}',
-                    rightValue: '={{ $now }}',
-                    operator: {
-                        type: 'dateTime',
-                        operation: 'before',
-                    },
-                },
-            ],
-            combinator: 'and',
-        },
-        looseTypeValidation: true,
-        options: {},
-    };
-
-    @node({
-        id: '5b60f9d6-53d6-458e-a3d5-f91d087e9a63',
-        name: 'complete',
-        type: 'n8n-nodes-base.httpRequest',
-        version: 4.3,
-        position: [1648, 6384],
-        onError: 'continueErrorOutput',
-        retryOnFail: false,
-    })
-    Complete = {
-        method: 'PATCH',
-        url: "={{ $('data handler').first().json.api.url }}/appointments/{{ $json.id }}/complete",
-        sendHeaders: true,
-        headerParameters: {
-            parameters: [
-                {
-                    name: 'Authorization',
-                    value: "={{ $('data handler').first().json.api.token }}",
-                },
-            ],
-        },
-        sendBody: true,
-        bodyParameters: {
-            parameters: [
-                {
-                    name: 'client_id',
-                    value: "={{ $('data handler').first().json.client.id }}",
-                },
-                {
-                    name: 'professional_id',
-                    value: "={{ $('data handler').item.json.data.professional.id }}",
-                },
-                {
-                    name: 'service_id',
-                    value: "={{ $('data handler').first().json.data.service.id }}",
-                },
-                {
-                    name: 'start_datetime',
-                    value: "={{ $('data handler').first().json.data.appointment.start_datetime }}",
-                },
-            ],
-        },
-        options: {
-            response: {
-                response: {
-                    fullResponse: true,
-                    responseFormat: 'text',
-                },
-            },
-        },
-    };
-
-    @node({
-        id: 'aeb4fe61-b2ee-4a8a-acbc-296e52b56865',
-        name: 'error report 15',
-        type: 'n8n-nodes-base.stopAndError',
-        version: 1,
-        position: [1648, 6528],
-    })
-    ErrorReport15 = {
-        errorType: 'errorObject',
-        errorObject: `={
-  "error": {
-    "id": "{{ $execution.id }}",
-    "type": "internal.api.complete_appointments",
-    "node": "{{ $prevNode.name }}",
-    "code": "{{ $json.error.status || '' }}",
-    "description": "{{
-(() => {
-  try {
-    const part = $json.error.message.split(' - ')[1];
-    return JSON.parse(JSON.parse(part)).detail;
-  } catch (e) {
-    return $json.error.message;
-  }
-})()
-}}"
-  },
-  "business": {
-    "id": "{{ $('data handler').item.json.business.id || '' }}",
-    "name": "{{ $('data handler').item.json.business.name || '' }}",
-    "phone": "{{ $('data handler').item.json.business.phone || '' }}"
-  },
-  "client": {
-    "remote_jid": "{{ $('data handler').item.json.client.remote_jid || '' }}",
-    "message_id": "{{ $('data handler').item.json.message.id || '' }}",
-    "message_text": "{{ $('data handler').item.json.message.text || '' }}"
-  }
-}`,
-    };
-
-    @node({
         id: '12a24dcb-e17d-4aeb-a4bc-bab5f2acd18f',
         name: 'error report 16',
         type: 'n8n-nodes-base.stopAndError',
@@ -2484,6 +2333,142 @@ return {
         options: {},
     };
 
+    @node({
+        id: '883f8e6b-b372-429e-8d70-30eae905fc6c',
+        name: 'reminder schedule',
+        type: 'n8n-nodes-base.scheduleTrigger',
+        version: 1.3,
+        position: [1232, 6128],
+    })
+    ReminderSchedule = {
+        rule: {
+            interval: [
+                {
+                    field: 'minutes',
+                    minutesInterval: 5,
+                },
+            ],
+        },
+    };
+
+    @node({
+        id: 'b48029e7-154c-4a82-92f1-04ba6e2fb1be',
+        name: 'claim reminders',
+        type: 'n8n-nodes-base.httpRequest',
+        version: 4.4,
+        position: [1456, 6128],
+        credentials: { httpBearerAuth: { id: 'tHC4wEA5iAoOqLkj', name: 'N8N_BEAUTY_FLOW_API_TOKEN' } },
+        retryOnFail: true,
+        waitBetweenTries: 1000,
+    })
+    ClaimReminders = {
+        method: 'POST',
+        url: 'http://beautyflow_backend:8000/v1/appointment-reminders/claim',
+        authentication: 'genericCredentialType',
+        genericAuthType: 'httpBearerAuth',
+        sendBody: true,
+        specifyBody: 'json',
+        jsonBody: '={{ { limit: 20 } }}',
+        options: {},
+    };
+
+    @node({
+        id: 'e33ed9cb-9575-4bfc-871d-d279d931ca7c',
+        name: 'split reminder claims',
+        type: 'n8n-nodes-base.splitOut',
+        version: 1,
+        position: [1680, 6128],
+    })
+    SplitReminderClaims = {
+        fieldToSplitOut: 'reminders',
+        options: {},
+    };
+
+    @node({
+        id: 'f947291e-cc0a-474d-9f34-9275da5d4871',
+        name: 'send reminder',
+        type: 'n8n-nodes-evolution-api.evolutionApi',
+        version: 1,
+        position: [1904, 6128],
+        credentials: { evolutionApi: { id: 'vlj9dRMZQEffBnHW', name: 'Evolution Credential - Kaiky' } },
+        onError: 'continueErrorOutput',
+        retryOnFail: true,
+        waitBetweenTries: 1000,
+    })
+    SendReminder = {
+        resource: 'messages-api',
+        instanceName: '={{ $json.evolution.instance_name }}',
+        remoteJid: '={{ $json.client.remote_jid }}',
+        messageText: '={{ $json.message }}',
+        options_message: {
+            delay: 1000,
+        },
+    };
+
+    @node({
+        id: 'f93c858d-ed9e-4ab9-b9d2-368b0925a3f9',
+        name: 'mark reminder sent',
+        type: 'n8n-nodes-base.httpRequest',
+        version: 4.4,
+        position: [2128, 6048],
+        credentials: { httpBearerAuth: { id: 'tHC4wEA5iAoOqLkj', name: 'N8N_BEAUTY_FLOW_API_TOKEN' } },
+        retryOnFail: true,
+        waitBetweenTries: 1000,
+    })
+    MarkReminderSent = {
+        method: 'POST',
+        url: "=http://beautyflow_backend:8000/v1/appointment-reminders/{{ $('split reminder claims').item.json.id }}/sent",
+        authentication: 'genericCredentialType',
+        genericAuthType: 'httpBearerAuth',
+        sendBody: true,
+        specifyBody: 'json',
+        jsonBody: `={{ (() => {
+  const response = $json || {};
+  return {
+    external_message_id:
+      response.key?.id ||
+      response.message?.key?.id ||
+      response.data?.key?.id ||
+      response.messageId ||
+      response.id ||
+      ''
+  };
+})() }}`,
+        options: {},
+    };
+
+    @node({
+        id: '81fcc88a-f113-4b86-b800-0e124f84e1e3',
+        name: 'mark reminder failed',
+        type: 'n8n-nodes-base.httpRequest',
+        version: 4.4,
+        position: [2128, 6208],
+        credentials: { httpBearerAuth: { id: 'tHC4wEA5iAoOqLkj', name: 'N8N_BEAUTY_FLOW_API_TOKEN' } },
+        retryOnFail: true,
+        waitBetweenTries: 1000,
+    })
+    MarkReminderFailed = {
+        method: 'POST',
+        url: "=http://beautyflow_backend:8000/v1/appointment-reminders/{{ $('split reminder claims').item.json.id }}/failed",
+        authentication: 'genericCredentialType',
+        genericAuthType: 'httpBearerAuth',
+        sendBody: true,
+        specifyBody: 'json',
+        jsonBody: `={{ (() => {
+  const error = $json.error || {};
+  const message =
+    error.message ||
+    error.description ||
+    $json.message ||
+    'Evolution send failed';
+
+  return {
+    error: String(message).slice(0, 2000)
+  };
+})() }}`,
+        options: {},
+    };
+
     // =====================================================================
     // ROUTAGE ET CONNEXIONS
     // =====================================================================
@@ -2536,10 +2521,11 @@ return {
         this.PreContext.out(0).to(this.ProfessionalContext.in(0));
         this.AppointmentContext.out(0).to(this.Action1.in(0));
         this.ReturnContext.out(0).to(this.Aggregate.in(0));
-        this.GetAll.out(0).to(this.Filter.in(0));
-        this.GetAll.out(1).to(this.ErrorReport15.in(0));
-        this.Filter.out(0).to(this.Complete.in(0));
-        this.Complete.out(1).to(this.ErrorReport15.in(0));
+        this.ReminderSchedule.out(0).to(this.ClaimReminders.in(0));
+        this.ClaimReminders.out(0).to(this.SplitReminderClaims.in(0));
+        this.SplitReminderClaims.out(0).to(this.SendReminder.in(0));
+        this.SendReminder.out(0).to(this.MarkReminderSent.in(0));
+        this.SendReminder.out(1).to(this.MarkReminderFailed.in(0));
         this.ErrorReport23.out(0).to(this.ConfirmationEmail.in(0));
         this.ErrorReport24.out(0).to(this.ReturnContext.in(0));
         this.ErrorReport25.out(0).to(this.GetEmail.in(0));

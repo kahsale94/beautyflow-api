@@ -11,8 +11,9 @@ from src.schemas.appointment_schema import AppointmentStatus
 from src.schemas import AppointmentCreate, AppointmentUpdate, AppointmentResponse
 from src.repositories import (AppointmentRepository, ProfessionalRepository, ServiceRepository,
     AvailabilityRepository, ClientRepository, BusinessRepository, ProfessionalServiceRepository,
-    ScheduleBlockRepository,
+    ScheduleBlockRepository, AppointmentReminderRepository,
 )
+from src.services.appointment_reminder_service import AppointmentReminderService
 from src.services.scheduling_lock import acquire_schedule_lock
 
 
@@ -84,6 +85,7 @@ class AppointmentService:
         business_repo: BusinessRepository,
         professional_service_repo: ProfessionalServiceRepository,
         schedule_block_repo: ScheduleBlockRepository,
+        appointment_reminder_service: AppointmentReminderService | None = None,
     ):
         self.db = db
         self.appointment_repo = appointment_repo
@@ -94,6 +96,7 @@ class AppointmentService:
         self.business_repo = business_repo
         self.professional_service_repo = professional_service_repo
         self.schedule_block_repo = schedule_block_repo
+        self.appointment_reminder_service = appointment_reminder_service
 
     def _get_integrity_constraint_name(self, exc: IntegrityError) -> str | None:
         try:
@@ -117,6 +120,28 @@ class AppointmentService:
                 raise AppointmentTimeConflictError() from exc
 
             raise
+
+    def _flush_or_raise_conflict(self) -> None:
+        try:
+            self.db.flush()
+        except IntegrityError as exc:
+            self.db.rollback()
+
+            constraint_name = self._get_integrity_constraint_name(exc)
+            if constraint_name == self.APPOINTMENT_OVERLAP_CONSTRAINT:
+                raise AppointmentTimeConflictError() from exc
+
+            raise
+
+    def _schedule_reminder_if_needed(self, appointment: Appointment, business) -> None:
+        reminder_service = getattr(self, "appointment_reminder_service", None)
+        if reminder_service:
+            reminder_service.schedule_for_appointment(appointment, business)
+
+    def _skip_pending_reminders(self, appointment_id: int, reason: str = "appointment_changed") -> None:
+        reminder_service = getattr(self, "appointment_reminder_service", None)
+        if reminder_service:
+            reminder_service.skip_pending_for_appointment(appointment_id, reason=reason)
 
     def _get_business_or_raise(self, business_id: int):
         business = self.business_repo.get_by_id(self.db, business_id)
@@ -346,6 +371,8 @@ class AppointmentService:
         )
 
         self.appointment_repo.add(self.db, appointment)
+        self._flush_or_raise_conflict()
+        self._schedule_reminder_if_needed(appointment, business)
         self._commit_or_raise_conflict()
         self.db.refresh(appointment)
 
@@ -354,6 +381,7 @@ class AppointmentService:
 
     def update(self, business_id: int, appointment_id: int, data: AppointmentUpdate):
         appointment = self._get_appointment_or_raise(business_id, appointment_id)
+        original_start_datetime = appointment.start_datetime
 
         if appointment.status == AppointmentStatus.canceled:
             raise AppointmentAlreadyCanceledError()
@@ -372,12 +400,18 @@ class AppointmentService:
         final_start = update_data.get("start_datetime", appointment.start_datetime)
 
         start_datetime, end_datetime = self._validate_appointment(business_id, final_client, final_professional, final_service, final_start)
+        start_changed = start_datetime != original_start_datetime
+        business = self._get_business_or_raise(business_id)
 
         appointment.client_id = final_client
         appointment.professional_id = final_professional
         appointment.service_id = final_service
         appointment.start_datetime = start_datetime
         appointment.end_datetime = end_datetime
+
+        if start_changed:
+            self._skip_pending_reminders(appointment.id, reason="appointment_rescheduled")
+        self._schedule_reminder_if_needed(appointment, business)
 
         self._commit_or_raise_conflict()
         self.db.refresh(appointment)
@@ -398,6 +432,7 @@ class AppointmentService:
             raise AppointmentConfirmationPendingError()
 
         appointment.status = AppointmentStatus.completed
+        self._skip_pending_reminders(appointment.id, reason="appointment_completed")
         self._commit_or_raise_conflict()
 
         return
@@ -412,7 +447,9 @@ class AppointmentService:
             raise AppointmentAlreadyCompletedError()
 
         appointment.confirmation_pending = False
-        self.db.commit()
+        business = self._get_business_or_raise(business_id)
+        self._schedule_reminder_if_needed(appointment, business)
+        self._commit_or_raise_conflict()
 
         return
 
@@ -439,6 +476,7 @@ class AppointmentService:
                 raise AppointmentCancellationDeadlineError()
 
         appointment.status = AppointmentStatus.canceled
+        self._skip_pending_reminders(appointment.id, reason="appointment_canceled")
         self._commit_or_raise_conflict()
 
     def delete(self, business_id: int, appointment_id: int):
@@ -451,6 +489,7 @@ class AppointmentService:
             raise AppointmentAlreadyCanceledError()
 
         appointment.status = AppointmentStatus.canceled
+        self._skip_pending_reminders(appointment.id, reason="appointment_deleted")
         self._commit_or_raise_conflict()
 
         return
@@ -466,4 +505,5 @@ def get_appointment_service(db: DataBaseDep):
         BusinessRepository(),
         ProfessionalServiceRepository(),
         ScheduleBlockRepository(),
+        AppointmentReminderService(db, AppointmentReminderRepository()),
     )

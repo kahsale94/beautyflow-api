@@ -5,8 +5,9 @@ from sqlalchemy.exc import IntegrityError
 from src.models import Business
 from src.core import DataBaseDep
 from src.utils import normalize_phone
-from src.repositories import BusinessRepository
+from src.repositories import AppointmentReminderRepository, BusinessRepository
 from src.schemas import BusinessCreate, BusinessUpdate
+from src.services.appointment_reminder_service import AppointmentReminderService
 
 class BusinessNotFoundError(Exception):
     pass
@@ -20,14 +21,16 @@ class BusinessService:
         self,
         db: Session,
         business_repo: BusinessRepository,
+        appointment_reminder_service: AppointmentReminderService | None = None,
     ):
         self.db = db
         self.business_repo = business_repo
+        self.appointment_reminder_service = appointment_reminder_service
 
     def _get_valid(self, business_id: int):
         business = self.business_repo.get_by_id(self.db, business_id)
         if (
-            not business 
+            not business
             or not business.is_active
         ):
             raise BusinessNotFoundError()
@@ -47,7 +50,7 @@ class BusinessService:
         result = self.business_repo.get_by_slug(self.db, business_name)
 
         return result
-    
+
     def get_by_id(self, business_id: int):
         return self._get_valid(business_id)
 
@@ -92,6 +95,7 @@ class BusinessService:
         business = self._get_valid(business_id)
 
         update_data = data.model_dump(exclude_unset=True)
+        previous_cancel_limit_hours = getattr(business, "cancel_limit_hours", None)
 
         if "email" in update_data and update_data["email"] is not None:
             update_data["email"] = str(update_data["email"])
@@ -102,12 +106,19 @@ class BusinessService:
         for field, value in update_data.items():
             setattr(business, field, value)
 
+        if (
+            "cancel_limit_hours" in update_data
+            and update_data["cancel_limit_hours"] != previous_cancel_limit_hours
+            and self.appointment_reminder_service
+        ):
+            self.appointment_reminder_service.recalculate_pending_for_business(business)
+
         try:
             self.db.commit()
         except IntegrityError:
             self.db.rollback()
             raise BusinessAlreadyExistsError()
-        
+
         self.db.refresh(business)
 
         return business
@@ -128,4 +139,5 @@ def get_business_service(db: DataBaseDep):
     return BusinessService(
         db,
         BusinessRepository(),
+        AppointmentReminderService(db, AppointmentReminderRepository()),
     )

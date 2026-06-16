@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from .service_model import Service
     from .business_model import Business
     from .professional_model import Professional
+    from .appointment_reminder_model import AppointmentReminder
 
 
 class AppointmentStatus(str, PyEnum):
@@ -48,3 +49,4 @@ class Appointment(Base):
     professional: Mapped["Professional"] = relationship(back_populates="appointments")
     service: Mapped["Service"] = relationship(back_populates="appointments")
     business: Mapped["Business"] = relationship(back_populates="appointments")
+    reminders: Mapped[list["AppointmentReminder"]] = relationship(back_populates="appointment", cascade="all, delete-orphan")

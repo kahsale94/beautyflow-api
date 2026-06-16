@@ -4,6 +4,7 @@ from .client_service import ClientService, get_client_service
 from .service_service import ServiceService, get_service_service
 from .business_service import BusinessService, get_business_service
 from .appointment_service import AppointmentService, get_appointment_service
+from .appointment_reminder_service import AppointmentReminderService, get_appointment_reminder_service
 from .schedule_block_service import ScheduleBlockService, get_schedule_block_service
 from .integration_service import IntegrationService, get_integration_service
 from .availability_service import AvailabilityService, get_availability_service

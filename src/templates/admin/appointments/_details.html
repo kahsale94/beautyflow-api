@@ -21,6 +21,79 @@
     </p>
 </div>
 
+<div class="details-list reminder-details">
+    <p>
+        <strong>Lembrete automático:</strong>
+        {% if automatic_reminder %}
+        <span class="badge {{ automatic_reminder.status.value }}">
+            {{ reminder_status_label(automatic_reminder.status) }}
+        </span>
+        {% else %}
+        <span class="badge skipped">Não agendado</span>
+        {% endif %}
+    </p>
+    {% if automatic_reminder %}
+    <p>
+        <strong>Agendado para:</strong> {{ automatic_reminder.scheduled_for|datetime_br(business_timezone) }}
+    </p>
+    {% endif %}
+    {% if latest_reminder %}
+    <p>
+        <strong>Último lembrete:</strong>
+        {{ reminder_type_label(latest_reminder.reminder_type) }}
+        <span class="badge {{ latest_reminder.status.value }}">
+            {{ reminder_status_label(latest_reminder.status) }}
+        </span>
+    </p>
+    {% if latest_reminder.sent_at %}
+    <p>
+        <strong>Enviado em:</strong> {{ latest_reminder.sent_at|datetime_br(business_timezone) }}
+    </p>
+    {% endif %}
+    {% if latest_reminder.failed_at and latest_reminder.status.value == 'failed' %}
+    <p>
+        <strong>Falhou em:</strong> {{ latest_reminder.failed_at|datetime_br(business_timezone) }}
+    </p>
+    {% endif %}
+    <p>
+        <strong>Tentativas:</strong> {{ latest_reminder.attempts }}/3
+    </p>
+    {% if latest_reminder.last_error %}
+    <p>
+        <strong>Último erro:</strong> {{ latest_reminder.last_error }}
+    </p>
+    {% endif %}
+    {% endif %}
+
+    {% if reminder_history %}
+    <div class="reminder-history" aria-label="Histórico de lembretes">
+        {% for reminder in reminder_history[:3] %}
+        <p>
+            <span>{{ reminder_type_label(reminder.reminder_type) }}</span>
+            <span class="badge {{ reminder.status.value }}">
+                {{ reminder_status_label(reminder.status) }}
+            </span>
+            <span>{{ reminder.created_at|datetime_br(business_timezone) }}</span>
+        </p>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="reminder-actions">
+        <form method="post" action="/admin/appointments/{{ appointment.id }}/reminders/manual"
+            {% if not manual_reminder_disabled_reason %}data-confirm="{{ manual_reminder_confirm_message }}"{% endif %}>
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
+            <button class="button config" type="submit"
+                {% if manual_reminder_disabled_reason %}disabled title="{{ manual_reminder_disabled_reason }}"{% endif %}>
+                {{ manual_reminder_button_label }}
+            </button>
+        </form>
+        {% if manual_reminder_disabled_reason %}
+        <small class="muted">{{ manual_reminder_disabled_reason }}</small>
+        {% endif %}
+    </div>
+</div>
+
 <form id="appointment-update-form-{{ appointment.id }}" method="post" action="/admin/appointments/{{ appointment.id }}"
     class="stack compact-form" data-appointment-service-filter>
     <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />

@@ -8,9 +8,9 @@ from fastapi.responses import JSONResponse
 
 from src.schemas import AppointmentCreate, AppointmentUpdate, ScheduleBlockCreate
 from src.utils import form_bool, form_decimal, form_int, form_value, local_datetime_from_form
-from src.dependecies import (AppointmentServiceDep, BusinessServiceDep, ClientServiceDep,
-    ProfessionalServiceDep, ProfessionalServiceLinkServiceDep, ScheduleBlockServiceDep,
-    ServiceServiceDep,
+from src.dependecies import (AppointmentReminderServiceDep, AppointmentServiceDep, BusinessServiceDep,
+    ClientServiceDep, ProfessionalServiceDep, ProfessionalServiceLinkServiceDep,
+    ScheduleBlockServiceDep, ServiceServiceDep,
 )
 from src.services.appointment_service import (AppointmentAlreadyCanceledError, AppointmentAlreadyCompletedError,
     AppointmentBlockedByScheduleBlockError, AppointmentNotFoundError, AppointmentTimeConflictError, ClientNotFoundError,
@@ -21,6 +21,7 @@ from src.services.schedule_block_service import (ScheduleBlockAlreadyCanceledErr
     ScheduleBlockInvalidBusinessTimezoneError, ScheduleBlockInvalidDatetimeError, ScheduleBlockInvalidDurationError,
     ScheduleBlockNotFoundError, ScheduleBlockProfessionalNotFoundError, ScheduleBlockTimeConflictError,
  )
+from src.services.appointment_reminder_service import AppointmentReminderInvalidStateError
 
 from ..dependencies import AdminSessionDep, validate_csrf
 from ..templating import render, redirect_with_flash, attach_refreshed_admin_cookies
@@ -35,6 +36,17 @@ SCHEDULE_BLOCK_REASON_LABELS = {
     "day_off": "Folga",
     "vacation": "Férias",
     "sick": "Doente",
+}
+REMINDER_STATUS_LABELS = {
+    "pending": "Pendente",
+    "processing": "Enviando",
+    "sent": "Enviado",
+    "failed": "Falhou",
+    "skipped": "Ignorado",
+}
+REMINDER_TYPE_LABELS = {
+    "appointment_upcoming": "Automático",
+    "appointment_manual": "Manual",
 }
 
 def _safe_timezone(timezone_name: str | None):
@@ -51,6 +63,12 @@ def _enum_value(value) -> str:
 
 def _schedule_block_reason_label(reason) -> str:
     return SCHEDULE_BLOCK_REASON_LABELS.get(_enum_value(reason), "Motivo não informado")
+
+def _reminder_status_label(status) -> str:
+    return REMINDER_STATUS_LABELS.get(_enum_value(status), "Desconhecido")
+
+def _reminder_type_label(reminder_type: str | None) -> str:
+    return REMINDER_TYPE_LABELS.get(str(reminder_type or ""), "Lembrete")
 
 def _parse_calendar_datetime(value: str, timezone_name: str | None) -> datetime:
     value = value.replace("Z", "+00:00")
@@ -329,15 +347,33 @@ async def cancel_schedule_block_action(block_id: int, request: Request, schedule
 
 
 @router.get("/{appointment_id}/details")
-def appointment_details_fragment(appointment_id: int, request: Request, appointment_service: AppointmentServiceDep, business_service: BusinessServiceDep,
-    client_service: ClientServiceDep, professional_service: ProfessionalServiceDep, service_service: ServiceServiceDep,
-    link_service: ProfessionalServiceLinkServiceDep, session: AdminSessionDep):
+def appointment_details_fragment(appointment_id: int, request: Request, appointment_service: AppointmentServiceDep,
+    appointment_reminder_service: AppointmentReminderServiceDep, business_service: BusinessServiceDep,
+    client_service: ClientServiceDep, professional_service: ProfessionalServiceDep,
+    service_service: ServiceServiceDep, link_service: ProfessionalServiceLinkServiceDep,
+    session: AdminSessionDep):
     appointment = appointment_service.get_by_id(session.business_id, appointment_id)
     business = business_service.get_by_id(session.business_id)
     business_timezone = _safe_timezone_name(business.timezone)
     clients = {item.id: item for item in client_service.get_all(session.business_id)}
     professionals = {item.id: item for item in professional_service.get_all(session.business_id)}
     services = {item.id: item for item in service_service.get_all(session.business_id)}
+    reminder_history = appointment_reminder_service.get_history_for_appointment(
+        session.business_id,
+        appointment.id,
+        limit=5,
+    )
+    active_manual_reminder = appointment_reminder_service.get_active_manual_for_appointment(appointment)
+    manual_reminder_disabled_reason = appointment_reminder_service.manual_unavailable_reason(
+        appointment,
+        business,
+        active_manual_reminder=active_manual_reminder,
+    )
+    has_sent_reminder = any(
+        _enum_value(reminder.status) == "sent"
+        for reminder in reminder_history
+    )
+
     return render(
         request,
         "admin/appointments/_details.html",
@@ -349,6 +385,26 @@ def appointment_details_fragment(appointment_id: int, request: Request, appointm
             "clients": list(clients.values()),
             "professionals": list(professionals.values()),
             "services": list(services.values()),
+            "automatic_reminder": appointment_reminder_service.get_latest_for_appointment(
+                session.business_id,
+                appointment.id,
+                appointment_reminder_service.REMINDER_TYPE_UPCOMING,
+            ),
+            "latest_reminder": reminder_history[0] if reminder_history else None,
+            "reminder_history": reminder_history,
+            "reminder_status_label": _reminder_status_label,
+            "reminder_type_label": _reminder_type_label,
+            "manual_reminder_disabled_reason": manual_reminder_disabled_reason,
+            "manual_reminder_button_label": (
+                "Reenviar lembrete"
+                if has_sent_reminder
+                else "Enviar lembrete agora"
+            ),
+            "manual_reminder_confirm_message": (
+                "Reenviar lembrete para este cliente?"
+                if has_sent_reminder
+                else "Enviar lembrete para este cliente agora?"
+            ),
             "service_professional_ids": _service_professional_ids(
                 session.business_id,
                 professionals.values(),
@@ -436,6 +492,39 @@ async def complete_appointment_action(appointment_id: int, request: Request, app
         return _appointment_error_redirect(request, exc)
 
     return redirect_with_flash("/admin/appointments", "Agendamento concluído.", request=request)
+
+@router.post("/{appointment_id}/reminders/manual")
+async def send_manual_reminder_action(appointment_id: int, request: Request, appointment_service: AppointmentServiceDep,
+    appointment_reminder_service: AppointmentReminderServiceDep, business_service: BusinessServiceDep,
+    session: AdminSessionDep):
+    await validate_csrf(request)
+
+    try:
+        appointment = appointment_service.get_by_id(session.business_id, appointment_id)
+        business = business_service.get_by_id(session.business_id)
+        appointment_reminder_service.schedule_manual_for_appointment(appointment, business)
+
+    except AppointmentNotFoundError:
+        return redirect_with_flash("/admin/appointments", "Agendamento não encontrado.", "error", request=request)
+
+    except AppointmentReminderInvalidStateError as exc:
+        return redirect_with_flash(
+            "/admin/appointments",
+            str(exc) or "Não foi possível enviar o lembrete.",
+            "error",
+            request=request,
+        )
+
+    except Exception as exc:
+        logger.exception("Unexpected manual appointment reminder admin error", exc_info=exc)
+        return redirect_with_flash(
+            "/admin/appointments",
+            "Não foi possível enviar o lembrete.",
+            "error",
+            request=request,
+        )
+
+    return redirect_with_flash("/admin/appointments", "Lembrete colocado na fila de envio.", request=request)
 
 @router.post("/{appointment_id}/confirm")
 async def confirm_appointment_action(appointment_id: int, request: Request, appointment_service: AppointmentServiceDep, session: AdminSessionDep):

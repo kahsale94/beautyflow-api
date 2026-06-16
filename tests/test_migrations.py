@@ -16,6 +16,8 @@ def test_single_clean_initial_migration_exists():
         "0003_production_hardening.py",
         "0004_add_client_phone_index.py",
         "0005_add_evolution_instances.py",
+        "0006_backfill_business_slugs.py",
+        "0007_add_appointment_reminders.py",
     ]
 
     source = read_source("alembic/versions/0001_initial_clean_schema.py")
@@ -54,3 +56,19 @@ def test_single_clean_initial_migration_exists():
     assert "evolution_instances" in source
     assert "uq_evolution_instance_business" in source
     assert "uq_evolution_instance_name" in source
+
+    source = read_source("alembic/versions/0006_backfill_business_slugs.py")
+    assert 'revision: str = "0006_backfill_business_slugs"' in source
+    assert 'down_revision: Union[str, None] = "0005_add_evolution_instances"' in source
+    assert "SELECT id, name, slug FROM businesses" in source
+    assert "UPDATE businesses SET slug = :slug WHERE id = :id" in source
+
+    source = read_source("alembic/versions/0007_add_appointment_reminders.py")
+    assert 'revision: str = "0007_add_appointment_reminders"' in source
+    assert 'down_revision: Union[str, None] = "0006_backfill_business_slugs"' in source
+    assert "appointment_reminders" in source
+    assert "appointmentreminderstatus" in source
+    assert "ux_appointment_reminders_upcoming_snapshot" in source
+    assert "reminder_type = 'appointment_upcoming'" in source
+    assert "ux_appointment_reminders_active_manual_snapshot" in source
+    assert "ix_appointment_reminders_claim" in source

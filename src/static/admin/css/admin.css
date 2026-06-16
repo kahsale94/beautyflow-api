@@ -1107,6 +1107,26 @@ tr.is-editing input[data-editable] {
     color: #991b1b;
 }
 
+.badge.processing {
+    background: #e0f2fe;
+    color: #075985;
+}
+
+.badge.sent {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.badge.failed {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.badge.skipped {
+    background: #e5e7eb;
+    color: #374151;
+}
+
 /* 11. Modal */
 .modal[hidden] {
     display: none;
@@ -1215,6 +1235,32 @@ tr.is-editing input[data-editable] {
 
 .details-list p {
     margin: 0;
+}
+
+.reminder-history {
+    display: grid;
+    gap: 6px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+}
+
+.reminder-history p {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.reminder-actions {
+    display: grid;
+    gap: 6px;
+    padding-top: 8px;
+}
+
+.reminder-actions form,
+.reminder-actions .button {
+    width: 100%;
 }
 
 .compact-form {
