@@ -1,0 +1,129 @@
+services:
+    db-postgres-staging:
+        image: postgres:16-alpine
+        restart: unless-stopped
+        environment:
+            - POSTGRES_USER=${POSTGRES_USER}
+            - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+            - POSTGRES_DB=${POSTGRES_DB}
+        volumes:
+            - postgres_data_staging:/var/lib/postgresql/data
+        healthcheck:
+            test: [ "CMD-SHELL", 'pg_isready -U "$${POSTGRES_USER:-postgres}" -d "$${POSTGRES_DB:-postgres}" -h localhost || exit 1' ]
+            interval: 30s
+            timeout: 10s
+            retries: 5
+            start_period: 10s
+        networks:
+            beautyflow-network-staging:
+                aliases:
+                    - postgres
+                    - db-postgres
+
+    db-redis-staging:
+        image: redis:7.2-alpine
+        restart: unless-stopped
+        environment:
+            - REDIS_PASSWORD=${REDIS_PASSWORD}
+        command: >
+            redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes --appendfsync everysec
+        healthcheck:
+            test: [ "CMD-SHELL", 'redis-cli -a "$$REDIS_PASSWORD" ping | grep PONG' ]
+            interval: 10s
+            timeout: 5s
+            retries: 3
+            start_period: 5s
+        volumes:
+            - redis_data_staging:/data
+        networks:
+            beautyflow-network-staging:
+                aliases:
+                    - redis
+                    - db-redis
+
+    db-migrate-staging:
+        build: .
+        restart: "no"
+        command: alembic upgrade head
+        depends_on:
+            db-postgres-staging:
+                condition: service_healthy
+        environment:
+            - DATABASE_URL=${DATABASE_URL}
+        networks:
+            beautyflow-network-staging:
+                aliases:
+                    - migrate
+
+    backend-staging:
+        build: .
+        expose:
+            - "8000"
+        restart: always
+        depends_on:
+            db-postgres-staging:
+                condition: service_healthy
+            db-redis-staging:
+                condition: service_healthy
+            db-migrate-staging:
+                condition: service_completed_successfully
+        healthcheck:
+            test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health/live', timeout=5).read()\" || exit 1"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 20s
+        environment:
+            - ENVIRONMENT=${ENVIRONMENT}
+            - DATABASE_URL=${DATABASE_URL}
+            - ALGORITHM=${ALGORITHM}
+            - USER_SECRET_KEY=${USER_SECRET_KEY}
+            - INTEGRATION_SECRET_KEY=${INTEGRATION_SECRET_KEY}
+            - BUSINESS_INTEGRATION_SECRET_KEY=${BUSINESS_INTEGRATION_SECRET_KEY}
+            - USER_ACCESS_TOKEN_EXPIRE_MINUTES=${USER_ACCESS_TOKEN_EXPIRE_MINUTES}
+            - USER_REFRESH_TOKEN_EXPIRE_DAYS=${USER_REFRESH_TOKEN_EXPIRE_DAYS}
+            - INTEGRATION_TOKEN_EXPIRE_DAYS=${INTEGRATION_TOKEN_EXPIRE_DAYS}
+            - BUSINESS_INTEGRATION_TOKEN_EXPIRE_MINUTES=${BUSINESS_INTEGRATION_TOKEN_EXPIRE_MINUTES}
+            - CORS_ORIGINS=${CORS_ORIGINS}
+            - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+            - RATE_LIMIT_REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+            - RATE_LIMIT_MAX_REQUESTS=${RATE_LIMIT_MAX_REQUESTS:-300}
+            - RATE_LIMIT_WINDOW_SECONDS=${RATE_LIMIT_WINDOW_SECONDS:-60}
+            - RATE_LIMIT_AUTH_MAX_REQUESTS=${RATE_LIMIT_AUTH_MAX_REQUESTS:-10}
+            - RATE_LIMIT_AUTH_WINDOW_SECONDS=${RATE_LIMIT_AUTH_WINDOW_SECONDS:-60}
+            - USER_REFRESH_COOKIE=${USER_REFRESH_COOKIE:-bf_refresh_token}
+            - USER_REFRESH_COOKIE_PATH=${USER_REFRESH_COOKIE_PATH:-/v1/auth}
+            - USER_REFRESH_COOKIE_SAMESITE=${USER_REFRESH_COOKIE_SAMESITE:-lax}
+            - USER_REFRESH_COOKIE_SECURE=${USER_REFRESH_COOKIE_SECURE:-true}
+            - ADMIN_ACCESS_COOKIE=${ADMIN_ACCESS_COOKIE:-bf_admin_access}
+            - ADMIN_REFRESH_COOKIE=${ADMIN_REFRESH_COOKIE:-bf_admin_refresh}
+            - ADMIN_CSRF_COOKIE=${ADMIN_CSRF_COOKIE:-bf_admin_csrf}
+            - ADMIN_FLASH_COOKIE=${ADMIN_FLASH_COOKIE:-bf_admin_flash}
+            - ADMIN_BUSINESS_COOKIE=${ADMIN_BUSINESS_COOKIE:-bf_admin_business}
+            - ADMIN_COOKIE_SECURE=${ADMIN_COOKIE_SECURE:-true}
+            - ADMIN_COOKIE_SAMESITE=${ADMIN_COOKIE_SAMESITE:-lax}
+            - ADMIN_COOKIE_PATH=${ADMIN_COOKIE_PATH:-/admin}
+            - FORWARDED_ALLOW_IPS=${FORWARDED_ALLOW_IPS:-127.0.0.1}
+            - TRUSTED_PROXY_IPS=${TRUSTED_PROXY_IPS:-127.0.0.1}
+            - N8N_ERROR_WEBHOOK_URL=${N8N_ERROR_WEBHOOK_URL}
+            - N8N_WEBHOOK_HEADER=${N8N_WEBHOOK_HEADER}
+            - N8N_WEBHOOK_SECRET=${N8N_WEBHOOK_SECRET}
+            - EVOLUTION_API_URL=${EVOLUTION_API_URL}
+            - EVOLUTION_API_KEY=${EVOLUTION_API_KEY}
+            - EVOLUTION_WEBHOOK_URL=${EVOLUTION_WEBHOOK_URL}
+            - EVOLUTION_INSTANCE_PREFIX=${EVOLUTION_INSTANCE_PREFIX:-beautyflow}
+            - EVOLUTION_REQUEST_TIMEOUT_SECONDS=${EVOLUTION_REQUEST_TIMEOUT_SECONDS:-15}
+            - LOG_LEVEL=${LOG_LEVEL:-INFO}
+            - TZ=${TZ:-America/Sao_Paulo}
+        networks:
+            beautyflow-network-staging:
+                aliases:
+                    - backend
+
+volumes:
+    postgres_data_staging:
+    redis_data_staging:
+
+networks:
+    beautyflow-network-staging:
+        external: true
