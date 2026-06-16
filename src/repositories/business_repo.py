@@ -33,6 +33,10 @@ class BusinessRepository:
         )
 
         return db.scalars(stmt).all()
+
+    def get_by_exact_slug(self, db: Session, business_slug: str):
+        stmt = select(Business).where(Business.slug == business_slug)
+        return db.scalars(stmt).one_or_none()
     
     def get_by_phone(self, db: Session, phone: str):
         stmt = select(Business).where(

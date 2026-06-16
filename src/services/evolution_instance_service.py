@@ -46,6 +46,7 @@ class EvolutionConnectionResult:
 
 
 class EvolutionInstanceService:
+    MAX_INSTANCE_NAME_LENGTH = 100
 
     def __init__(
         self,
@@ -81,8 +82,29 @@ class EvolutionInstanceService:
         normalized = re.sub(r"[^a-z0-9_-]+", "-", (prefix or "beautyflow").strip().lower())
         return normalized.strip("-_") or "beautyflow"
 
-    def _instance_name(self, business_id: int) -> str:
-        return f"{self.instance_prefix}-business-{business_id}"
+    @staticmethod
+    def _normalize_business_slug(slug: str | None) -> str:
+        normalized = re.sub(r"[^a-z0-9-]+", "-", (slug or "").strip().lower())
+        return re.sub(r"-+", "-", normalized).strip("-")
+
+    def _business_slug_from_link(self, link, business_id: int) -> str:
+        business = getattr(link, "business", None)
+        slug = self._normalize_business_slug(getattr(business, "slug", None))
+        return slug or "business"
+
+    def _instance_name(self, business_id: int, business_slug: str) -> str:
+        slug = self._normalize_business_slug(business_slug) or "business"
+        suffix = f"-{business_id}"
+        instance_name = f"{self.instance_prefix}-{slug}{suffix}"
+
+        if len(instance_name) <= self.MAX_INSTANCE_NAME_LENGTH:
+            return instance_name
+
+        max_prefix_length = self.MAX_INSTANCE_NAME_LENGTH - len(suffix) - 2
+        prefix = self.instance_prefix[:max_prefix_length].strip("-_") or "beautyflow"
+        max_slug_length = self.MAX_INSTANCE_NAME_LENGTH - len(prefix) - len(suffix) - 1
+        slug = slug[:max_slug_length].rstrip("-") or "business"
+        return f"{prefix}-{slug}{suffix}"
 
     def _require_link(self, business_id: int, integration_id: int):
         link = self.business_integration_repo.get_by_ids(self.db, business_id, integration_id)
@@ -104,11 +126,11 @@ class EvolutionInstanceService:
     def get_for_business(self, business_id: int):
         return self.evolution_instance_repo.get_by_business(self.db, business_id)
 
-    def _create_local_instance(self, business_id: int, integration_id: int) -> EvolutionInstance:
+    def _create_local_instance(self, business_id: int, integration_id: int, instance_name: str) -> EvolutionInstance:
         instance = EvolutionInstance(
             business_id=business_id,
             integration_id=integration_id,
-            instance_name=self._instance_name(business_id),
+            instance_name=instance_name,
             state="creating",
         )
         self.evolution_instance_repo.add(self.db, instance)
@@ -140,19 +162,30 @@ class EvolutionInstanceService:
         value = instance.get("instanceId") or instance.get("id")
         return str(value) if value else None
 
-    @staticmethod
-    def _extract_phone(payload: dict[str, Any]) -> str | None:
-        instance = payload.get("instance")
-        candidates = [
-            instance.get("ownerJid") if isinstance(instance, dict) else None,
-            instance.get("number") if isinstance(instance, dict) else None,
-            payload.get("ownerJid"),
-            payload.get("number"),
-        ]
-        for candidate in candidates:
-            digits = "".join(character for character in str(candidate or "") if character.isdigit())
-            if digits:
-                return digits
+    @classmethod
+    def _payload_dicts(cls, payload: Any):
+        if isinstance(payload, list):
+            for item in payload:
+                yield from cls._payload_dicts(item)
+            return
+
+        if not isinstance(payload, dict):
+            return
+
+        yield payload
+        for key in ("instance", "data", "connectionStatus"):
+            nested = payload.get(key)
+            if isinstance(nested, (dict, list)):
+                yield from cls._payload_dicts(nested)
+
+    @classmethod
+    def _extract_phone(cls, payload: Any) -> str | None:
+        for source in cls._payload_dicts(payload):
+            for key in ("ownerJid", "wuid", "number", "phone", "connectedNumber"):
+                candidate = source.get(key)
+                digits = "".join(character for character in str(candidate or "") if character.isdigit())
+                if len(digits) >= 8:
+                    return digits
         return None
 
     @staticmethod
@@ -176,17 +209,35 @@ class EvolutionInstanceService:
             self.webhook_secret,
         )
 
+    async def _refresh_instance_phone(self, instance: EvolutionInstance) -> None:
+        try:
+            payload = await self.client.fetch_instances(instance_name=instance.instance_name)
+        except EvolutionAPIError as exc:
+            logger.warning(
+                "Could not fetch Evolution instance details for %s: status %s",
+                instance.instance_name,
+                exc.status_code,
+            )
+            return
+
+        instance.phone = self._extract_phone(payload) or instance.phone
+
     async def provision(self, business_id: int, integration_id: int) -> EvolutionConnectionResult:
         if not self.configured:
             raise EvolutionWebhookConfigurationError()
 
-        self._require_link(business_id, integration_id)
+        link = self._require_link(business_id, integration_id)
         instance = self.evolution_instance_repo.get_by_business(self.db, business_id)
 
         if instance and instance.integration_id != integration_id:
             raise EvolutionInstanceConflictError()
         if not instance:
-            instance = self._create_local_instance(business_id, integration_id)
+            business_slug = self._business_slug_from_link(link, business_id)
+            instance = self._create_local_instance(
+                business_id,
+                integration_id,
+                self._instance_name(business_id, business_slug),
+            )
 
         payload: dict[str, Any]
         try:
@@ -211,6 +262,7 @@ class EvolutionInstanceService:
         instance.state = state
         instance.phone = self._extract_phone(payload) or instance.phone
         if state == "open":
+            await self._refresh_instance_phone(instance)
             instance.connected_at = instance.connected_at or datetime.now(timezone.utc)
         self._save(instance)
 
@@ -236,6 +288,7 @@ class EvolutionInstanceService:
             instance.state = "missing"
 
         if instance.state == "open":
+            await self._refresh_instance_phone(instance)
             instance.connected_at = instance.connected_at or datetime.now(timezone.utc)
         self._save(instance)
 

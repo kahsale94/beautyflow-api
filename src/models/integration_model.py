@@ -14,6 +14,11 @@ if TYPE_CHECKING:
 
 class IntegrationType(str, PyEnum):
     automation = "automation"
+    messaging = "messaging"
+    calendar = "calendar"
+    email = "email"
+    social = "social"
+    productivity = "productivity"
 
 class Integration(Base):
     __tablename__ = "integrations"
@@ -27,7 +32,4 @@ class Integration(Base):
 
     businesses: Mapped[list["Business"]] = relationship(secondary="business_integrations", viewonly=True)
     business_integrations: Mapped[list["BusinessIntegration"]] = relationship(back_populates="integration", cascade="all, delete-orphan")
-    evolution_instances: Mapped[list["EvolutionInstance"]] = relationship(
-        back_populates="integration",
-        cascade="all, delete-orphan",
-    )
+    evolution_instances: Mapped[list["EvolutionInstance"]] = relationship(back_populates="integration", cascade="all, delete-orphan")

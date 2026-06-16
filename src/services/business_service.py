@@ -1,10 +1,12 @@
 
+import re
+
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
 from src.models import Business
 from src.core import DataBaseDep
-from src.utils import normalize_phone
+from src.utils import normalize_phone, normalize_text
 from src.repositories import AppointmentReminderRepository, BusinessRepository
 from src.schemas import BusinessCreate, BusinessUpdate
 from src.services.appointment_reminder_service import AppointmentReminderService
@@ -16,6 +18,7 @@ class BusinessAlreadyExistsError(Exception):
     pass
 
 class BusinessService:
+    MAX_SLUG_LENGTH = 80
 
     def __init__(
         self,
@@ -54,14 +57,40 @@ class BusinessService:
     def get_by_id(self, business_id: int):
         return self._get_valid(business_id)
 
+    @classmethod
+    def _slugify(cls, value: str) -> str:
+        normalized = normalize_text(value)
+        slug = re.sub(r"[^a-z0-9]+", "-", normalized)
+        slug = re.sub(r"-+", "-", slug).strip("-")
+        return slug[:cls.MAX_SLUG_LENGTH].strip("-") or "empresa"
+
+    @classmethod
+    def _slug_with_suffix(cls, base_slug: str, suffix: int) -> str:
+        suffix_text = f"-{suffix}"
+        max_base_length = cls.MAX_SLUG_LENGTH - len(suffix_text)
+        return f"{base_slug[:max_base_length].rstrip('-')}{suffix_text}"
+
+    def _generate_unique_slug(self, preferred_slug: str) -> str:
+        base_slug = self._slugify(preferred_slug)
+        candidate = base_slug
+        suffix = 2
+
+        while self.business_repo.get_by_exact_slug(self.db, candidate):
+            candidate = self._slug_with_suffix(base_slug, suffix)
+            suffix += 1
+
+        return candidate
+
     def create(self, data: BusinessCreate):
         phone = normalize_phone(data.phone)
         if not phone:
             raise ValueError("Telefone da empresa é obrigatório")
 
+        slug = data.slug or self._generate_unique_slug(data.name)
+
         business = Business(
             name = data.name,
-            slug = data.slug,
+            slug = slug,
             type = data.type,
             timezone = data.timezone,
             phone = phone,
@@ -96,6 +125,14 @@ class BusinessService:
 
         update_data = data.model_dump(exclude_unset=True)
         previous_cancel_limit_hours = getattr(business, "cancel_limit_hours", None)
+
+        if update_data.get("slug") is None:
+            update_data.pop("slug", None)
+
+        if not business.slug and "slug" not in update_data:
+            update_data["slug"] = self._generate_unique_slug(
+                update_data.get("name") or business.name
+            )
 
         if "email" in update_data and update_data["email"] is not None:
             update_data["email"] = str(update_data["email"])

@@ -56,7 +56,7 @@ def test_integration_login_hides_invalid_business_or_integration(service_error):
 def test_integration_login_prefers_evolution_instance():
     class ServiceStub:
         def get_business_integration_token_by_instance(self, instance_name, integration_id):
-            assert instance_name == "beautyflow-business-7"
+            assert instance_name == "beautyflow-n8n-atendimento-teste"
             assert integration_id == 3
             return "instance-token"
 
@@ -65,7 +65,7 @@ def test_integration_login_prefers_evolution_instance():
     result = login_integration(
         integration,
         ServiceStub(),
-        x_evolution_instance="beautyflow-business-7",
+        x_evolution_instance="beautyflow-n8n-atendimento-teste",
         x_business_phone=None,
     )
 

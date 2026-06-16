@@ -38,7 +38,13 @@ class EvolutionClient:
         if not self.configured:
             raise EvolutionConfigurationError("Evolution API não configurada.")
 
-    async def _request(self, method: str, path: str, json: dict[str, Any] | None = None) -> Any:
+    async def _request(
+        self,
+        method: str,
+        path: str,
+        json: dict[str, Any] | None = None,
+        params: dict[str, str] | None = None,
+    ) -> Any:
         self._ensure_configured()
 
         async with httpx.AsyncClient(
@@ -48,7 +54,7 @@ class EvolutionClient:
             transport=self.transport,
         ) as client:
             try:
-                response = await client.request(method, path, json=json)
+                response = await client.request(method, path, json=json, params=params)
             except httpx.HTTPError as exc:
                 raise EvolutionAPIError(503, "Falha de comunicação com a Evolution API.") from exc
 
@@ -91,6 +97,22 @@ class EvolutionClient:
 
     async def connection_state(self, instance_name: str) -> dict[str, Any]:
         return await self._request("GET", f"/instance/connectionState/{self._instance_path(instance_name)}")
+
+    async def fetch_instances(
+        self,
+        instance_name: str | None = None,
+        instance_id: str | None = None,
+        number: str | None = None,
+    ) -> Any:
+        params = {}
+        if instance_name:
+            params["instanceName"] = instance_name
+        if instance_id:
+            params["instanceId"] = instance_id
+        if number:
+            params["number"] = number
+
+        return await self._request("GET", "/instance/fetchInstances", params=params or None)
 
     async def server_info(self) -> dict[str, Any]:
         payload = await self._request("GET", "/")
