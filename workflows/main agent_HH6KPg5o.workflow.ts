@@ -2,7 +2,7 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 
 // <workflow-map>
 // Workflow : main agent
-// Nodes   : 95  |  Connections: 101
+// Nodes   : 97  |  Connections: 105
 //
 // NODE INDEX
 // ──────────────────────────────────────────────────────────────────
@@ -61,9 +61,6 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 // ClearMemory                        set
 // GetKeys                            redis                      [onError→out(1)] [creds] [executeOnce]
 // DeleteKeys                         redis                      [onError→out(1)] [creds] [executeOnce]
-// Fake2                              merge
-// Fake1                              set
-// Fake                               chatTrigger
 // CurrentDatetime                    dateTimeTool               [ai_tool]
 // GetPending1                        redis                      [onError→out(1)] [creds] [executeOnce]
 // HasPending1                        if
@@ -80,6 +77,8 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 // PersonalBlockExists                if
 // PersonalBlockEnd                   noOp
 // SetPersonalBlock                   redis                      [onError→out(1)] [creds] [retry]
+// PersonalHandoffResponse            code
+// HumanHandoffAlert                  executeWorkflow            [onError→out(1)]
 // ErrorReport12                      stopAndError
 // ServicesList                       executeWorkflow
 // ErrorReport4                       stopAndError
@@ -90,6 +89,9 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 // HasPending                         if
 // ErrorReport2                       stopAndError
 // BusinessContext                    executeWorkflow
+// BusinessHoursGuard                 code
+// OutsideBusinessHours               if
+// OutsideHoursResponse               code
 // CallState                          executeWorkflow
 // FilterGroup                        filter
 // AudioContext                       set
@@ -121,80 +123,88 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 //                 .out(1) → GetToken
 //                    → ApiContext
 //                      → BusinessContext
-//                        → GetPending
-//                          → HasPending
-//                            → CallState
-//                           .out(1) → MessageType
-//                              → Text
-//                                → InitialMessage
-//                                  → PushBuffer
-//                                    → GetBuffer1
-//                                      → Wait6Sec
-//                                        → GetBuffer2
-//                                          → CombineText
-//                                            → CompareBuffers
-//                                              → FinalClientMessage
-//                                                → GetMemories1
-//                                                  → ClearMemory
-//                                                    → TextClassifier
-//                                                      → MessageClassifier
-//                                                        → SetPersonalBlock
-//                                                          → DeleteBuffer
-//                                                            → End
-//                                                           .out(1) → ErrorReport18
-//                                                              → End (↩ loop)
-//                                                         .out(1) → ErrorReport12
-//                                                       .out(1) → TrashResponse
-//                                                          → PushMemory
-//                                                            → PushMemory1
-//                                                              → FinalResponse
-//                                                                → ReponseSplit
-//                                                                  → SplitOut
-//                                                                    → LoopResponse
-//                                                                      → End (↩ loop)
-//                                                                     .out(1) → TypingDelay
-//                                                                        → SendResponse
-//                                                                          → LoopResponse (↩ loop)
-//                                                                         .out(1) → ErrorReport10
-//                                                                  → DeleteBuffer (↩ loop)
-//                                                                → Chat
-//                                                             .out(1) → ErrorReport24
-//                                                                → FinalResponse (↩ loop)
-//                                                           .out(1) → ErrorReport23
-//                                                              → PushMemory1 (↩ loop)
-//                                                       .out(2) → ServicesList
-//                                                          → ServicesResponse
-//                                                            → PushMemory (↩ loop)
-//                                                       .out(3) → ProfessionalsList
-//                                                          → ProfessionalsResponse
-//                                                            → PushMemory (↩ loop)
-//                                                       .out(4) → ClassifyFaq
-//                                                          → FaqResponse
-//                                                            → PushMemory (↩ loop)
-//                                                       .out(5) → GreetingsResponse
-//                                                          → PushMemory (↩ loop)
-//                                                       .out(6) → Client
-//                                                          → GetPending1
-//                                                            → HasPending1
-//                                                             .out(1) → AgentContext
-//                                                                → AiAgent
-//                                                                  → AgentMessage
+//                        → BusinessHoursGuard
+//                          → OutsideBusinessHours
+//                            → OutsideHoursResponse
+//                              → FinalResponse
+//                                → ReponseSplit
+//                                  → SplitOut
+//                                    → LoopResponse
+//                                      → End
+//                                     .out(1) → TypingDelay
+//                                        → SendResponse
+//                                          → LoopResponse (↩ loop)
+//                                         .out(1) → ErrorReport10
+//                                  → DeleteBuffer
+//                                    → End (↩ loop)
+//                                   .out(1) → ErrorReport18
+//                                      → End (↩ loop)
+//                                → Chat
+//                           .out(1) → GetPending
+//                              → HasPending
+//                                → CallState
+//                               .out(1) → MessageType
+//                                  → Text
+//                                    → InitialMessage
+//                                      → PushBuffer
+//                                        → GetBuffer1
+//                                          → Wait6Sec
+//                                            → GetBuffer2
+//                                              → CombineText
+//                                                → CompareBuffers
+//                                                  → FinalClientMessage
+//                                                    → GetMemories1
+//                                                      → ClearMemory
+//                                                        → TextClassifier
+//                                                          → MessageClassifier
+//                                                            → SetPersonalBlock
+//                                                              → PersonalHandoffResponse
+//                                                                → PushMemory
+//                                                                  → PushMemory1
 //                                                                    → FinalResponse (↩ loop)
-//                                                                 .out(1) → ErrorReport13
-//                                                           .out(1) → ErrorReport11
-//                                                       .out(7) → Client (↩ loop)
-//                                                 .out(1) → ErrorReport21
-//                                                    → ClearMemory (↩ loop)
-//                                         .out(1) → ErrorReport6
-//                                     .out(1) → ErrorReport6 (↩ loop)
-//                                     .out(1) → Wait6Sec (↩ loop)
-//                                   .out(1) → ErrorReport6 (↩ loop)
-//                             .out(1) → AudioContext
-//                                → GetAudio
-//                                  → Transcribe
-//                                    → InitialMessage (↩ loop)
-//                                   .out(1) → ErrorReport5
-//                         .out(1) → ErrorReport2
+//                                                                   .out(1) → ErrorReport24
+//                                                                      → FinalResponse (↩ loop)
+//                                                                 .out(1) → ErrorReport23
+//                                                                    → PushMemory1 (↩ loop)
+//                                                              → HumanHandoffAlert
+//                                                                → End (↩ loop)
+//                                                               .out(1) → End (↩ loop)
+//                                                             .out(1) → ErrorReport12
+//                                                           .out(1) → TrashResponse
+//                                                              → PushMemory (↩ loop)
+//                                                           .out(2) → ServicesList
+//                                                              → ServicesResponse
+//                                                                → PushMemory (↩ loop)
+//                                                           .out(3) → ProfessionalsList
+//                                                              → ProfessionalsResponse
+//                                                                → PushMemory (↩ loop)
+//                                                           .out(4) → ClassifyFaq
+//                                                              → FaqResponse
+//                                                                → PushMemory (↩ loop)
+//                                                           .out(5) → GreetingsResponse
+//                                                              → PushMemory (↩ loop)
+//                                                           .out(6) → Client
+//                                                              → GetPending1
+//                                                                → HasPending1
+//                                                                 .out(1) → AgentContext
+//                                                                    → AiAgent
+//                                                                      → AgentMessage
+//                                                                        → FinalResponse (↩ loop)
+//                                                                     .out(1) → ErrorReport13
+//                                                               .out(1) → ErrorReport11
+//                                                           .out(7) → Client (↩ loop)
+//                                                     .out(1) → ErrorReport21
+//                                                        → ClearMemory (↩ loop)
+//                                             .out(1) → ErrorReport6
+//                                         .out(1) → ErrorReport6 (↩ loop)
+//                                         .out(1) → Wait6Sec (↩ loop)
+//                                       .out(1) → ErrorReport6 (↩ loop)
+//                                 .out(1) → AudioContext
+//                                    → GetAudio
+//                                      → Transcribe
+//                                        → InitialMessage (↩ loop)
+//                                       .out(1) → ErrorReport5
+//                             .out(1) → ErrorReport2
 //                   .out(1) → ErrorReport1
 //               .out(1) → ErrorReport9
 //         .out(1) → ErrorReport4
@@ -203,16 +213,11 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 //      → DeleteKeys
 //       .out(1) → ErrorReport
 //     .out(1) → ErrorReport (↩ loop)
-// Fake
-//    → Fake1
-//      → Fake2
-//        → DataHandler (↩ loop)
-//    → Fake2.in(1) (↩ loop)
 // ErrorReport22
 //    → Client (↩ loop)
 //
 // AI CONNECTIONS
-// AiAgent.uses({ ai_memory: Memory, ai_tool: [Appointments, Professionals, Availabilities, CurrentDatetime, Services], ai_languageModel: Model })
+// AiAgent.uses({ ai_languageModel: Model, ai_memory: Memory, ai_tool: [Appointments, Professionals, Availabilities, CurrentDatetime, Services] })
 // TextClassifier.uses({ ai_languageModel: Fallback11 })
 // </workflow-map>
 
@@ -223,9 +228,8 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 @workflow({
     id: 'HH6KPg5oLoi1L6IG',
     name: 'main agent',
-    active: true,
+    active: false,
     isArchived: false,
-    projectId: 'UVYVLJNFC5m6HlJG',
     tags: ['Kaiky', 'beautyflow-api'],
     settings: {
         executionOrder: 'v1',
@@ -332,6 +336,7 @@ export class MainAgentWorkflow {
     })
     GetAudio = {
         operation: 'toBinary',
+        binaryPropertyName: 'data',
         sourceProperty: 'base64',
         options: {
             mimeType: '={{ $json.mime_type }}',
@@ -929,7 +934,7 @@ return [
                     rightValue: '',
                     operator: {
                         type: 'boolean',
-                        operation: 'false',
+                        operation: 'true',
                         singleValue: true,
                     },
                 },
@@ -1179,7 +1184,7 @@ Output rules:
 - Do not mention that you are using tools.
 - If information is missing, ask only for the missing information.
 - Do not ask again for information the client already provided.`,
-            maxIterations: 8,
+            maxIterations: 5,
         },
     };
 
@@ -2216,6 +2221,7 @@ return [
     getData('professionals response') ??
     getData('faq response') ??
     getData('greetings response') ??
+    getData('personal handoff response') ??
     getData('trash response') ??
     {};
 
@@ -2557,98 +2563,6 @@ return [
     DeleteKeys = {
         operation: 'delete',
         key: "={{ $('get keys').item.json.keys }}",
-    };
-
-    @node({
-        id: '150eade5-72c8-486c-b974-6f35d313c627',
-        name: 'fake 2',
-        type: 'n8n-nodes-base.merge',
-        version: 3.2,
-        position: [-1120, 17120],
-    })
-    Fake2 = {
-        mode: 'combine',
-        combineBy: 'combineByPosition',
-        options: {},
-    };
-
-    @node({
-        id: 'e79bcffb-302c-4064-985b-38e2d42951d1',
-        name: 'fake 1',
-        type: 'n8n-nodes-base.set',
-        version: 3.4,
-        position: [-1312, 16992],
-    })
-    Fake1 = {
-        mode: 'raw',
-        jsonOutput: `  {
-    "headers": {
-      "host": "n8n.techlegacy.com.br",
-      "user-agent": "axios/1.13.2",
-      "content-length": "685",
-      "accept": "application/json, text/plain, */*",
-      "accept-encoding": "gzip, br",
-      "cdn-loop": "cloudflare; loops=1",
-      "cf-connecting-ip": "144.91.87.14",
-      "cf-ipcountry": "FR",
-      "cf-ray": "9ef721c2cf1a4d55-FRA",
-      "cf-visitor": "{\\"scheme\\":\\"https\\"}",
-      "content-type": "application/json",
-      "x-forwarded-for": "172.69.150.239",
-      "x-forwarded-host": "n8n.techlegacy.com.br",
-      "x-forwarded-port": "443",
-      "x-forwarded-proto": "https",
-      "x-forwarded-server": "9032418b9c06",
-      "x-real-ip": "172.69.150.239"
-    },
-    "params": {},
-    "query": {},
-    "body": {
-      "event": "messages.upsert",
-      "instance": "sale_instance",
-      "data": {
-        "key": {
-          "remoteJid": "5511991549118@s.whatsapp.net",
-          "remoteJidAlt": "5511991549118@s.whatsapp.net",
-          "fromMe": false,
-          "id": "3EB04C6C9A4C31658CD1BC",
-          "participant": "",
-          "addressingMode": "lid"
-        },
-        "pushName": "kahsale94",
-        "status": "SERVER_ACK",
-        "message": {
-          "conversation": "Eu gostaria do corte americano"
-        },
-        "messageType": "conversation",
-        "messageTimestamp": 1776719385,
-        "instanceId": "50ae11b7-a0c1-4b85-b537-a52889d63dcf",
-        "source": "web"
-      },
-      "destination": "https://n8n.techlegacy.com.br/webhook-test/beauty-api",
-      "date_time": "2026-04-20T18:09:46.028Z",
-      "sender": "5511991549118@s.whatsapp.net",
-      "server_url": "https://$(PRIMARY_DOMAIN)",
-      "apikey": ""
-    },
-    "webhookUrl": "https://n8n.techlegacy.com.br/webhook-test/beauty-api",
-    "executionMode": "test"
-  }`,
-        options: {},
-    };
-
-    @node({
-        id: '1fe32c49-e25d-4937-8b7d-c54f25f36d68',
-        webhookId: '833745d3-c970-4ffa-bb37-1667927f162c',
-        name: 'fake',
-        type: '@n8n/n8n-nodes-langchain.chatTrigger',
-        version: 1.4,
-        position: [-1504, 17136],
-    })
-    Fake = {
-        options: {
-            responseMode: 'responseNodes',
-        },
     };
 
     @node({
@@ -3414,6 +3328,121 @@ return [
     };
 
     @node({
+        id: '4f55202d-cc1c-4a42-9691-e0f7d4f2ce2d',
+        name: 'personal handoff response',
+        type: 'n8n-nodes-base.code',
+        version: 2,
+        position: [6848, 15984],
+    })
+    PersonalHandoffResponse = {
+        jsCode: `const response = [
+  'Entendi. Vou deixar essa conversa para atendimento direto da equipe.',
+  'O assistente fica pausado por enquanto para evitar respostas automáticas nesse assunto.'
+].join('\\n\\n');
+
+return [
+  {
+    output: response,
+  },
+];`,
+    };
+
+    @node({
+        id: '9a4b5d73-cc2a-4211-9fb6-969be15121e4',
+        name: 'human handoff alert',
+        type: 'n8n-nodes-base.executeWorkflow',
+        version: 1.3,
+        position: [6848, 15808],
+        onError: 'continueErrorOutput',
+    })
+    HumanHandoffAlert = {
+        workflowId: {
+            __rl: true,
+            value: 'bWdz3xBVwmycvfwW',
+            mode: 'list',
+            cachedResultUrl: '/workflow/bWdz3xBVwmycvfwW',
+            cachedResultName: 'error',
+        },
+        workflowInputs: {
+            mappingMode: 'defineBelow',
+            value: {
+                error: `={{ {
+  workflow: $workflow.id,
+  execution: $execution.id,
+  type: "business.human_handoff",
+  node: $prevNode.name,
+  code: "",
+  description: "Mensagem classificada como pessoal ou pedido de atendimento humano."
+} }}`,
+                business: `={{ {
+  id: $('business context').item.json.business.id || '',
+  name: $('business context').item.json.business.name || '',
+  phone: $('data handler').item.json.business.phone || ''
+} }}`,
+                client: `={{ {
+  remote_jid: $('data handler').item.json.client.remote_jid || '',
+  phone: $('data handler').item.json.client.phone || '',
+  message_id: $('data handler').item.json.message.id || '',
+  message_text: $('final client message').item.json.client.final_message || $('data handler').item.json.message.text || ''
+} }}`,
+                api: `={{ {
+  url: $('api context').item.json.url,
+  token: $('api context').item.json.token,
+  evo_instance: $('api context').item.json.evo_instance
+} }}`,
+            },
+            matchingColumns: [],
+            schema: [
+                {
+                    id: 'error',
+                    displayName: 'error',
+                    required: false,
+                    defaultMatch: false,
+                    display: true,
+                    canBeUsedToMatch: true,
+                    type: 'object',
+                    removed: false,
+                },
+                {
+                    id: 'business',
+                    displayName: 'business',
+                    required: false,
+                    defaultMatch: false,
+                    display: true,
+                    canBeUsedToMatch: true,
+                    type: 'object',
+                    removed: false,
+                },
+                {
+                    id: 'client',
+                    displayName: 'client',
+                    required: false,
+                    defaultMatch: false,
+                    display: true,
+                    canBeUsedToMatch: true,
+                    type: 'object',
+                    removed: false,
+                },
+                {
+                    id: 'api',
+                    displayName: 'api',
+                    required: false,
+                    defaultMatch: false,
+                    display: true,
+                    canBeUsedToMatch: true,
+                    type: 'object',
+                    removed: false,
+                },
+            ],
+            attemptToConvertTypes: true,
+            convertFieldsToString: true,
+        },
+        options: {
+            waitForSubWorkflow: false,
+        },
+    };
+
+    @node({
         id: 'd97fa9c4-b123-40cf-a6a9-128b53a66d28',
         name: 'error report 12',
         type: 'n8n-nodes-base.stopAndError',
@@ -3846,6 +3875,345 @@ return [
             convertFieldsToString: true,
         },
         options: {},
+    };
+
+    @node({
+        id: '2f00651b-5b84-4e39-89d0-70df885bd377',
+        name: 'business hours guard',
+        type: 'n8n-nodes-base.code',
+        version: 2,
+        position: [1840, 16880],
+    })
+    BusinessHoursGuard = {
+        jsCode: `const source = $input.first().json;
+const business = $('business context').first().json.business || source.business || {};
+const timezone = business.timezone || 'America/Sao_Paulo';
+
+const rawOpeningHours =
+  business.opening_hours ??
+  business.business_hours ??
+  business.attendance_hours ??
+  business.service_hours ??
+  business.horario_funcionamento ??
+  business.hours ??
+  '';
+
+function normalizeText(value) {
+  return String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\\u0300-\\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+const dayWords = [
+  { day: 0, words: ['domingo', 'dom', 'sunday', 'sun'] },
+  { day: 1, words: ['segunda-feira', 'segunda', 'seg', 'monday', 'mon'] },
+  { day: 2, words: ['terca-feira', 'terca', 'ter', 'tuesday', 'tue'] },
+  { day: 3, words: ['quarta-feira', 'quarta', 'qua', 'wednesday', 'wed'] },
+  { day: 4, words: ['quinta-feira', 'quinta', 'qui', 'thursday', 'thu'] },
+  { day: 5, words: ['sexta-feira', 'sexta', 'sex', 'friday', 'fri'] },
+  { day: 6, words: ['sabado', 'sab', 'saturday', 'sat'] },
+];
+
+function getCurrentParts(tz) {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      weekday: 'long',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    }).formatToParts(new Date());
+
+    const byType = Object.fromEntries(parts.map(part => [part.type, part.value]));
+    const weekdayName = normalizeText(byType.weekday);
+    const day = dayWords.find(entry => entry.words.includes(weekdayName))?.day ?? 1;
+    const hour = Number(byType.hour === '24' ? '00' : byType.hour);
+    const minute = Number(byType.minute);
+
+    return {
+      day,
+      time: (hour * 60) + minute,
+      display: \`\${String(hour).padStart(2, '0')}:\${String(minute).padStart(2, '0')}\`,
+      timezone: tz,
+    };
+  } catch (error) {
+    return getCurrentParts('America/Sao_Paulo');
+  }
+}
+
+function dayRange(start, end) {
+  const result = [];
+  let current = start;
+
+  while (true) {
+    result.push(current);
+    if (current === end) break;
+    current = (current + 1) % 7;
+  }
+
+  return result;
+}
+
+function escapeRegex(value) {
+  return String(value).replace(/[|\\{}()[]^$+*?.]/g, '\\\\$&');
+}
+
+function daysFromText(value) {
+  const text = normalizeText(value);
+
+  if (!text) return [];
+
+  if (/(todos os dias|diariamente|daily|every day|segunda\\s*(a|-|ate)\\s*domingo)/.test(text)) {
+    return [0, 1, 2, 3, 4, 5, 6];
+  }
+
+  const found = [];
+  for (const entry of dayWords) {
+    const hasDay = entry.words.some(word => {
+      const escaped = escapeRegex(word);
+      return new RegExp(\`(^|[^a-z])\${escaped}([^a-z]|$)\`).test(text);
+    });
+
+    if (hasDay) {
+      found.push(entry.day);
+    }
+  }
+
+  if (found.length >= 2 && /(\\sa\\s|-|ate)/.test(text)) {
+    return dayRange(found[0], found[found.length - 1]);
+  }
+
+  return [...new Set(found)];
+}
+
+function minutesFromTime(hour, minute = '0') {
+  const h = Math.max(0, Math.min(23, Number(hour)));
+  const m = Math.max(0, Math.min(59, Number(minute || 0)));
+  return (h * 60) + m;
+}
+
+function intervalsFromText(value) {
+  const text = normalizeText(value);
+
+  if (!text || /(fechado|closed|nao abre|indisponivel)/.test(text)) {
+    return [];
+  }
+
+  if (/(24h|24 horas|sempre aberto|always open)/.test(text)) {
+    return [{ start: 0, end: 1440 }];
+  }
+
+  const intervals = [];
+  const regex = /(\\d{1,2})(?:(?::|h)(\\d{2}))?\\s*(?:-|a|as|ate|to|until)\\s*(\\d{1,2})(?:(?::|h)(\\d{2}))?/g;
+  let match;
+
+  while ((match = regex.exec(text)) !== null) {
+    intervals.push({
+      start: minutesFromTime(match[1], match[2]),
+      end: minutesFromTime(match[3], match[4]),
+    });
+  }
+
+  return intervals;
+}
+
+function intervalsFromValue(value) {
+  if (Array.isArray(value)) {
+    return value.flatMap(intervalsFromValue);
+  }
+
+  if (typeof value === 'string') {
+    return intervalsFromText(value);
+  }
+
+  if (!value || typeof value !== 'object') {
+    return [];
+  }
+
+  if (value.closed === true || value.is_closed === true || value.enabled === false) {
+    return [];
+  }
+
+  const nested = value.intervals || value.periods || value.slots || value.hours;
+  if (nested) {
+    return intervalsFromValue(nested);
+  }
+
+  const start =
+    value.start ||
+    value.open ||
+    value.from ||
+    value.start_time ||
+    value.opens_at ||
+    value.opening;
+
+  const end =
+    value.end ||
+    value.close ||
+    value.to ||
+    value.end_time ||
+    value.closes_at ||
+    value.closing;
+
+  if (start && end) {
+    return intervalsFromText(\`\${start} - \${end}\`);
+  }
+
+  return intervalsFromText(JSON.stringify(value));
+}
+
+function collectRules(value) {
+  if (!value) return [];
+
+  if (typeof value === 'string') {
+    const lines = value
+      .split(/[\\n;]+/)
+      .map(line => line.trim())
+      .filter(Boolean);
+
+    const rules = lines.flatMap(line => {
+      const days = daysFromText(line);
+      const intervals = intervalsFromText(line);
+      return intervals.length || days.length ? [{ days, intervals }] : [];
+    });
+
+    if (rules.length) return rules;
+
+    const intervals = intervalsFromText(value);
+    return intervals.length ? [{ days: [], intervals }] : [];
+  }
+
+  if (Array.isArray(value)) {
+    return value.flatMap(entry => {
+      const days = daysFromText(entry?.day ?? entry?.weekday ?? entry?.week_day ?? entry?.name ?? '');
+      const intervals = intervalsFromValue(entry);
+      return intervals.length || days.length ? [{ days, intervals }] : [];
+    });
+  }
+
+  if (typeof value === 'object') {
+    const schedule = value.days || value.schedule || value.opening_hours || value.business_hours || value;
+
+    if (schedule !== value) {
+      return collectRules(schedule);
+    }
+
+    return Object.entries(value).flatMap(([key, entry]) => {
+      const days = daysFromText(key);
+      const intervals = intervalsFromValue(entry);
+      return intervals.length || days.length ? [{ days, intervals }] : [];
+    });
+  }
+
+  return [];
+}
+
+function isInsideInterval(minutes, interval) {
+  if (interval.start === interval.end) return true;
+  if (interval.start < interval.end) {
+    return minutes >= interval.start && minutes < interval.end;
+  }
+  return minutes >= interval.start || minutes < interval.end;
+}
+
+const now = getCurrentParts(timezone);
+const rules = collectRules(rawOpeningHours);
+const displayHours =
+  typeof rawOpeningHours === 'string'
+    ? rawOpeningHours.trim()
+    : rawOpeningHours
+      ? JSON.stringify(rawOpeningHours)
+      : '';
+
+let isOpen = true;
+let reason = 'not_configured';
+
+if (displayHours && !rules.length) {
+  reason = 'unparsed_opening_hours';
+}
+
+if (rules.length) {
+  const todayRules = rules.filter(rule => !rule.days.length || rule.days.includes(now.day));
+  isOpen = todayRules.some(rule => rule.intervals.some(interval => isInsideInterval(now.time, interval)));
+  reason = isOpen ? 'inside_business_hours' : 'outside_business_hours';
+}
+
+return [
+  {
+    json: {
+      ...source,
+      business_hours: {
+        configured: Boolean(displayHours && rules.length),
+        is_open: isOpen,
+        reason,
+        timezone: now.timezone,
+        current_time: now.display,
+        opening_hours_text: displayHours,
+      },
+    },
+  },
+];`,
+    };
+
+    @node({
+        id: '7c5fa86f-c14b-4677-9a1a-840f4003e855',
+        name: 'outside business hours?',
+        type: 'n8n-nodes-base.if',
+        version: 2.2,
+        position: [2048, 16880],
+    })
+    OutsideBusinessHours = {
+        conditions: {
+            options: {
+                caseSensitive: true,
+                leftValue: '',
+                typeValidation: 'loose',
+                version: 2,
+            },
+            conditions: [
+                {
+                    id: '0d917cd0-d1f4-40a9-888c-408f94c1b2d4',
+                    leftValue: '={{ $json.business_hours.is_open }}',
+                    rightValue: '',
+                    operator: {
+                        type: 'boolean',
+                        operation: 'false',
+                        singleValue: true,
+                    },
+                },
+            ],
+            combinator: 'and',
+        },
+        looseTypeValidation: true,
+        options: {},
+    };
+
+    @node({
+        id: '53e7fb17-a211-42c8-bde5-fd3384a1037c',
+        name: 'outside hours response',
+        type: 'n8n-nodes-base.code',
+        version: 2,
+        position: [2256, 16672],
+    })
+    OutsideHoursResponse = {
+        jsCode: `const guard = $('business hours guard').first().json.business_hours || {};
+
+const parts = [
+  'No momento estamos fora do horário de atendimento.',
+  'Recebi sua mensagem, mas o atendimento automático fica pausado fora do expediente. A equipe retorna no próximo horário disponível.',
+];
+
+if (guard.opening_hours_text) {
+  parts.push('Nosso horário de atendimento é:\\n' + guard.opening_hours_text);
+}
+
+return [
+  {
+    output: parts.join('\\n\\n'),
+  },
+];`,
     };
 
     @node({
@@ -4791,10 +5159,6 @@ Priority rules:
         this.GetKeys.out(0).to(this.DeleteKeys.in(0));
         this.GetKeys.out(1).to(this.ErrorReport.in(0));
         this.DeleteKeys.out(1).to(this.ErrorReport.in(0));
-        this.Fake2.out(0).to(this.DataHandler.in(0));
-        this.Fake1.out(0).to(this.Fake2.in(0));
-        this.Fake.out(0).to(this.Fake1.in(0));
-        this.Fake.out(0).to(this.Fake2.in(1));
         this.GetPending1.out(0).to(this.HasPending1.in(0));
         this.GetPending1.out(1).to(this.ErrorReport11.in(0));
         this.HasPending1.out(1).to(this.AgentContext.in(0));
@@ -4807,8 +5171,12 @@ Priority rules:
         this.GetPersonalBlock.out(1).to(this.ErrorReport4.in(0));
         this.PersonalBlockExists.out(0).to(this.PersonalBlockEnd.in(0));
         this.PersonalBlockExists.out(1).to(this.FromMe.in(0));
-        this.SetPersonalBlock.out(0).to(this.DeleteBuffer.in(0));
+        this.SetPersonalBlock.out(0).to(this.PersonalHandoffResponse.in(0));
+        this.SetPersonalBlock.out(0).to(this.HumanHandoffAlert.in(0));
         this.SetPersonalBlock.out(1).to(this.ErrorReport12.in(0));
+        this.PersonalHandoffResponse.out(0).to(this.PushMemory.in(0));
+        this.HumanHandoffAlert.out(0).to(this.End.in(0));
+        this.HumanHandoffAlert.out(1).to(this.End.in(0));
         this.ServicesList.out(0).to(this.ServicesResponse.in(0));
         this.GetToken.out(0).to(this.ApiContext.in(0));
         this.GetToken.out(1).to(this.ErrorReport1.in(0));
@@ -4817,7 +5185,11 @@ Priority rules:
         this.GetPending.out(1).to(this.ErrorReport2.in(0));
         this.HasPending.out(0).to(this.CallState.in(0));
         this.HasPending.out(1).to(this.MessageType.in(0));
-        this.BusinessContext.out(0).to(this.GetPending.in(0));
+        this.BusinessContext.out(0).to(this.BusinessHoursGuard.in(0));
+        this.BusinessHoursGuard.out(0).to(this.OutsideBusinessHours.in(0));
+        this.OutsideBusinessHours.out(0).to(this.OutsideHoursResponse.in(0));
+        this.OutsideBusinessHours.out(1).to(this.GetPending.in(0));
+        this.OutsideHoursResponse.out(0).to(this.FinalResponse.in(0));
         this.FilterGroup.out(0).to(this.GetPersonalBlock.in(0));
         this.AudioContext.out(0).to(this.GetAudio.in(0));
         this.TextClassifier.out(0).to(this.MessageClassifier.in(0));

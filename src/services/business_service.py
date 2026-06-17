@@ -4,11 +4,11 @@ import re
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
-from src.models import Business
 from src.core import DataBaseDep
+from src.models import Business, BusinessOpeningHour
 from src.utils import normalize_phone, normalize_text
-from src.repositories import AppointmentReminderRepository, BusinessRepository
 from src.schemas import BusinessCreate, BusinessUpdate
+from src.repositories import AppointmentReminderRepository, BusinessRepository
 from src.services.appointment_reminder_service import AppointmentReminderService
 
 class BusinessNotFoundError(Exception):
@@ -81,12 +81,63 @@ class BusinessService:
 
         return candidate
 
+    def _normalize_opening_hour_items(self, items):
+        normalized = []
+        weekdays = set()
+
+        for item in items or []:
+            weekday = item.get("weekday") if isinstance(item, dict) else item.weekday
+            start_time = item.get("start_time") if isinstance(item, dict) else item.start_time
+            end_time = item.get("end_time") if isinstance(item, dict) else item.end_time
+
+            if weekday in weekdays:
+                raise ValueError("Dia duplicado no horário de funcionamento.")
+
+            if start_time >= end_time:
+                raise ValueError("Horário inicial deve ser menor que o horário final.")
+
+            weekdays.add(weekday)
+            normalized.append(
+                {
+                    "weekday": weekday,
+                    "start_time": start_time,
+                    "end_time": end_time,
+                }
+            )
+
+        return sorted(normalized, key=lambda item: item["weekday"])
+
+    def _replace_opening_hours(self, business, items) -> None:
+        opening_hours = self._normalize_opening_hour_items(items)
+        opening_hours_by_weekday = {item["weekday"]: item for item in opening_hours}
+        current_items = list(getattr(business, "opening_hours", []) or [])
+        current_by_weekday = {item.weekday: item for item in current_items}
+
+        for weekday, current in current_by_weekday.items():
+            if weekday not in opening_hours_by_weekday:
+                business.opening_hours.remove(current)
+
+        for item in opening_hours:
+            current = current_by_weekday.get(item["weekday"])
+            if current:
+                current.start_time = item["start_time"]
+                current.end_time = item["end_time"]
+            else:
+                business.opening_hours.append(
+                    BusinessOpeningHour(
+                        weekday=item["weekday"],
+                        start_time=item["start_time"],
+                        end_time=item["end_time"],
+                    )
+                )
+
     def create(self, data: BusinessCreate):
         phone = normalize_phone(data.phone)
         if not phone:
             raise ValueError("Telefone da empresa é obrigatório")
 
         slug = data.slug or self._generate_unique_slug(data.name)
+        opening_hours = self._normalize_opening_hour_items(data.opening_hours)
 
         business = Business(
             name = data.name,
@@ -107,6 +158,14 @@ class BusinessService:
             cancel_limit_hours = data.cancel_limit_hours,
             appointment_confirmation_required = data.appointment_confirmation_required,
         )
+        business.opening_hours = [
+            BusinessOpeningHour(
+                weekday=item["weekday"],
+                start_time=item["start_time"],
+                end_time=item["end_time"],
+            )
+            for item in opening_hours
+        ]
 
         self.business_repo.add(self.db, business)
 
@@ -124,6 +183,7 @@ class BusinessService:
         business = self._get_valid(business_id)
 
         update_data = data.model_dump(exclude_unset=True)
+        opening_hours = update_data.pop("opening_hours", None)
         previous_cancel_limit_hours = getattr(business, "cancel_limit_hours", None)
 
         if update_data.get("slug") is None:
@@ -142,6 +202,9 @@ class BusinessService:
 
         for field, value in update_data.items():
             setattr(business, field, value)
+
+        if opening_hours is not None:
+            self._replace_opening_hours(business, opening_hours)
 
         if (
             "cancel_limit_hours" in update_data

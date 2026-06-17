@@ -4,14 +4,15 @@ from pydantic import ValidationError
 from zoneinfo import available_timezones
 from fastapi import APIRouter, HTTPException, Query, Request
 
-from src.schemas import BusinessUpdate
 from src.dependecies import BusinessServiceDep
 from src.models.business_model import BusinessType
 from src.utils import form_bool, form_int, form_value
+from src.schemas import BusinessOpeningHourCreate, BusinessUpdate
 from src.services.business_service import BusinessAlreadyExistsError, BusinessNotFoundError
 
 from ..templating import render, redirect_with_flash
 from ..dependencies import AdminSessionDep, validate_csrf
+
 
 router = APIRouter(prefix="/business", tags=["Admin ➔ Business"])
 
@@ -28,6 +29,24 @@ PREFERRED_TIMEZONES: tuple[str, ...] = (
 )
 
 _options_cache: dict[str, tuple[float, list[dict[str, str]]]] = {}
+
+def _opening_hours_from_form(form) -> list[BusinessOpeningHourCreate]:
+    opening_hours = []
+
+    for weekday in range(7):
+        enabled = form.get(f"business_weekday_{weekday}_enabled") == "on"
+        if not enabled:
+            continue
+
+        opening_hours.append(
+            BusinessOpeningHourCreate(
+                weekday=weekday,
+                start_time=form_value(form, f"business_weekday_{weekday}_start", "09:00"),
+                end_time=form_value(form, f"business_weekday_{weekday}_end", "18:00"),
+            )
+        )
+
+    return opening_hours
 
 def _get_cached_options(cache_key: str) -> list[dict[str, str]] | None:
     cached = _options_cache.get(cache_key)
@@ -107,11 +126,16 @@ async def business_city_options(session: AdminSessionDep, state: str = Query(...
 @router.get("")
 def business_settings_page(request: Request, service: BusinessServiceDep, session: AdminSessionDep):
     business = service.get_by_id(session.business_id)
+    opening_hours_by_weekday = {item.weekday: item for item in business.opening_hours}
 
     return render(
         request,
         "admin/business/settings.html",
-        {"business": business, "business_types": list(BusinessType)},
+        {
+            "business": business,
+            "business_types": list(BusinessType),
+            "opening_hours_by_weekday": opening_hours_by_weekday,
+        },
         session=session,
         active="business",
     )
@@ -132,6 +156,7 @@ async def update_business_settings_action(request: Request, service: BusinessSer
             city=form_value(form, "city"),
             state=form_value(form, "state"),
             description=form_value(form, "description"),
+            opening_hours=_opening_hours_from_form(form),
             booking_enabled=form_bool(form, "booking_enabled"),
             slot_interval_minutes=form_int(form, "slot_interval_minutes"),
             minimum_notice_minutes=form_int(form, "minimum_notice_minutes"),
@@ -142,7 +167,7 @@ async def update_business_settings_action(request: Request, service: BusinessSer
         )
         service.update(session.business_id, data)
 
-    except ValidationError:
+    except (ValidationError, ValueError):
         return redirect_with_flash("/admin/business", "Dados inválidos. Verifique os campos da empresa.", "error", request=request)
     
     except BusinessNotFoundError:

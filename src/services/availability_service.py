@@ -14,6 +14,7 @@ from src.repositories import (AvailabilityRepository, ProfessionalRepository, Ap
     ServiceRepository, ProfessionalServiceRepository, ScheduleBlockRepository
 )
 
+
 class ProfessionalNotFoundError(Exception):
     pass
 

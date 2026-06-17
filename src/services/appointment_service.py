@@ -1,6 +1,6 @@
+from typing import Sequence
 from zoneinfo import ZoneInfo
 from datetime import timedelta, datetime
-from typing import Sequence
 
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
@@ -9,12 +9,11 @@ from src.core import DataBaseDep
 from src.models import Appointment
 from src.schemas.appointment_schema import AppointmentStatus
 from src.schemas import AppointmentCreate, AppointmentUpdate, AppointmentResponse
-from src.repositories import (AppointmentRepository, ProfessionalRepository, ServiceRepository,
-    AvailabilityRepository, ClientRepository, BusinessRepository, ProfessionalServiceRepository,
-    ScheduleBlockRepository, AppointmentReminderRepository,
+from src.repositories import (AppointmentRepository, ProfessionalRepository, ServiceRepository, AvailabilityRepository,
+    ClientRepository, BusinessRepository, ProfessionalServiceRepository, ScheduleBlockRepository, AppointmentReminderRepository,
 )
-from src.services.appointment_reminder_service import AppointmentReminderService
 from src.services.scheduling_lock import acquire_schedule_lock
+from src.services.appointment_reminder_service import AppointmentReminderService
 
 
 class ProfessionalNotAvailableError(Exception):

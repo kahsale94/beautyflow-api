@@ -31,6 +31,18 @@ def test_slots_use_business_scheduling_settings():
     assert "minimum_notice_minutes" in source
     assert "maximum_schedule_days" in source
 
+def test_professional_opening_hours_checkbox_is_admin_only():
+    schema_source = read_source("src/schemas/availability_schema.py")
+    template_source = read_source("src/templates/admin/professionals/detail.html")
+    script_source = read_source("src/static/admin/js/admin.js")
+
+    assert "start_time: time" in schema_source
+    assert "end_time: time" in schema_source
+    assert "Seguir horário de funcionamento da empresa" in template_source
+    assert "data-follow-business-hours" in template_source
+    assert "companyStart" in script_source
+    assert "parts.start.value = companyStart" in script_source
+
 def test_availability_admin_write_permission():
     source = read_source("src/api/v1/availability_routes.py")
 

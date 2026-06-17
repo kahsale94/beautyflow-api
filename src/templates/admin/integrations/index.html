@@ -15,22 +15,26 @@
     <div class="cards-grid">
         {% for item in integrations %}
         {% set whatsapp_instance = evolution_instance if evolution_instance and evolution_instance.integration_id == item.integration_id else none %}
+        {% set whatsapp_state = (whatsapp_instance.state|lower) if whatsapp_instance and whatsapp_instance.state else 'not_configured' %}
+        {% set whatsapp_status_class = whatsapp_state if whatsapp_state in ('open', 'connected', 'connecting', 'creating', 'close', 'disconnected', 'missing', 'error', 'not_configured') else 'unknown' %}
         <article
             class="mini-card integration-card"
             data-evolution-card
             data-integration-id="{{ item.integration_id }}"
-            data-instance-state="{{ whatsapp_instance.state if whatsapp_instance else 'not_configured' }}"
+            data-instance-state="{{ whatsapp_state }}"
             data-evolution-configured="{{ 'true' if evolution_configured else 'false' }}"
             data-csrf-token="{{ csrf_token }}">
             <header class="integration-title">
                 <h2>{{ item.integration.name if item.integration else 'Integração' }}</h2>
                 <span class="integration-meta">ID #{{ item.integration_id }}</span>
             </header>
-            <p>
-                Status:
-                <span class="badge {{ 'success' if item.is_active else 'danger' }}">{{ 'ativa' if item.is_active else 'inativa' }}</span>
-            </p>
-            <p class="muted">Criada em {{ item.created_at.strftime('%d/%m/%Y') }}</p>
+            <div class="integration-overview">
+                <p>
+                    Status:
+                    <span class="badge {{ 'success' if item.is_active else 'danger' }}">{{ 'ativa' if item.is_active else 'inativa' }}</span>
+                </p>
+                <p class="muted">Criada em {{ item.created_at.strftime('%d/%m/%Y') }}</p>
+            </div>
 
             <section class="whatsapp-integration" aria-labelledby="whatsapp-title-{{ item.integration_id }}">
                 <div class="whatsapp-integration-header">
@@ -38,17 +42,17 @@
                         <h3 id="whatsapp-title-{{ item.integration_id }}">WhatsApp</h3>
                         <p class="muted">A instância é criada e configurada automaticamente na Evolution API.</p>
                     </div>
-                    <span class="badge evolution-status" data-evolution-status>
-                        {% if whatsapp_instance and whatsapp_instance.state == 'open' %}
+                    <span class="badge evolution-status evolution-status-{{ whatsapp_status_class }}" data-evolution-status>
+                        {% if whatsapp_instance and whatsapp_state == 'open' %}
                         conectado
-                        {% elif whatsapp_instance and whatsapp_instance.state in ('connecting', 'creating') %}
+                        {% elif whatsapp_instance and whatsapp_state in ('connecting', 'creating') %}
                         aguardando conexão
-                        {% elif whatsapp_instance and whatsapp_instance.state == 'close' %}
+                        {% elif whatsapp_instance and whatsapp_state == 'close' %}
                         desconectado
-                        {% elif whatsapp_instance and whatsapp_instance.state == 'missing' %}
+                        {% elif whatsapp_instance and whatsapp_state == 'missing' %}
                         ausente
                         {% elif whatsapp_instance %}
-                        {{ whatsapp_instance.state|admin_label|lower }}
+                        {{ whatsapp_state|admin_label|lower }}
                         {% else %}
                         não configurado
                         {% endif %}
@@ -103,21 +107,21 @@
                         type="button"
                         data-evolution-action="connect"
                         {% if not evolution_configured %}disabled{% endif %}
-                        {% if whatsapp_instance and whatsapp_instance.state == 'open' %}hidden{% endif %}>
+                        {% if whatsapp_instance and whatsapp_state == 'open' %}hidden{% endif %}>
                         {{ 'Reconectar WhatsApp' if whatsapp_instance else 'Conectar WhatsApp' }}
                     </button>
                     <button
                         class="button secondary small"
                         type="button"
                         data-evolution-action="qrcode"
-                        {% if not evolution_configured or not whatsapp_instance or whatsapp_instance.state == 'open' %}hidden{% endif %}>
+                        {% if not evolution_configured or not whatsapp_instance or whatsapp_state == 'open' %}hidden{% endif %}>
                         Gerar novo QR
                     </button>
                     <button
                         class="button secondary small"
                         type="button"
                         data-evolution-action="logout"
-                        {% if not evolution_configured or not whatsapp_instance or whatsapp_instance.state != 'open' %}hidden{% endif %}>
+                        {% if not evolution_configured or not whatsapp_instance or whatsapp_state != 'open' %}hidden{% endif %}>
                         Desconectar
                     </button>
                     <button
@@ -131,7 +135,7 @@
             </section>
 
             {% if session.is_super_admin %}
-            <details>
+            <details class="integration-advanced-config">
                 <summary>Configuração avançada</summary>
                 <form method="post" action="/admin/integrations/{{ item.integration_id }}/config" class="stack">
                     <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />

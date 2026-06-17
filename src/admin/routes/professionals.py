@@ -11,6 +11,7 @@ from src.services.professional_service_link_service import ProfessionalServiceLi
 from ..dependencies import AdminSessionDep, validate_csrf
 from ..templating import WEEKDAYS, render, redirect_with_flash
 
+
 router = APIRouter(prefix="/professionals", tags=["Admin ➔ Professionals"])
 
 @router.get("")
@@ -63,6 +64,7 @@ def professional_detail_page(professional_id: int, request: Request, professiona
 
     availabilities = availability_service.get_all(session.business_id, professional_id)
     availability_by_weekday = {item.weekday: item for item in availabilities}
+    opening_hours_by_weekday = {item.weekday: item for item in professional.business.opening_hours}
 
     return render(
         request,
@@ -72,6 +74,7 @@ def professional_detail_page(professional_id: int, request: Request, professiona
             "services": services,
             "linked_service_ids": linked_service_ids,
             "availability_by_weekday": availability_by_weekday,
+            "opening_hours_by_weekday": opening_hours_by_weekday,
             "weekdays": WEEKDAYS,
         },
         session=session,
@@ -118,7 +121,6 @@ async def deactivate_professional_action(professional_id: int, request: Request,
         return redirect_with_flash("/admin/professionals", "Profissional não encontrado.", "error", request=request)
     
     return redirect_with_flash("/admin/professionals", "Profissional desativado com sucesso.", request=request)
-
 
 @router.post("/{professional_id}/services")
 async def update_professional_services_action(professional_id: int, request: Request, service_service: ServiceServiceDep, link_service: ProfessionalServiceLinkServiceDep, session: AdminSessionDep):
@@ -171,7 +173,10 @@ async def update_professional_availability_action(professional_id: int, request:
                         session.business_id,
                         professional_id,
                         weekday,
-                        AvailabilityUpdate(start_time=start_time, end_time=end_time),
+                        AvailabilityUpdate(
+                            start_time=start_time,
+                            end_time=end_time,
+                        ),
                     )
                 else:
                     availability_service.create(

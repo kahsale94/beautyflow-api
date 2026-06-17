@@ -9,6 +9,7 @@ from src.services.client_service import ClientAlreadyExistsError, ClientNotFound
 from ..templating import render, redirect_with_flash
 from ..dependencies import AdminSessionDep, validate_csrf
 
+
 router = APIRouter(prefix="/clients", tags=["Admin ➔ Clients"])
 
 @router.get("")

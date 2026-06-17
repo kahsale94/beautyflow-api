@@ -10,6 +10,7 @@ from src.core import (ADMIN_ACCESS_COOKIE, ADMIN_REFRESH_COOKIE, ADMIN_BUSINESS_
 from ..templating import render, redirect_with_flash
 from ..dependencies import get_or_create_csrf_token, validate_csrf
 
+
 router = APIRouter(tags=["Admin ➔ Auth"])
 
 @router.get("/login")

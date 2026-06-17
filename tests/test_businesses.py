@@ -1,8 +1,9 @@
+from datetime import time
 from pathlib import Path
 from types import SimpleNamespace
 
 from src.models.business_model import BusinessType
-from src.schemas import BusinessCreate, BusinessUpdate
+from src.schemas import BusinessCreate, BusinessOpeningHourCreate, BusinessUpdate
 from src.services.business_service import BusinessService
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,6 +20,27 @@ def test_business_phone_is_required_and_normalized():
     assert "normalize_phone(data.phone)" in service_source
     assert "Telefone da empresa é obrigatório" in service_source
     assert "except ValueError as exc" in route_source
+
+def test_business_opening_hours_is_available_in_admin_and_api():
+    model_source = read_source("src/models/business_model.py")
+    opening_hour_model_source = read_source("src/models/business_opening_hour_model.py")
+    schema_source = read_source("src/schemas/business_schema.py")
+    service_source = read_source("src/services/business_service.py")
+    admin_route_source = read_source("src/admin/routes/business.py")
+    template_source = read_source("src/templates/admin/business/settings.html")
+    migration_source = read_source("alembic/versions/0008_add_business_opening_hours.py")
+
+    assert 'opening_hours: Mapped[list["BusinessOpeningHour"]]' in model_source
+    assert 'back_populates="business"' in model_source
+    assert "business_opening_hours" in opening_hour_model_source
+    assert 'opening_hours: list["BusinessOpeningHourCreate"]' in schema_source
+    assert "BusinessOpeningHourCreate" in schema_source
+    assert "_replace_opening_hours" in service_source
+    assert "business.opening_hours" in service_source
+    assert "_opening_hours_from_form" in admin_route_source
+    assert "Horário de Funcionamento" in template_source
+    assert "business_weekday_{{ weekday }}_enabled" in template_source
+    assert "business_opening_hours" in migration_source
 
 def test_business_delete_is_soft_delete():
     source = read_source("src/services/business_service.py")
@@ -96,6 +118,24 @@ def test_business_creation_preserves_explicit_slug():
     business = service.create(make_business_create("Salão Bela Vida", slug="bela-vida-sp"))
 
     assert business.slug == "bela-vida-sp"
+
+def test_business_creation_persists_opening_hours():
+    service = BusinessService(FakeDatabase(), FakeBusinessRepository())
+    data = make_business_create("Salão Bela Vida")
+    data.opening_hours = [
+        BusinessOpeningHourCreate(
+            weekday=0,
+            start_time=time(9, 0),
+            end_time=time(18, 0),
+        )
+    ]
+
+    business = service.create(data)
+
+    assert len(business.opening_hours) == 1
+    assert business.opening_hours[0].weekday == 0
+    assert business.opening_hours[0].start_time == time(9, 0)
+    assert business.opening_hours[0].end_time == time(18, 0)
 
 def test_business_update_does_not_clear_existing_slug():
     business = SimpleNamespace(id=1, is_active=True, name="Salão Bela Vida", slug="bela-vida")

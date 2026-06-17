@@ -9,6 +9,7 @@ from src.services.service_service import ServiceAlreadyExistsError, ServiceNotFo
 from ..templating import render, redirect_with_flash
 from ..dependencies import AdminSessionDep, validate_csrf
 
+
 router = APIRouter(prefix="/services", tags=["Admin ➔ Services"])
 
 @router.get("")

@@ -451,6 +451,12 @@ select:disabled {
     opacity: 1;
 }
 
+input.datetime-picker-input[readonly]:not(:disabled) {
+    background: #fff;
+    color: var(--text);
+    cursor: pointer;
+}
+
 input[type="checkbox"],
 input[type="radio"] {
     width: 16px;
@@ -665,15 +671,52 @@ label {
     gap: var(--space-sm);
 }
 
+.schedule-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--space-md);
+    margin-bottom: var(--space-md);
+}
+
+.schedule-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-sm);
+    flex-wrap: wrap;
+}
+
 .availability-row {
     display: grid;
     grid-template-columns: minmax(180px, 1.5fr) minmax(120px, 1fr) minmax(120px, 1fr);
     align-items: center;
     gap: var(--space-sm);
-    padding: 10px 12px;
+    padding: 12px;
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
     background: #fff;
+    transition: background var(--transition), border-color var(--transition), opacity var(--transition);
+}
+
+.availability-row.with-follow {
+    grid-template-columns: minmax(160px, 1fr) minmax(260px, 1.25fr) minmax(120px, .8fr) minmax(120px, .8fr);
+}
+
+.availability-row.is-inactive,
+.availability-row.is-following-company {
+    background: #f8fafc;
+}
+
+.availability-row.is-inactive {
+    color: var(--muted);
+}
+
+.availability-row.is-following-company {
+    border-color: #d1d5db;
+}
+
+.availability-row.is-following-company .time-field input {
+    background: #eef2f7;
 }
 
 .availability-enabled {
@@ -684,6 +727,31 @@ label {
 
 .availability-enabled input {
     width: auto;
+}
+
+.availability-follow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--muted);
+    font-size: .86rem;
+    font-weight: 700;
+}
+
+.availability-follow input {
+    flex: 0 0 auto;
+}
+
+.time-field {
+    gap: 5px;
+}
+
+.time-field > span {
+    color: var(--muted);
+    font-size: .74rem;
+    font-weight: 850;
+    letter-spacing: .06em;
+    text-transform: uppercase;
 }
 
 /* 8. Botões */
@@ -1625,12 +1693,27 @@ tr.is-editing input[data-editable] {
 }
 
 /* 13. Integrações e configurações */
+.integrations-card .cards-grid {
+    grid-template-columns: 1fr;
+}
+
+.integration-card {
+    display: grid;
+    gap: var(--space-md);
+    padding: 22px;
+    box-shadow: var(--shadow-soft);
+}
+
+.integration-card p {
+    margin: 0;
+}
+
 .integration-title {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
     gap: var(--space-md);
-    margin-bottom: var(--space-sm);
+    margin-bottom: 0;
 }
 
 .integration-title h2 {
@@ -1644,6 +1727,23 @@ tr.is-editing input[data-editable] {
     font-weight: 800;
     line-height: 1.4;
     white-space: nowrap;
+}
+
+.integration-overview {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px var(--space-lg);
+}
+
+.integration-overview p {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.integration-overview .muted {
+    margin-top: 0;
 }
 
 details {
@@ -1682,8 +1782,8 @@ pre {
 .whatsapp-integration {
     display: grid;
     gap: 14px;
-    margin-top: var(--space-lg);
-    padding-top: var(--space-lg);
+    margin-top: 2px;
+    padding-top: var(--space-md);
     border-top: 1px solid var(--border);
 }
 
@@ -1702,7 +1802,9 @@ pre {
 }
 
 .whatsapp-integration-header h3 {
-    margin-bottom: 4px;
+    margin: 0 0 4px;
+    font-size: 1.08rem;
+    line-height: 1.25;
 }
 
 .integration-details {
@@ -1773,13 +1875,43 @@ pre {
     font-weight: 750;
 }
 
+.integration-advanced-config {
+    margin-top: 0;
+    padding-top: var(--space-md);
+    border-width: 1px 0 0;
+    border-radius: 0;
+    background: transparent;
+}
+
+.integration-advanced-config > summary {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: #fff;
+}
+
+.integration-advanced-config[open] > summary {
+    border-bottom-color: transparent;
+    border-bottom-right-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+.integration-advanced-config > .stack {
+    margin: 0;
+    padding: var(--space-md);
+    border: 1px solid var(--border);
+    border-top: 0;
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+    background: #fff;
+}
+
 .integration-card.is-loading {
     opacity: .78;
 }
 
-.evolution-status-open {
-    background: #dcfce7;
-    color: #166534;
+.evolution-status-open,
+.evolution-status-connected {
+    background: var(--success-bg);
+    color: var(--success-text);
 }
 
 .evolution-status-connecting,
@@ -1789,6 +1921,7 @@ pre {
 }
 
 .evolution-status-close,
+.evolution-status-disconnected,
 .evolution-status-missing,
 .evolution-status-error {
     background: #fee2e2;
@@ -2014,6 +2147,7 @@ pre {
 
     .page-header,
     .card-header,
+    .schedule-panel-header,
     .integration-title {
         flex-direction: column;
         align-items: stretch;
@@ -2021,6 +2155,7 @@ pre {
 
     .form-grid,
     .compact-grid,
+    .integration-details,
     .stats-grid,
     .cards-grid,
     .checkbox-grid,
@@ -2189,8 +2324,21 @@ pre {
         background: var(--surface);
     }
 
-    .availability-enabled {
+    .availability-row.with-follow {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .availability-enabled,
+    .availability-follow {
         grid-column: 1 / -1;
+    }
+
+    .schedule-actions {
+        justify-content: stretch;
+    }
+
+    .schedule-actions .button {
+        flex: 1 1 220px;
     }
 
     .calendar-card-header {
@@ -2462,6 +2610,10 @@ pre {
     }
 
     .availability-row {
+        grid-template-columns: 1fr;
+    }
+
+    .availability-row.with-follow {
         grid-template-columns: 1fr;
     }
 

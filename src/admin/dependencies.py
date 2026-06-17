@@ -13,6 +13,7 @@ from src.security import RefreshRequest, TokenManager, UserContext
 from src.services.auth_service import AuthService, DeactivatedUserError, InvalidTokenError, get_auth_service
 from src.core import ADMIN_ACCESS_COOKIE, ADMIN_BUSINESS_COOKIE, ADMIN_CSRF_COOKIE, ADMIN_REFRESH_COOKIE, USER_SECRET_KEY, get_db
 
+
 @dataclass(frozen=True)
 class AdminSession:
     user: UserContext
@@ -29,11 +30,7 @@ def _redirect(location: str) -> None:
     raise HTTPException(status_code=303, headers={"Location": location})
 
 def _csrf_signature(raw: str) -> str:
-    return hmac.new(
-        USER_SECRET_KEY.encode("utf-8"),
-        raw.encode("utf-8"),
-        hashlib.sha256,
-    ).hexdigest()
+    return hmac.new(USER_SECRET_KEY.encode("utf-8"), raw.encode("utf-8"), hashlib.sha256).hexdigest()
 
 def create_csrf_token() -> str:
     raw = secrets.token_urlsafe(32)

@@ -7,6 +7,7 @@ from src.dependecies import AppointmentServiceDep, BusinessServiceDep, ClientSer
 from ..dependencies import AdminSessionDep
 from ..templating import render, safe_timezone
 
+
 router = APIRouter(tags=["Admin ➔ Dashboard"])
 
 @router.get("/")

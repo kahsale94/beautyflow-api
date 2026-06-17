@@ -7,6 +7,7 @@ from src.services.business_service import BusinessNotFoundError
 from ..dependencies import SuperAdminSessionDep, validate_csrf
 from ..templating import render, redirect_with_flash, set_business_cookie
 
+
 router = APIRouter(prefix="/businesses", tags=["Admin ➔ Businesses"])
 
 @router.get("")

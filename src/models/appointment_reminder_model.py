@@ -2,17 +2,8 @@ from datetime import datetime
 from enum import Enum as PyEnum
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import (
-    CheckConstraint,
-    DateTime,
-    Enum as SAEnum,
-    ForeignKey,
-    Index,
-    Integer,
-    String,
-    Text,
-    func,
-    text,
+from sqlalchemy import (CheckConstraint, DateTime, Enum as SAEnum, ForeignKey,
+    Index, Integer, String, Text, func, text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -29,7 +20,6 @@ class AppointmentReminderStatus(str, PyEnum):
     sent = "sent"
     failed = "failed"
     skipped = "skipped"
-
 
 class AppointmentReminder(Base):
     __tablename__ = "appointment_reminders"
@@ -63,18 +53,9 @@ class AppointmentReminder(Base):
     )
 
     id: Mapped[intpk]
-    appointment_id: Mapped[int] = mapped_column(
-        ForeignKey("appointments.id", ondelete="cascade"),
-        nullable=False,
-        index=True,
-    )
+    appointment_id: Mapped[int] = mapped_column(ForeignKey("appointments.id", ondelete="cascade"), nullable=False, index=True)
     business_id: Mapped[business_fk]
-    reminder_type: Mapped[str] = mapped_column(
-        String(40),
-        nullable=False,
-        default="appointment_upcoming",
-        server_default="appointment_upcoming",
-    )
+    reminder_type: Mapped[str] = mapped_column(String(40), nullable=False, default="appointment_upcoming", server_default="appointment_upcoming")
     appointment_start_datetime: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     scheduled_for: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     status: Mapped[AppointmentReminderStatus] = mapped_column(
@@ -91,12 +72,7 @@ class AppointmentReminder(Base):
     last_error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     external_message_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        onupdate=func.now(),
-        nullable=False,
-    )
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     appointment: Mapped["Appointment"] = relationship(back_populates="reminders")
     business: Mapped["Business"] = relationship(back_populates="appointment_reminders")

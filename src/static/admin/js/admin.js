@@ -597,10 +597,146 @@ function initializeEvolutionIntegrations() {
     });
 }
 
+function initializeWeeklySchedulePanels() {
+    const panels = document.querySelectorAll('[data-weekly-schedule-panel]');
+
+    function getRowParts(row) {
+        return {
+            enabled: row.querySelector('[data-schedule-enabled]'),
+            follow: row.querySelector('[data-follow-business-hours]'),
+            start: row.querySelector('[data-schedule-start]'),
+            end: row.querySelector('[data-schedule-end]'),
+        };
+    }
+
+    function syncRow(row) {
+        const parts = getRowParts(row);
+        if (!(parts.enabled instanceof HTMLInputElement)) return;
+        if (!(parts.start instanceof HTMLInputElement) || !(parts.end instanceof HTMLInputElement)) return;
+
+        const isEnabled = parts.enabled.checked;
+        if (parts.follow instanceof HTMLInputElement && !isEnabled) {
+            parts.follow.checked = false;
+        }
+
+        const followsBusiness = parts.follow instanceof HTMLInputElement && parts.follow.checked && isEnabled;
+        const companyStart = row.dataset.companyStart || '';
+        const companyEnd = row.dataset.companyEnd || '';
+
+        if (followsBusiness && companyStart && companyEnd) {
+            parts.start.value = companyStart;
+            parts.end.value = companyEnd;
+        }
+
+        parts.start.disabled = !isEnabled;
+        parts.end.disabled = !isEnabled;
+        parts.start.readOnly = followsBusiness;
+        parts.end.readOnly = followsBusiness;
+
+        if (parts.follow instanceof HTMLInputElement) {
+            parts.follow.disabled = !isEnabled;
+        }
+
+        row.classList.toggle('is-inactive', !isEnabled);
+        row.classList.toggle('is-following-company', followsBusiness);
+    }
+
+    function selectedRows(panel) {
+        return Array.from(panel.querySelectorAll('[data-schedule-row]')).filter(function (row) {
+            if (!(row instanceof HTMLElement)) return false;
+            const parts = getRowParts(row);
+            return parts.enabled instanceof HTMLInputElement && parts.enabled.checked;
+        });
+    }
+
+    panels.forEach(function (panel) {
+        if (!(panel instanceof HTMLElement)) return;
+
+        const rows = Array.from(panel.querySelectorAll('[data-schedule-row]')).filter(function (row) {
+            return row instanceof HTMLElement;
+        });
+
+        rows.forEach(function (row) {
+            const parts = getRowParts(row);
+
+            if (parts.enabled instanceof HTMLInputElement) {
+                parts.enabled.addEventListener('change', function () {
+                    syncRow(row);
+                });
+            }
+
+            if (parts.follow instanceof HTMLInputElement) {
+                parts.follow.addEventListener('change', function () {
+                    if (parts.follow.checked && parts.enabled instanceof HTMLInputElement) {
+                        parts.enabled.checked = true;
+                    }
+                    if (parts.follow.checked && (!row.dataset.companyStart || !row.dataset.companyEnd)) {
+                        window.alert('Horário de funcionamento da empresa não configurado para este dia.');
+                        parts.follow.checked = false;
+                    }
+                    syncRow(row);
+                });
+            }
+
+            syncRow(row);
+        });
+
+        const selectAllButton = panel.querySelector('[data-schedule-select-all]');
+        if (selectAllButton instanceof HTMLButtonElement) {
+            selectAllButton.addEventListener('click', function () {
+                rows.forEach(function (row) {
+                    const parts = getRowParts(row);
+                    if (parts.enabled instanceof HTMLInputElement) {
+                        parts.enabled.checked = true;
+                    }
+                    syncRow(row);
+                });
+            });
+        }
+
+        const copyFirstButton = panel.querySelector('[data-schedule-copy-first]');
+        if (copyFirstButton instanceof HTMLButtonElement) {
+            copyFirstButton.addEventListener('click', function () {
+                const rowsToUpdate = selectedRows(panel);
+                const source = rowsToUpdate.find(function (row) {
+                    const parts = getRowParts(row);
+                    return parts.start instanceof HTMLInputElement
+                        && parts.end instanceof HTMLInputElement
+                        && parts.start.value
+                        && parts.end.value;
+                });
+
+                if (!(source instanceof HTMLElement)) {
+                    window.alert('Marque ao menos um dia com horário configurado.');
+                    return;
+                }
+
+                const sourceParts = getRowParts(source);
+                if (!(sourceParts.start instanceof HTMLInputElement) || !(sourceParts.end instanceof HTMLInputElement)) return;
+
+                let copied = 0;
+                rowsToUpdate.forEach(function (row) {
+                    const parts = getRowParts(row);
+                    if (!(parts.start instanceof HTMLInputElement) || !(parts.end instanceof HTMLInputElement)) return;
+                    if (parts.follow instanceof HTMLInputElement) {
+                        parts.follow.checked = false;
+                    }
+
+                    parts.start.value = sourceParts.start.value;
+                    parts.end.value = sourceParts.end.value;
+                    copied += 1;
+                    syncRow(row);
+                });
+            });
+        }
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     initializeAdminSidebar();
     initializeBusinessExternalOptions();
     initializeEvolutionIntegrations();
+    initializeWeeklySchedulePanels();
     document.querySelectorAll('.flash').forEach(function (flash) {
         window.setTimeout(function () {
             if (flash instanceof HTMLElement) flash.remove();

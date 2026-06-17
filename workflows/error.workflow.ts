@@ -513,6 +513,13 @@ const policies = {
     notifyDev: true
   },
 
+  'business.human_handoff': {
+    severity: 'medium',
+    notifyCustomer: false,
+    notifyOwner: true,
+    notifyDev: false
+  },
+
   'internal.ai.agent': {
     severity: 'critical',
     notifyCustomer: true,
@@ -655,6 +662,9 @@ function buildOwnerMessage({ type, error, business, client, policy }) {
 
     'business.appointment_cancel':
       \`⚠️ Atenção, \${businessName}.\\n\\nUm cliente tentou cancelar um agendamento, mas o assistente não conseguiu confirmar o cancelamento com segurança.\\n\\nAntes de responder o cliente, verifique manualmente se o agendamento foi cancelado.\`,
+
+    'business.human_handoff':
+      \`Atenção, \${businessName}.\\n\\nUm cliente pediu atendimento humano ou enviou um assunto pessoal. O assistente pausou a conversa por 24h para evitar respostas automáticas nesse assunto.\\n\\nÚltima mensagem: \${valueOrFallback(client.message_text || client.message || error.description)}\`,
 
     'external.calendar':
       \`⚠️ Atenção, \${businessName}.\\n\\nUm agendamento pode ter sido salvo no sistema, mas houve falha ao sincronizar com o calendário. Verifique se a agenda externa precisa ser atualizada manualmente.\`

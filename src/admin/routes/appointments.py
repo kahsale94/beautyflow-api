@@ -8,14 +8,12 @@ from fastapi.responses import JSONResponse
 
 from src.schemas import AppointmentCreate, AppointmentUpdate, ScheduleBlockCreate
 from src.utils import form_bool, form_decimal, form_int, form_value, local_datetime_from_form
-from src.dependecies import (AppointmentReminderServiceDep, AppointmentServiceDep, BusinessServiceDep,
-    ClientServiceDep, ProfessionalServiceDep, ProfessionalServiceLinkServiceDep,
-    ScheduleBlockServiceDep, ServiceServiceDep,
+from src.dependecies import (AppointmentReminderServiceDep, AppointmentServiceDep, BusinessServiceDep, ClientServiceDep,
+    ProfessionalServiceDep, ProfessionalServiceLinkServiceDep, ScheduleBlockServiceDep, ServiceServiceDep,
 )
-from src.services.appointment_service import (AppointmentAlreadyCanceledError, AppointmentAlreadyCompletedError,
-    AppointmentBlockedByScheduleBlockError, AppointmentNotFoundError, AppointmentTimeConflictError, ClientNotFoundError,
-    AppointmentConfirmationPendingError, DatetimeFormatError, ProfessionalNotAvailableError,
-    ProfessionalServiceMismatchError, ServiceNotAvailableError,
+from src.services.appointment_service import (AppointmentAlreadyCanceledError, AppointmentAlreadyCompletedError, AppointmentBlockedByScheduleBlockError,
+    AppointmentNotFoundError, AppointmentTimeConflictError, ClientNotFoundError, AppointmentConfirmationPendingError, DatetimeFormatError,
+    ProfessionalNotAvailableError, ProfessionalServiceMismatchError, ServiceNotAvailableError,
 )
 from src.services.schedule_block_service import (ScheduleBlockAlreadyCanceledError, ScheduleBlockAppointmentConflictError,
     ScheduleBlockInvalidBusinessTimezoneError, ScheduleBlockInvalidDatetimeError, ScheduleBlockInvalidDurationError,

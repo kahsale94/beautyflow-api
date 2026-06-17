@@ -1,7 +1,7 @@
 from .user_schema import UserCreate, UserResponse, UserUpdate
 from .client_schema import ClientCreate, ClientResponse, ClientUpdate
 from .service_schema import ServiceCreate, ServiceResponse, ServiceUpdate
-from .business_schema import BusinessCreate, BusinessResponse, BusinessUpdate
+from .business_schema import BusinessCreate, BusinessOpeningHourCreate, BusinessOpeningHourResponse, BusinessResponse, BusinessUpdate
 from .appointment_schema import AppointmentCreate, AppointmentResponse, AppointmentUpdate
 from .appointment_reminder_schema import (
     AppointmentReminderClaimRequest,

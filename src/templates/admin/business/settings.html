@@ -131,6 +131,40 @@
         </div>
     </section>
 
+    <section class="card settings-card stack weekly-schedule-card" data-weekly-schedule-panel data-schedule-kind="business">
+        <div class="schedule-panel-header">
+            <h2 class="section-title">Horário de Funcionamento</h2>
+            <div class="schedule-actions">
+                <button class="button secondary small" type="button" data-schedule-select-all>Todos os dias da semana</button>
+                <button class="button secondary small" type="button" data-schedule-copy-first>Mesmo horário para todos os dias</button>
+            </div>
+        </div>
+
+        <div class="availability-grid">
+            {% for weekday, label in weekdays %}
+            {% set item = opening_hours_by_weekday.get(weekday) %}
+            <div class="availability-row weekly-schedule-row{% if not item %} is-inactive{% endif %}"
+                data-schedule-row data-schedule-label="{{ label }}">
+                <label class="availability-enabled">
+                    <input type="checkbox" name="business_weekday_{{ weekday }}_enabled" data-schedule-enabled
+                        {% if item %}checked{% endif %} />
+                    <span>{{ label }}</span>
+                </label>
+                <label class="time-field">
+                    <span>Início</span>
+                    <input type="time" name="business_weekday_{{ weekday }}_start" data-schedule-start
+                        value="{{ item.start_time.strftime('%H:%M') if item else '09:00' }}" />
+                </label>
+                <label class="time-field">
+                    <span>Fim</span>
+                    <input type="time" name="business_weekday_{{ weekday }}_end" data-schedule-end
+                        value="{{ item.end_time.strftime('%H:%M') if item else '18:00' }}" />
+                </label>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
     <div class="settings-actions">
         <button class="button primary" type="submit">Salvar empresa</button>
     </div>

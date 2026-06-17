@@ -13,6 +13,7 @@ window.initializeAdminDateTimePickers = function (root = document) {
             locale: window.flatpickr.l10ns && window.flatpickr.l10ns.pt ? window.flatpickr.l10ns.pt : undefined,
             dateFormat: 'Y-m-d\\TH:i',
             altInput: true,
+            altInputClass: 'datetime-picker-input',
             altFormat: 'd/m/Y H:i',
             minuteIncrement: minuteIncrement,
             minDate: input.getAttribute('min') || undefined,

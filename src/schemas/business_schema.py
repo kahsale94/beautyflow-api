@@ -1,11 +1,12 @@
 import re
-from datetime import datetime
+from datetime import datetime, time
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import BaseModel, ConfigDict, field_validator, Field, EmailStr
+from pydantic import BaseModel, ConfigDict, field_validator, Field, EmailStr, model_validator
 
 from .base_schema import name_type, phone_type
 from src.models.business_model import BusinessType
+
 
 def validate_slug_value(value: str | None) -> str | None:
     if value is None:
@@ -28,6 +29,7 @@ class BusinessCreate(BaseModel):
     city: str | None = None
     state: str | None = None
     description: str | None = None
+    opening_hours: list["BusinessOpeningHourCreate"] = Field(default_factory=list)
 
     booking_enabled: bool = True
     slot_interval_minutes: int = Field(default=15, gt=0, le=240)
@@ -64,6 +66,7 @@ class BusinessUpdate(BaseModel):
     city: str | None = None
     state: str | None = None
     description: str | None = None
+    opening_hours: list["BusinessOpeningHourCreate"] | None = None
 
     booking_enabled: bool | None = None
     slot_interval_minutes: int | None = Field(default=None, gt=0, le=240)
@@ -91,6 +94,26 @@ class BusinessUpdate(BaseModel):
     def validate_slug(cls, value: str | None) -> str | None:
         return validate_slug_value(value)
 
+class BusinessOpeningHourCreate(BaseModel):
+    weekday: int = Field(ge=0, le=6)
+    start_time: time
+    end_time: time
+
+    @model_validator(mode="after")
+    def validate_time_range(self):
+        if self.start_time >= self.end_time:
+            raise ValueError("Horário inicial deve ser menor que o horário final.")
+
+        return self
+
+class BusinessOpeningHourResponse(BaseModel):
+    business_id: int
+    weekday: int = Field(ge=0, le=6)
+    start_time: time
+    end_time: time
+
+    model_config = ConfigDict(from_attributes=True)
+
 class BusinessResponse(BaseModel):
     id: int
     name: name_type
@@ -106,6 +129,7 @@ class BusinessResponse(BaseModel):
     city: str | None = None
     state: str | None = None
     description: str | None = None
+    opening_hours: list[BusinessOpeningHourResponse] = Field(default_factory=list)
 
     booking_enabled: bool
     slot_interval_minutes: int

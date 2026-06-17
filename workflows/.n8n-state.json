@@ -1,8 +1,8 @@
 {
   "workflows": {
     "HH6KPg5oLoi1L6IG": {
-      "lastSyncedHash": "4df86b8e5fee17f393f2ca974b20c53aea3f3315ab16de1af48f9d57cfb2fdb1",
-      "lastSyncedAt": "2026-06-15T19:26:34.896Z",
+      "lastSyncedHash": "ca91ad14bd91f630bdf12e74edc1d2a759cea3ccfd6c679befcfd71c828e610e",
+      "lastSyncedAt": "2026-06-16T22:08:57.792Z",
       "filename": "main agent_HH6KPg5o.workflow.ts"
     },
     "p2z28Yex6r93HRT0": {
@@ -26,13 +26,13 @@
       "filename": "services.workflow.ts"
     },
     "bWdz3xBVwmycvfwW": {
-      "lastSyncedHash": "463098ba0bfac174286a719e57ef6a42fab3e45447d13894fad23a46e70f0702",
-      "lastSyncedAt": "2026-06-15T19:25:10.910Z",
+      "lastSyncedHash": "3e43cdcb483e48590ce5c9bd57454c4eef72a0aa5b9f8f53dc71f58e37d6eaad",
+      "lastSyncedAt": "2026-06-16T22:08:47.628Z",
       "filename": "error.workflow.ts"
     },
     "fI4FYgDFzKREs8oI": {
-      "lastSyncedHash": "e85ca91b08f387ebf789c1a553155a3d7abedfbb37f05b1d77ebefd13953872d",
-      "lastSyncedAt": "2026-06-15T19:25:08.017Z",
+      "lastSyncedHash": "f072a2bec302abfcda864ae077f513a2060c19eaa067e8e692a00456b6338581",
+      "lastSyncedAt": "2026-06-17T12:52:17.723Z",
       "filename": "businesses.workflow.ts"
     },
     "2BBY2GXe0CWMszlt": {

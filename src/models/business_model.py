@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from .schedule_block_model import ScheduleBlock
     from .integration_model import Integration
     from .professional_model import Professional
+    from .business_opening_hour_model import BusinessOpeningHour
     from .appointment_reminder_model import AppointmentReminder
     from .business_integration_model import BusinessIntegration
     from .evolution_instance_model import EvolutionInstance
@@ -61,6 +62,11 @@ class Business(Base):
     appointments: Mapped[list["Appointment"]] = relationship(back_populates="business", cascade="all, delete-orphan")
     appointment_reminders: Mapped[list["AppointmentReminder"]] = relationship(back_populates="business", cascade="all, delete-orphan")
     schedule_blocks: Mapped[list["ScheduleBlock"]] = relationship(back_populates="business", cascade="all, delete-orphan")
+    opening_hours: Mapped[list["BusinessOpeningHour"]] = relationship(
+        back_populates="business",
+        cascade="all, delete-orphan",
+        order_by="BusinessOpeningHour.weekday",
+    )
     professionals: Mapped[list["Professional"]] = relationship(back_populates="business", cascade="all, delete-orphan")
     services: Mapped[list["Service"]] = relationship(back_populates="business", cascade="all, delete-orphan")
     users: Mapped[list["User"]] = relationship(back_populates="business", cascade="all, delete-orphan")

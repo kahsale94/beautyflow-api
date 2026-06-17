@@ -41,22 +41,43 @@
     </form>
 </section>
 
-<section class="card">
-    <h2>Disponibilidade semanal</h2>
+<section class="card weekly-schedule-card" data-weekly-schedule-panel data-schedule-kind="professional">
+    <div class="schedule-panel-header">
+        <h2>Disponibilidade semanal</h2>
+        <div class="schedule-actions">
+            <button class="button secondary small" type="button" data-schedule-select-all>Todos os dias da semana</button>
+            <button class="button secondary small" type="button" data-schedule-copy-first>Mesmo horário para todos os dias</button>
+        </div>
+    </div>
     <form method="post" action="/admin/professionals/{{ professional.id }}/availability" class="stack">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
         <div class="availability-grid">
-            {% for weekday, label in weekdays %} {% set item =
-            availability_by_weekday.get(weekday) %}
-            <div class="availability-row">
+            {% for weekday, label in weekdays %}
+            {% set item = availability_by_weekday.get(weekday) %}
+            {% set company_item = opening_hours_by_weekday.get(weekday) %}
+            <div class="availability-row weekly-schedule-row with-follow{% if not item %} is-inactive{% endif %}"
+                data-schedule-row data-schedule-label="{{ label }}"
+                data-company-start="{{ company_item.start_time.strftime('%H:%M') if company_item else '' }}"
+                data-company-end="{{ company_item.end_time.strftime('%H:%M') if company_item else '' }}">
                 <label class="availability-enabled">
-                    <input type="checkbox" name="weekday_{{ weekday }}_enabled" {% if item %}checked{% endif %} />
-                    {{ label }}
+                    <input type="checkbox" name="weekday_{{ weekday }}_enabled" data-schedule-enabled
+                        {% if item %}checked{% endif %} />
+                    <span>{{ label }}</span>
                 </label>
-                <input type="time" name="weekday_{{ weekday }}_start"
-                    value="{{ item.start_time.strftime('%H:%M') if item else '09:00' }}" />
-                <input type="time" name="weekday_{{ weekday }}_end"
-                    value="{{ item.end_time.strftime('%H:%M') if item else '18:00' }}" />
+                <label class="availability-follow">
+                    <input type="checkbox" data-follow-business-hours />
+                    <span>Seguir horário de funcionamento da empresa</span>
+                </label>
+                <label class="time-field">
+                    <span>Início</span>
+                    <input type="time" name="weekday_{{ weekday }}_start" data-schedule-start
+                        value="{{ item.start_time.strftime('%H:%M') if item else '09:00' }}" />
+                </label>
+                <label class="time-field">
+                    <span>Fim</span>
+                    <input type="time" name="weekday_{{ weekday }}_end" data-schedule-end
+                        value="{{ item.end_time.strftime('%H:%M') if item else '18:00' }}" />
+                </label>
             </div>
             {% endfor %}
         </div>

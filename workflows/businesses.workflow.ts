@@ -562,7 +562,8 @@ return output;`,
 
       delay_policies: \`Em caso de atraso, recomendamos que o cliente avise o estabelecimento o quanto antes. A tolerância para atrasos é de até \${lateToleranceMinutes} minutos. Após esse período, o atendimento poderá ser remarcado ou cancelado conforme disponibilidade da agenda.\`,
 
-      ...n8nConfig
+      ...n8nConfig,
+      opening_hours: business.opening_hours || n8nConfig.opening_hours || ''
     };
   })()
 }}`,

@@ -11,6 +11,7 @@ from src.services.availability_service import (ProfessionalNotFoundError, Invali
     BusinessNotAvailableForBookingError,
 )
 
+
 router = APIRouter(prefix="/availabilities", tags=["V1 ➔ Availabilities"])
 
 @router.post("/check-and-suggest", response_model=AvailabilityCheckAndSuggestResponse)

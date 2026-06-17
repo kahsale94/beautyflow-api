@@ -73,6 +73,12 @@ def test_appointment_create_and_update_reuse_business_booking_rules():
     assert "Horário excede a janela máxima" in route_source
     assert "Horário não está alinhado" in route_source
 
+def test_appointment_validation_uses_saved_availability_hours():
+    service_source = read_source("src/services/appointment_service.py")
+
+    assert "availability.start_time <= start_time" in service_source
+    assert "end_time <= availability.end_time" in service_source
+
 def test_update_appointment_rejects_null_required_fields():
     source = read_source("src/services/appointment_service.py")
 
