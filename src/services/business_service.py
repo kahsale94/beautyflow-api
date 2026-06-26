@@ -5,11 +5,13 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
 from src.core import DataBaseDep
+from src.clients import CepLookupError, lookup_cep
 from src.models import Business, BusinessOpeningHour
 from src.utils import normalize_phone, normalize_text
 from src.schemas import BusinessCreate, BusinessUpdate
 from src.repositories import AppointmentReminderRepository, BusinessRepository
 from src.services.appointment_reminder_service import AppointmentReminderService
+from src.services.redis_cache_invalidator import RedisCacheInvalidator
 
 class BusinessNotFoundError(Exception):
     pass
@@ -25,10 +27,12 @@ class BusinessService:
         db: Session,
         business_repo: BusinessRepository,
         appointment_reminder_service: AppointmentReminderService | None = None,
+        cache_invalidator: RedisCacheInvalidator | None = None,
     ):
         self.db = db
         self.business_repo = business_repo
         self.appointment_reminder_service = appointment_reminder_service
+        self.cache_invalidator = cache_invalidator or RedisCacheInvalidator()
 
     def _get_valid(self, business_id: int):
         business = self.business_repo.get_by_id(self.db, business_id)
@@ -131,18 +135,29 @@ class BusinessService:
                     )
                 )
 
+    def _validate_cep_if_present(self, cep: str | None) -> None:
+        if not cep:
+            return
+
+        try:
+            lookup_cep(cep)
+        except CepLookupError as exc:
+            raise ValueError(str(exc) or "CEP inválido.") from exc
+
     def create(self, data: BusinessCreate):
-        phone = normalize_phone(data.phone)
-        if not phone:
+        if not data.phone:
             raise ValueError("Telefone da empresa é obrigatório")
 
+        phone = normalize_phone(data.phone)
         slug = data.slug or self._generate_unique_slug(data.name)
         opening_hours = self._normalize_opening_hour_items(data.opening_hours)
+        self._validate_cep_if_present(data.cep)
 
         business = Business(
             name = data.name,
             slug = slug,
             type = data.type,
+            attendance_plan = data.attendance_plan,
             timezone = data.timezone,
             phone = phone,
             email = str(data.email) if data.email else None,
@@ -176,15 +191,20 @@ class BusinessService:
             raise BusinessAlreadyExistsError()
 
         self.db.refresh(business)
+        self.cache_invalidator.invalidate_business_context(business.phone)
 
         return business
 
     def update(self, business_id: int, data: BusinessUpdate):
         business = self._get_valid(business_id)
+        previous_phone = getattr(business, "phone", None)
 
         update_data = data.model_dump(exclude_unset=True)
         opening_hours = update_data.pop("opening_hours", None)
+        cep = update_data.pop("cep", None)
         previous_cancel_limit_hours = getattr(business, "cancel_limit_hours", None)
+
+        self._validate_cep_if_present(cep)
 
         if update_data.get("slug") is None:
             update_data.pop("slug", None)
@@ -220,15 +240,24 @@ class BusinessService:
             raise BusinessAlreadyExistsError()
 
         self.db.refresh(business)
+        if previous_phone:
+            self.cache_invalidator.invalidate_business_context(previous_phone)
+
+        current_phone = getattr(business, "phone", None)
+        if current_phone and current_phone != previous_phone:
+            self.cache_invalidator.invalidate_business_context(current_phone)
 
         return business
 
     def deactivate(self, business_id: int):
         business = self._get_valid(business_id)
+        previous_phone = getattr(business, "phone", None)
 
         business.is_active = False
 
         self.db.commit()
+        if previous_phone:
+            self.cache_invalidator.invalidate_business_context(previous_phone)
 
         return
 
@@ -240,4 +269,5 @@ def get_business_service(db: DataBaseDep):
         db,
         BusinessRepository(),
         AppointmentReminderService(db, AppointmentReminderRepository()),
+        RedisCacheInvalidator(),
     )

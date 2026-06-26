@@ -165,7 +165,7 @@ def test_admin_modal_exposes_reminder_status_and_manual_send():
 
 
 def test_appointments_workflow_claims_and_sends_reminders():
-    workflow_source = read_source("workflows/appointments.workflow.ts")
+    workflow_source = read_source("workflows/appointments-prod.workflow.ts")
 
     assert "ReminderSchedule" in workflow_source
     assert "ClaimReminders" in workflow_source
@@ -178,5 +178,6 @@ def test_appointments_workflow_claims_and_sends_reminders():
     assert "split reminder claims" in workflow_source
     assert "/sent" in workflow_source
     assert "/failed" in workflow_source
-    assert "N8N_BEAUTY_FLOW_API_TOKEN" in workflow_source
+    assert "httpBearerAuth" in workflow_source
+    assert "n8n beautyflow token - prod" in workflow_source
     assert "Evolution Credential - Kaiky" in workflow_source

@@ -1,7 +1,7 @@
 import { workflow, node, links } from '@n8n-as-code/transformer';
 
 // <workflow-map>
-// Workflow : businesses
+// Workflow : businesses-prod
 // Nodes   : 15  |  Connections: 18
 //
 // NODE INDEX
@@ -52,9 +52,10 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 
 @workflow({
     id: 'fI4FYgDFzKREs8oI',
-    name: 'businesses',
+    name: 'businesses-prod',
     active: true,
     isArchived: false,
+    projectId: 'UVYVLJNFC5m6HlJG',
     tags: ['Kaiky', 'beautyflow-api'],
     settings: {
         executionOrder: 'v1',
@@ -63,10 +64,10 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
         errorWorkflow: 'bWdz3xBVwmycvfwW',
         timezone: 'America/Sao_Paulo',
         callerPolicy: 'workflowsFromSameOwner',
-        availableInMCP: false,
+        availableInMCP: true,
     },
 })
-export class BusinessesWorkflow {
+export class BusinessesProdWorkflow {
     // =====================================================================
     // CONFIGURATION DES NOEUDS
     // =====================================================================
@@ -163,7 +164,19 @@ export class BusinessesWorkflow {
             conditions: [
                 {
                     id: 'c4e5d140-889f-451a-ada6-7fc14c1a90e7',
-                    leftValue: "={{ $('get context').item.json.business }}",
+                    leftValue: `={{
+(() => {
+  const raw = $('get context').item.json.business;
+  if (!raw) return '';
+
+  try {
+    const business = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    return business?.cache_version === 2 ? 'valid' : '';
+  } catch (error) {
+    return '';
+  }
+})()
+}}`,
                     rightValue: '',
                     operator: {
                         type: 'string',
@@ -184,7 +197,7 @@ export class BusinessesWorkflow {
         type: 'n8n-nodes-base.redis',
         version: 1,
         position: [-224, 0],
-        credentials: { redis: { id: 'zMk8tatRFuFo6wmp', name: 'beautyflow' } },
+        credentials: { redis: { id: 'zMk8tatRFuFo6wmp', name: 'beautyflow prod' } },
         onError: 'continueErrorOutput',
     })
     GetContext = {
@@ -249,7 +262,7 @@ return output;`,
         type: 'n8n-nodes-base.redis',
         version: 1,
         position: [1328, 272],
-        credentials: { redis: { id: 'zMk8tatRFuFo6wmp', name: 'beautyflow' } },
+        credentials: { redis: { id: 'zMk8tatRFuFo6wmp', name: 'beautyflow prod' } },
         onError: 'continueErrorOutput',
     })
     PushContext = {
@@ -278,7 +291,8 @@ return output;`,
             mappingMode: 'defineBelow',
             value: {
                 error: `={{ {
-  id: $execution.id,
+  workflow: $workflow.id,
+  execution: $execution.id,
   type: "internal.redis.context",
   node: $prevNode.name,
     code: $json.error.status || '',
@@ -294,15 +308,16 @@ return output;`,
 } }}
 `,
                 business: `={{ {
-    id: $('data handler').item.json.id || '',
-    name: $('data handler').item.json.name || '',
-    phone: $('data handler').item.json.business.phone || ''
+  id: $('data handler').first().json.business?.id || '',
+  name: $('data handler').first().json.business?.name || '',
+  phone: $('data handler').first().json.business?.phone || ''
 } }}`,
                 client: `={{ {
-  remote_jid: $('data handler').item.json.client.remote_jid || '',
-  message_id: $('data handler').item.json.message.id || '',
-  message_text: $('data handler').item.json.message.text || ''
+  remote_jid: $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '',
+  message_id: $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '',
+  message_text: $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || ''
 } }}`,
+                api: "={{ $('data handler').first().json.api || {} }}",
             },
             matchingColumns: [],
             schema: [
@@ -329,6 +344,16 @@ return output;`,
                 {
                     id: 'client',
                     displayName: 'client',
+                    required: false,
+                    defaultMatch: false,
+                    display: true,
+                    canBeUsedToMatch: true,
+                    type: 'object',
+                    removed: false,
+                },
+                {
+                    id: 'api',
+                    displayName: 'api',
                     required: false,
                     defaultMatch: false,
                     display: true,
@@ -373,14 +398,19 @@ return output;`,
 }}"
   },
   "business": {
-    "id": "{{ $('data handler').item.json.id || '' }}",
-    "name": "{{ $('data handler').item.json.name || '' }}",
-    "phone": "{{ $('data handler').item.json.business.phone || '' }}"
+    "id": "{{ $('data handler').first().json.business?.id || '' }}",
+    "name": "{{ $('data handler').first().json.business?.name || '' }}",
+    "phone": "{{ $('data handler').first().json.business?.phone || '' }}"
   },
   "client": {
-    "remote_jid": "{{ $('data handler').item.json.client.remote_jid || '' }}",
-    "message_id": "{{ $('data handler').item.json.message.id || '' }}",
-    "message_text": "{{ $('data handler').item.json.message.text || '' }}"
+    "remote_jid": "{{ $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '' }}",
+    "message_id": "{{ $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '' }}",
+    "message_text": "{{ $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || '' }}"
+  },
+  "api": {
+    "url": "{{ $('data handler').first().json.api?.url || '' }}",
+    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,
     };
@@ -421,15 +451,16 @@ return output;`,
 } }}
 `,
                 business: `={{ {
-    id: $('data handler').item.json.id || '',
-    name: $('data handler').item.json.name || '',
-    phone: $('data handler').item.json.business.phone || ''
+  id: $('data handler').first().json.business?.id || '',
+  name: $('data handler').first().json.business?.name || '',
+  phone: $('data handler').first().json.business?.phone || ''
 } }}`,
                 client: `={{ {
-  remote_jid: $('data handler').item.json.client.remote_jid || '',
-  message_id: $('data handler').item.json.message.id || '',
-  message_text: $('data handler').item.json.message.text || ''
+  remote_jid: $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '',
+  message_id: $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '',
+  message_text: $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || ''
 } }}`,
+                api: "={{ $('data handler').first().json.api || {} }}",
             },
             matchingColumns: [],
             schema: [
@@ -456,6 +487,16 @@ return output;`,
                 {
                     id: 'client',
                     displayName: 'client',
+                    required: false,
+                    defaultMatch: false,
+                    display: true,
+                    canBeUsedToMatch: true,
+                    type: 'object',
+                    removed: false,
+                },
+                {
+                    id: 'api',
+                    displayName: 'api',
                     required: false,
                     defaultMatch: false,
                     display: true,
@@ -563,6 +604,17 @@ return output;`,
       delay_policies: \`Em caso de atraso, recomendamos que o cliente avise o estabelecimento o quanto antes. A tolerância para atrasos é de até \${lateToleranceMinutes} minutos. Após esse período, o atendimento poderá ser remarcado ou cancelado conforme disponibilidade da agenda.\`,
 
       ...n8nConfig,
+      cache_version: 2,
+      attendance_plan: business.attendance_plan || n8nConfig.attendance_plan || 'business_hours',
+      business_is_open: Boolean(business.business_is_open),
+      attendance_allowed: Boolean(business.attendance_allowed),
+      attendance_block_reason: business.attendance_block_reason || null,
+      attendance_status: business.attendance_status || {
+        plan: business.attendance_plan || n8nConfig.attendance_plan || 'business_hours',
+        business_is_open: Boolean(business.business_is_open),
+        allowed: Boolean(business.attendance_allowed),
+        block_reason: business.attendance_block_reason || null
+      },
       opening_hours: business.opening_hours || n8nConfig.opening_hours || ''
     };
   })()
@@ -602,14 +654,19 @@ return output;`,
 }}"
   },
   "business": {
-    "id": "{{ $('data handler').item.json.id || '' }}",
-    "name": "{{ $('data handler').item.json.name || '' }}",
-    "phone": "{{ $('data handler').item.json.business.phone || '' }}"
+    "id": "{{ $('data handler').first().json.business?.id || '' }}",
+    "name": "{{ $('data handler').first().json.business?.name || '' }}",
+    "phone": "{{ $('data handler').first().json.business?.phone || '' }}"
   },
   "client": {
-    "remote_jid": "{{ $('data handler').item.json.client.remote_jid || '' }}",
-    "message_id": "{{ $('data handler').item.json.message.id || '' }}",
-    "message_text": "{{ $('data handler').item.json.message.text || '' }}"
+    "remote_jid": "{{ $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '' }}",
+    "message_id": "{{ $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '' }}",
+    "message_text": "{{ $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || '' }}"
+  },
+  "api": {
+    "url": "{{ $('data handler').first().json.api?.url || '' }}",
+    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,
     };

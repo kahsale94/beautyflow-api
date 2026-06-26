@@ -240,19 +240,40 @@ The global key must stay in environment variables only.
 
 ## n8n Workflows
 
-The nine Beautyflow workflows are versioned in `workflows/`:
+Beautyflow workflows are versioned in `workflows/` as production/staging pairs,
+plus one staging-only test workflow. The repository currently tracks 21 local
+workflow files:
 
-| Workflow | Responsibility |
+| Workflow files | Responsibility |
 | --- | --- |
-| `main agent` | Webhook intake, memory, agent, and tool routing |
-| `businesses` | Business context and configuration |
-| `clients` | Client identification and maintenance |
-| `professionals` | Professional lookup and selection |
-| `services` | Service lookup and selection |
-| `availabilities` | Slot checks and suggestions |
-| `appointments` | Appointment creation and maintenance |
-| `pending state` | Intermediate conversation state |
-| `error` | n8n failures and backend error reports |
+| `main-prod`, `main-staging` | Webhook intake, memory, agent, and tool routing |
+| `businesses-prod`, `businesses-staging` | Business context and configuration |
+| `clients-prod`, `clients-staging` | Client identification and maintenance |
+| `professionals-prod`, `professionals-staging` | Professional lookup and selection |
+| `services-prod`, `services-staging` | Service lookup and selection |
+| `availabilities-prod`, `availabilities-staging` | Slot checks and suggestions |
+| `appointments-prod`, `appointments-staging` | Appointment creation, reminders, and maintenance |
+| `pending state-prod`, `pending state-staging` | Intermediate conversation state |
+| `cache-cleanup-prod`, `cache-cleanup-staging` | Redis/conversation state cleanup |
+| `error-prod`, `error-staging` | n8n failures and backend error reports |
+| `test-staging` | Staging-only workflow test surface |
+
+Production and staging are not expected to be byte-identical in every case:
+
+- `main-staging` includes group-message test behavior and group participant
+  lookup, while `main-prod` rejects group JIDs for the production WhatsApp
+  intake path.
+- `clients-prod` contains additional pending-state protection that is
+  production-only robustness.
+- Static validation warns for `n8n-nodes-evolution-api` community nodes because
+  their schemas are not available to `n8nac`; those nodes still require runtime
+  credential and execution testing in n8n.
+
+As of the production-readiness audit on 2026-06-26, `npx --yes n8nac list`
+reported all 21 Beautyflow workflow files as tracked with zero conflicts. It
+also reported 13 remote-only workflows in the same n8n project; those are
+outside the Beautyflow tracked set and should remain untouched unless they are
+intentionally adopted or removed.
 
 ### n8n Prerequisites
 

@@ -307,7 +307,7 @@ def test_admin_and_workflow_use_instance_based_onboarding_contract():
         encoding="utf-8",
     ).read()
     workflow = open(
-        "workflows/main agent_HH6KPg5o.workflow.ts",
+        "workflows/main-prod.workflow.ts",
         encoding="utf-8",
     ).read()
 

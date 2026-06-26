@@ -354,10 +354,156 @@ function initializeBusinessExternalOptions() {
             citySelect.value = '';
             loadCities();
         });
+
+        document.addEventListener('business:cep-location', async function (event) {
+            const detail = event instanceof CustomEvent ? event.detail || {} : {};
+            const state = String(detail.state || '').trim().toUpperCase();
+            const city = String(detail.city || '').trim();
+
+            if (state) {
+                if (!Array.from(stateSelect.options).some(function (option) { return option.value === state; })) {
+                    const option = document.createElement('option');
+                    option.value = state;
+                    option.textContent = state;
+                    stateSelect.appendChild(option);
+                }
+                stateSelect.value = state;
+                stateSelect.dataset.currentValue = state;
+            }
+
+            if (city) {
+                citySelect.dataset.currentValue = city;
+            }
+
+            await loadCities();
+
+            if (city) {
+                citySelect.value = city;
+                citySelect.dataset.currentValue = city;
+            }
+        });
     }
 
     loadTimezones();
     loadStates();
+}
+
+function initializeBusinessCepLookup() {
+    const form = document.querySelector('[data-business-settings-form]');
+    const cepInput = document.querySelector('[data-business-cep]');
+    const streetInput = document.querySelector('[data-business-address-street]');
+    const messageElement = document.querySelector('[data-business-cep-message]');
+
+    if (!(form instanceof HTMLFormElement)) return;
+    if (!(cepInput instanceof HTMLInputElement)) return;
+
+    let lookupController = null;
+
+    function cepDigits(value) {
+        return String(value || '').replace(/\D/g, '').slice(0, 8);
+    }
+
+    function formatCep(value) {
+        const digits = cepDigits(value);
+        if (digits.length <= 5) return digits;
+        return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+    }
+
+    function setCepStatus(status, message) {
+        cepInput.dataset.cepStatus = status;
+        if (messageElement instanceof HTMLElement) {
+            messageElement.textContent = message || '';
+            messageElement.classList.toggle('error', status === 'error');
+            messageElement.classList.toggle('success', status === 'success');
+        }
+    }
+
+    async function lookupCep(digits) {
+        if (lookupController) lookupController.abort();
+
+        lookupController = new AbortController();
+        setCepStatus('loading', 'Consultando CEP...');
+
+        try {
+            const response = await window.fetch(`/admin/business/cep/${encodeURIComponent(digits)}`, {
+                headers: { 'Accept': 'application/json' },
+                credentials: 'same-origin',
+                signal: lookupController.signal,
+            });
+
+            let payload = {};
+            try {
+                payload = await response.json();
+            } catch (error) {
+                payload = {};
+            }
+
+            if (!response.ok) {
+                throw new Error(payload.detail || 'Não foi possível consultar o CEP.');
+            }
+
+            cepInput.dataset.validCep = digits;
+            cepInput.value = payload.cep || formatCep(digits);
+
+            if (payload.street && streetInput instanceof HTMLInputElement) {
+                streetInput.value = payload.street;
+            }
+
+            document.dispatchEvent(new CustomEvent('business:cep-location', {
+                detail: {
+                    city: payload.city || '',
+                    state: payload.state || '',
+                },
+            }));
+
+            setCepStatus('success', 'CEP válido. Preencha o número do estabelecimento.');
+        } catch (error) {
+            if (error instanceof DOMException && error.name === 'AbortError') return;
+            delete cepInput.dataset.validCep;
+            setCepStatus('error', error instanceof Error ? error.message : 'Não foi possível consultar o CEP.');
+        }
+    }
+
+    cepInput.addEventListener('input', function () {
+        const digits = cepDigits(cepInput.value);
+        cepInput.value = formatCep(digits);
+        delete cepInput.dataset.validCep;
+
+        if (!digits) {
+            setCepStatus('', '');
+            return;
+        }
+
+        if (digits.length < 8) {
+            setCepStatus('error', 'Digite os 8 números do CEP.');
+            return;
+        }
+
+        lookupCep(digits);
+    });
+
+    cepInput.addEventListener('blur', function () {
+        cepInput.value = formatCep(cepInput.value);
+    });
+
+    form.addEventListener('submit', function (event) {
+        const digits = cepDigits(cepInput.value);
+        if (!digits) return;
+
+        if (digits.length !== 8) {
+            event.preventDefault();
+            setCepStatus('error', 'Digite um CEP completo antes de salvar.');
+            cepInput.focus();
+            return;
+        }
+
+        if (cepInput.dataset.validCep !== digits) {
+            event.preventDefault();
+            setCepStatus('error', 'Valide o CEP antes de salvar.');
+            lookupCep(digits);
+            cepInput.focus();
+        }
+    });
 }
 
 function initializeEvolutionIntegrations() {
@@ -735,6 +881,7 @@ function initializeWeeklySchedulePanels() {
 document.addEventListener('DOMContentLoaded', function () {
     initializeAdminSidebar();
     initializeBusinessExternalOptions();
+    initializeBusinessCepLookup();
     initializeEvolutionIntegrations();
     initializeWeeklySchedulePanels();
     document.querySelectorAll('.flash').forEach(function (flash) {

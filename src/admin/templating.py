@@ -57,6 +57,9 @@ ADMIN_LABELS = {
     "barbershop": "Barbearia",
     "salon": "Salão de beleza",
     "clinic": "Clínica",
+    "business_hours": "Horário comercial",
+    "after_hours": "Fora do horário comercial",
+    "always": "24 horas",
 }
 
 templates = Jinja2Templates(directory="src/templates")

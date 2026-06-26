@@ -4,9 +4,10 @@ from pydantic import ValidationError
 from zoneinfo import available_timezones
 from fastapi import APIRouter, HTTPException, Query, Request
 
+from src.clients import CepLookupError, CepNotFoundError, CepServiceUnavailableError, lookup_cep_async
 from src.dependecies import BusinessServiceDep
-from src.models.business_model import BusinessType
-from src.utils import form_bool, form_int, form_value
+from src.models.business_model import BusinessAttendancePlan, BusinessType
+from src.utils import form_bool, form_int, form_value, join_address_number, split_address_number
 from src.schemas import BusinessOpeningHourCreate, BusinessUpdate
 from src.services.business_service import BusinessAlreadyExistsError, BusinessNotFoundError
 
@@ -123,16 +124,43 @@ async def business_city_options(session: AdminSessionDep, state: str = Query(...
     cities = await _fetch_ibge_options(f"cities:{uf}", f"estados/{uf}/municipios", _normalize_city_options)
     return {"items": cities}
 
+@router.get("/cep/{cep}")
+async def business_cep_options(cep: str, session: AdminSessionDep):
+    try:
+        result = await lookup_cep_async(cep)
+    except CepNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except CepServiceUnavailableError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except CepLookupError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc) or "CEP inválido.") from exc
+
+    if result is None:
+        raise HTTPException(status_code=400, detail="Informe um CEP válido.")
+
+    return {
+        "cep": result.formatted_cep,
+        "street": result.street,
+        "neighborhood": result.neighborhood,
+        "city": result.city,
+        "state": result.state,
+    }
+
 @router.get("")
 def business_settings_page(request: Request, service: BusinessServiceDep, session: AdminSessionDep):
     business = service.get_by_id(session.business_id)
     opening_hours_by_weekday = {item.weekday: item for item in business.opening_hours}
+    address_parts = split_address_number(business.address)
 
     return render(
         request,
         "admin/business/settings.html",
         {
             "business": business,
+            "business_address_parts": address_parts,
+            "business_attendance_plans": list(BusinessAttendancePlan),
             "business_types": list(BusinessType),
             "opening_hours_by_weekday": opening_hours_by_weekday,
         },
@@ -145,30 +173,57 @@ async def update_business_settings_action(request: Request, service: BusinessSer
     await validate_csrf(request)
     form = await request.form()
     try:
-        data = BusinessUpdate(
-            name=form_value(form, "name"),
-            slug=form_value(form, "slug"),
-            type=form_value(form, "type"),
-            timezone=form_value(form, "timezone"),
-            phone=form_value(form, "phone"),
-            email=form_value(form, "email"),
-            address=form_value(form, "address"),
-            city=form_value(form, "city"),
-            state=form_value(form, "state"),
-            description=form_value(form, "description"),
-            opening_hours=_opening_hours_from_form(form),
-            booking_enabled=form_bool(form, "booking_enabled"),
-            slot_interval_minutes=form_int(form, "slot_interval_minutes"),
-            minimum_notice_minutes=form_int(form, "minimum_notice_minutes"),
-            maximum_schedule_days=form_int(form, "maximum_schedule_days"),
-            allow_client_cancel=form_bool(form, "allow_client_cancel"),
-            cancel_limit_hours=form_int(form, "cancel_limit_hours"),
-            appointment_confirmation_required=form_bool(form, "appointment_confirmation_required"),
+        address = join_address_number(
+            form_value(form, "address_street"),
+            form_value(form, "address_number"),
         )
+        payload = {
+            "name": form_value(form, "name"),
+            "type": form_value(form, "type"),
+            "phone": form_value(form, "phone"),
+            "email": form_value(form, "email"),
+            "cep": form_value(form, "cep"),
+            "address": address,
+            "city": form_value(form, "city"),
+            "state": form_value(form, "state"),
+            "description": form_value(form, "description"),
+            "opening_hours": _opening_hours_from_form(form),
+            "booking_enabled": form_bool(form, "booking_enabled"),
+            "slot_interval_minutes": form_int(form, "slot_interval_minutes"),
+            "minimum_notice_minutes": form_int(form, "minimum_notice_minutes"),
+            "maximum_schedule_days": form_int(form, "maximum_schedule_days"),
+            "allow_client_cancel": form_bool(form, "allow_client_cancel"),
+            "cancel_limit_hours": form_int(form, "cancel_limit_hours"),
+            "appointment_confirmation_required": form_bool(form, "appointment_confirmation_required"),
+        }
+
+        if session.is_super_admin:
+            payload.update(
+                {
+                    "slug": form_value(form, "slug"),
+                    "timezone": form_value(form, "timezone"),
+                    "attendance_plan": form_value(form, "attendance_plan"),
+                }
+            )
+
+        data = BusinessUpdate(**payload)
         service.update(session.business_id, data)
 
-    except (ValidationError, ValueError):
-        return redirect_with_flash("/admin/business", "Dados inválidos. Verifique os campos da empresa.", "error", request=request)
+    except ValidationError:
+        return redirect_with_flash(
+            "/admin/business",
+            "Dados inválidos. Verifique os campos da empresa.",
+            "error",
+            request=request,
+        )
+
+    except ValueError as exc:
+        return redirect_with_flash(
+            "/admin/business",
+            str(exc) or "Dados inválidos. Verifique os campos da empresa.",
+            "error",
+            request=request,
+        )
     
     except BusinessNotFoundError:
         return redirect_with_flash("/admin/business", "Empresa não encontrada.", "error", request=request)

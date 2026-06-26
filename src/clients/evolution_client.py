@@ -7,14 +7,12 @@ import httpx
 class EvolutionConfigurationError(Exception):
     pass
 
-
 class EvolutionAPIError(Exception):
 
     def __init__(self, status_code: int, detail: str = ""):
         super().__init__(detail)
         self.status_code = status_code
         self.detail = detail
-
 
 class EvolutionClient:
 
@@ -38,13 +36,7 @@ class EvolutionClient:
         if not self.configured:
             raise EvolutionConfigurationError("Evolution API não configurada.")
 
-    async def _request(
-        self,
-        method: str,
-        path: str,
-        json: dict[str, Any] | None = None,
-        params: dict[str, str] | None = None,
-    ) -> Any:
+    async def _request(self, method: str, path: str, json: dict[str, Any] | None = None, params: dict[str, str] | None = None) -> Any:
         self._ensure_configured()
 
         async with httpx.AsyncClient(
@@ -98,12 +90,7 @@ class EvolutionClient:
     async def connection_state(self, instance_name: str) -> dict[str, Any]:
         return await self._request("GET", f"/instance/connectionState/{self._instance_path(instance_name)}")
 
-    async def fetch_instances(
-        self,
-        instance_name: str | None = None,
-        instance_id: str | None = None,
-        number: str | None = None,
-    ) -> Any:
+    async def fetch_instances(self, instance_name: str | None = None, instance_id: str | None = None, number: str | None = None) -> Any:
         params = {}
         if instance_name:
             params["instanceName"] = instance_name
@@ -118,13 +105,7 @@ class EvolutionClient:
         payload = await self._request("GET", "/")
         return payload if isinstance(payload, dict) else {}
 
-    async def set_webhook(
-        self,
-        instance_name: str,
-        webhook_url: str,
-        webhook_header: str,
-        webhook_secret: str,
-    ) -> dict[str, Any]:
+    async def set_webhook(self, instance_name: str, webhook_url: str, webhook_header: str, webhook_secret: str) -> dict[str, Any]:
         server_info = await self.server_info()
         version = str(server_info.get("version") or "")
         major_version = version.split(".", 1)[0]

@@ -1,8 +1,8 @@
 import { workflow, node, links } from '@n8n-as-code/transformer';
 
 // <workflow-map>
-// Workflow : services
-// Nodes   : 38  |  Connections: 49
+// Workflow : services-prod
+// Nodes   : 38  |  Connections: 53
 //
 // NODE INDEX
 // ──────────────────────────────────────────────────────────────────
@@ -32,11 +32,9 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 // ErrorReport21                      executeWorkflow
 // ErrorReport11                      stopAndError
 // ErrorReport2                       stopAndError
-// NoOperationDoNothing               noOp
 // ErrorReport22                      executeWorkflow
 // ErrorReport23                      executeWorkflow
 // ErrorReport24                      executeWorkflow
-// NoOperationDoNothing1              noOp
 // ErrorReport12                      stopAndError
 // ErrorReport                        executeWorkflow
 // ErrorReport1                       executeWorkflow
@@ -45,6 +43,8 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 // ServicesData                       set
 // Get                                if
 // Context                            set
+// Wait2                              merge
+// Wait1                              merge
 //
 // ROUTING MAP
 // ──────────────────────────────────────────────────────────────────
@@ -73,13 +73,15 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 //            → HasData1
 //              → Convert1
 //                → Aggregate1
-//                  → ServicesContext (↩ loop)
+//                  → Wait2
+//                    → ServicesContext (↩ loop)
+//              → Wait2.in(1) (↩ loop)
 //             .out(1) → GetById
 //                → Aggregate1 (↩ loop)
 //                → PushContext1
-//                  → NoOperationDoNothing1
+//                  → Wait2.in(1) (↩ loop)
 //                 .out(1) → ErrorReport24
-//                    → NoOperationDoNothing1 (↩ loop)
+//                    → Wait2.in(1) (↩ loop)
 //               .out(1) → ErrorReport12
 //           .out(1) → ErrorReport23
 //              → HasData1 (↩ loop)
@@ -87,12 +89,14 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 //            → HasData2
 //              → Convert2
 //                → Aggregate2
-//                  → ServicesContext (↩ loop)
+//                  → Wait1
+//                    → ServicesContext (↩ loop)
+//              → Wait1.in(1) (↩ loop)
 //             .out(1) → GetByName
 //                → PushContext2
-//                  → NoOperationDoNothing
+//                  → Wait1.in(1) (↩ loop)
 //                 .out(1) → ErrorReport22
-//                    → NoOperationDoNothing (↩ loop)
+//                    → Wait1.in(1) (↩ loop)
 //                → Context
 //                  → Aggregate2 (↩ loop)
 //               .out(1) → ErrorReport11
@@ -106,13 +110,14 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 
 @workflow({
     id: 'JUmgL8OgChZeJAWe',
-    name: 'services',
+    name: 'services-prod',
     active: true,
     isArchived: false,
+    projectId: 'UVYVLJNFC5m6HlJG',
     tags: ['Kaiky', 'beautyflow-api'],
     settings: {
         executionOrder: 'v1',
-        availableInMCP: false,
+        availableInMCP: true,
         binaryMode: 'separate',
         timeSavedMode: 'fixed',
         errorWorkflow: 'bWdz3xBVwmycvfwW',
@@ -120,17 +125,17 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
         callerPolicy: 'workflowsFromSameOwner',
     },
 })
-export class ServicesWorkflow {
+export class ServicesProdWorkflow {
     // =====================================================================
     // CONFIGURATION DES NOEUDS
     // =====================================================================
 
     @node({
-        id: '46f855f5-d422-43de-a65c-35d3c272c0f9',
+        id: 'b42f9ff2-1c18-4888-a371-61cc595b26bf',
         name: 'webhook',
         type: 'n8n-nodes-base.executeWorkflowTrigger',
         version: 1.1,
-        position: [96, 5456],
+        position: [0, 6624],
     })
     Webhook = {
         workflowInputs: {
@@ -161,11 +166,11 @@ export class ServicesWorkflow {
     };
 
     @node({
-        id: '19539fb4-66f8-4efe-ad6e-fe33dd6b158e',
+        id: '320b2bc0-4316-4a2d-b263-fd3f45834d63',
         name: 'data handler',
         type: 'n8n-nodes-base.set',
         version: 3.4,
-        position: [288, 5456],
+        position: [192, 6624],
     })
     DataHandler = {
         assignments: {
@@ -243,6 +248,12 @@ export class ServicesWorkflow {
                     type: 'object',
                 },
                 {
+                    id: '994090e2-5b08-4fac-bb5f-5ba48acbc67c',
+                    name: 'client',
+                    value: '={{ $json.client }}',
+                    type: 'object',
+                },
+                {
                     id: '1cb79adc-6592-4d1f-93c1-fe8d78d54465',
                     name: 'api',
                     value: `={{ {
@@ -257,11 +268,11 @@ export class ServicesWorkflow {
     };
 
     @node({
-        id: '77b7f8ea-444b-4f56-a2f0-77d6ff41c6a8',
+        id: '9229df91-597e-412e-8bec-e892e02ac9c4',
         name: 'get all',
         type: 'n8n-nodes-base.httpRequest',
         version: 4.3,
-        position: [848, 4384],
+        position: [752, 5552],
         onError: 'continueErrorOutput',
         alwaysOutputData: true,
     })
@@ -286,11 +297,11 @@ export class ServicesWorkflow {
     };
 
     @node({
-        id: '10c0c6c1-bfc5-4e8b-ac0f-c311f94efe7c',
+        id: '09919685-1fc3-4bb8-8588-88f6134be9d3',
         name: 'action',
         type: 'n8n-nodes-base.switch',
         version: 3.4,
-        position: [496, 5456],
+        position: [400, 6624],
     })
     Action = {
         rules: {
@@ -354,11 +365,11 @@ export class ServicesWorkflow {
     };
 
     @node({
-        id: '3f228433-850b-4278-860a-63f3f30f66cf',
+        id: '5ec9d316-8ab1-447b-a934-a1cdbbffc95b',
         name: 'get by name',
         type: 'n8n-nodes-base.httpRequest',
         version: 4.3,
-        position: [1536, 5632],
+        position: [1440, 6800],
         onError: 'continueErrorOutput',
     })
     GetByName = {
@@ -391,11 +402,11 @@ export class ServicesWorkflow {
     };
 
     @node({
-        id: '25920458-99e2-4098-99c4-02a775873e7d',
+        id: '14b48b83-be03-45c5-b395-fda376661274',
         name: 'get by id',
         type: 'n8n-nodes-base.httpRequest',
         version: 4.3,
-        position: [1536, 5184],
+        position: [1440, 6352],
         onError: 'continueErrorOutput',
     })
     GetById = {
@@ -413,12 +424,12 @@ export class ServicesWorkflow {
     };
 
     @node({
-        id: '29bf52af-80f3-485f-88d0-71805fae121b',
+        id: 'c4a6ea2b-0f02-46f2-8341-956b7cb110b9',
         name: 'get context',
         type: 'n8n-nodes-base.redis',
         version: 1,
-        position: [1328, 4672],
-        credentials: { redis: { id: 'zMk8tatRFuFo6wmp', name: 'beautyflow' } },
+        position: [1232, 5840],
+        credentials: { redis: { id: 'zMk8tatRFuFo6wmp', name: 'beautyflow prod' } },
         onError: 'continueErrorOutput',
     })
     GetContext = {
@@ -427,12 +438,12 @@ export class ServicesWorkflow {
     };
 
     @node({
-        id: 'a1d9d829-c1ad-4985-81d2-f8f9ed21902f',
+        id: '6a5f8208-7ac3-4c95-9269-d18acc0e3ad8',
         name: 'get context 1',
         type: 'n8n-nodes-base.redis',
         version: 1,
-        position: [912, 5056],
-        credentials: { redis: { id: 'zMk8tatRFuFo6wmp', name: 'beautyflow' } },
+        position: [816, 6224],
+        credentials: { redis: { id: 'zMk8tatRFuFo6wmp', name: 'beautyflow prod' } },
         onError: 'continueErrorOutput',
     })
     GetContext1 = {
@@ -441,11 +452,11 @@ export class ServicesWorkflow {
     };
 
     @node({
-        id: 'b9eec892-b70d-4025-816a-2cd15262acd4',
+        id: 'c8f2559a-c196-438d-a7cc-b1dd6abed1a7',
         name: 'has data? 1',
         type: 'n8n-nodes-base.if',
         version: 2.3,
-        position: [1328, 5040],
+        position: [1232, 6208],
     })
     HasData1 = {
         conditions: {
@@ -474,11 +485,11 @@ export class ServicesWorkflow {
     };
 
     @node({
-        id: 'd267e270-8498-4af9-a2ef-cb670512dba2',
+        id: '70acca7f-df84-4f5f-bf39-d882a16c52bd',
         name: 'has data? 2',
         type: 'n8n-nodes-base.if',
         version: 2.3,
-        position: [1328, 5488],
+        position: [1232, 6656],
     })
     HasData2 = {
         conditions: {
@@ -507,11 +518,11 @@ export class ServicesWorkflow {
     };
 
     @node({
-        id: 'da5e94b0-d371-452b-8203-2b43d000f38e',
+        id: '62b3eee9-068a-4277-b619-bfcb7e74be9a',
         name: 'aggregate 1',
         type: 'n8n-nodes-base.aggregate',
         version: 1,
-        position: [2016, 5024],
+        position: [1920, 6192],
     })
     Aggregate1 = {
         aggregate: 'aggregateAllItemData',
@@ -522,11 +533,11 @@ export class ServicesWorkflow {
     };
 
     @node({
-        id: '8bb5eab8-c7a4-4384-8d3d-c200921110ff',
+        id: '331dd4e3-1df1-4c03-9659-6b86d08ee986',
         name: 'aggregate 2',
         type: 'n8n-nodes-base.aggregate',
         version: 1,
-        position: [2144, 5472],
+        position: [2048, 6640],
     })
     Aggregate2 = {
         aggregate: 'aggregateAllItemData',
@@ -535,12 +546,12 @@ export class ServicesWorkflow {
     };
 
     @node({
-        id: '0aee0b6c-b9ea-47e3-b8aa-a447e659fb98',
+        id: '25d85559-3cb4-47e3-872f-e1203155b6e3',
         name: 'push context',
         type: 'n8n-nodes-base.redis',
         version: 1,
-        position: [2160, 4688],
-        credentials: { redis: { id: 'zMk8tatRFuFo6wmp', name: 'beautyflow' } },
+        position: [2064, 5856],
+        credentials: { redis: { id: 'zMk8tatRFuFo6wmp', name: 'beautyflow prod' } },
         onError: 'continueErrorOutput',
     })
     PushContext = {
@@ -556,12 +567,12 @@ export class ServicesWorkflow {
     };
 
     @node({
-        id: '9a359978-3774-4d84-810f-d0d28f4fc916',
+        id: '64d6434d-6828-4961-914f-b814b22a0a84',
         name: 'push context 1',
         type: 'n8n-nodes-base.redis',
         version: 1,
-        position: [1760, 5216],
-        credentials: { redis: { id: 'zMk8tatRFuFo6wmp', name: 'beautyflow' } },
+        position: [1664, 6384],
+        credentials: { redis: { id: 'zMk8tatRFuFo6wmp', name: 'beautyflow prod' } },
         onError: 'continueErrorOutput',
     })
     PushContext1 = {
@@ -577,12 +588,12 @@ export class ServicesWorkflow {
     };
 
     @node({
-        id: '1cadf296-4261-4adb-b05f-1ba50c193e93',
+        id: 'b3fa875b-bd1b-48ac-8ca9-107ffc46225c',
         name: 'push context 2',
         type: 'n8n-nodes-base.redis',
         version: 1,
-        position: [2144, 5696],
-        credentials: { redis: { id: 'zMk8tatRFuFo6wmp', name: 'beautyflow' } },
+        position: [2048, 6864],
+        credentials: { redis: { id: 'zMk8tatRFuFo6wmp', name: 'beautyflow prod' } },
         onError: 'continueErrorOutput',
         alwaysOutputData: false,
     })
@@ -599,22 +610,22 @@ export class ServicesWorkflow {
     };
 
     @node({
-        id: 'a8423948-0be0-465f-a69b-0a4146bae59c',
+        id: 'f20574b5-57af-4d0f-b653-5a87ed069084',
         name: 'loop',
         type: 'n8n-nodes-base.splitInBatches',
         version: 3,
-        position: [1952, 4672],
+        position: [1856, 5840],
     })
     Loop = {
         options: {},
     };
 
     @node({
-        id: 'c22423a6-d8da-4cf9-a5e6-5e50834a2325',
+        id: '55810a6e-d86d-460f-8f2c-6223ed5321e0',
         name: 'convert 1',
         type: 'n8n-nodes-base.code',
         version: 2,
-        position: [1536, 5024],
+        position: [1440, 6192],
     })
     Convert1 = {
         jsCode: `const items = $input.all();
@@ -651,11 +662,11 @@ return output;`,
     };
 
     @node({
-        id: 'bc9841dd-5ebf-4d59-a4ec-9da1ea60358a',
+        id: '5e6c1ac1-b0aa-4a3f-8626-27774cc5592c',
         name: 'convert 2',
         type: 'n8n-nodes-base.code',
         version: 2,
-        position: [1536, 5472],
+        position: [1440, 6640],
     })
     Convert2 = {
         jsCode: `const items = $input.all();
@@ -692,12 +703,12 @@ return output;`,
     };
 
     @node({
-        id: '15f5c1d7-3729-4968-b5ca-3830465810c9',
+        id: '877d4c42-a08c-40ef-8ead-39582b733cab',
         name: 'get context 2',
         type: 'n8n-nodes-base.redis',
         version: 1,
-        position: [912, 5488],
-        credentials: { redis: { id: 'zMk8tatRFuFo6wmp', name: 'beautyflow' } },
+        position: [816, 6656],
+        credentials: { redis: { id: 'zMk8tatRFuFo6wmp', name: 'beautyflow prod' } },
         onError: 'continueErrorOutput',
     })
     GetContext2 = {
@@ -706,11 +717,11 @@ return output;`,
     };
 
     @node({
-        id: 'e0f9c52f-751b-4870-aec7-466f831f1338',
+        id: '8df45670-aee2-4e32-90ec-dd1c9da1d87e',
         name: 'compare',
         type: 'n8n-nodes-base.code',
         version: 2,
-        position: [1536, 4656],
+        position: [1440, 5824],
         alwaysOutputData: false,
     })
     Compare = {
@@ -762,22 +773,22 @@ return output;`,
     };
 
     @node({
-        id: '0823fd23-463e-4146-b867-90a7235d5432',
+        id: 'ac1c6f69-1565-46a1-9bcb-285bdfb97b8b',
         name: 'wait',
         type: 'n8n-nodes-base.merge',
         version: 3.2,
-        position: [2176, 4512],
+        position: [2080, 5680],
     })
     Wait = {
         mode: 'chooseBranch',
     };
 
     @node({
-        id: '93a495b3-b902-40fa-886f-f84f128ec9e3',
+        id: '6aabd321-05b3-44e3-b1b2-622aabcc993d',
         name: 'if',
         type: 'n8n-nodes-base.if',
         version: 2.3,
-        position: [1744, 4656],
+        position: [1648, 5824],
     })
     If_ = {
         conditions: {
@@ -805,11 +816,11 @@ return output;`,
     };
 
     @node({
-        id: '30a0a03b-c320-4b85-90d3-38d075d26cb7',
+        id: '9377767a-b4bf-4e2a-ad2d-bd7e57764da4',
         name: 'error report 21',
         type: 'n8n-nodes-base.executeWorkflow',
         version: 1.3,
-        position: [912, 5632],
+        position: [816, 6800],
     })
     ErrorReport21 = {
         workflowId: {
@@ -840,15 +851,16 @@ return output;`,
 } }}
 `,
                 business: `={{ {
-    id: $('data handler').item.json.business.id || '',
-    name: $('data handler').item.json.business.name || '',
-    phone: $('data handler').item.json.business.phone || ''
+  id: $('data handler').first().json.business?.id || '',
+  name: $('data handler').first().json.business?.name || '',
+  phone: $('data handler').first().json.business?.phone || ''
 } }}`,
                 client: `={{ {
-  remote_jid: $('data handler').item.json.client.remote_jid || '',
-  message_id: $('data handler').item.json.message.id || '',
-  message_text: $('data handler').item.json.message.text || ''
+  remote_jid: $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '',
+  message_id: $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '',
+  message_text: $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || ''
 } }}`,
+                api: "={{ $('data handler').first().json.api || {} }}",
             },
             matchingColumns: [],
             schema: [
@@ -882,6 +894,16 @@ return output;`,
                     type: 'object',
                     removed: false,
                 },
+                {
+                    id: 'api',
+                    displayName: 'api',
+                    required: false,
+                    defaultMatch: false,
+                    display: true,
+                    canBeUsedToMatch: true,
+                    type: 'object',
+                    removed: false,
+                },
             ],
             attemptToConvertTypes: true,
             convertFieldsToString: true,
@@ -892,11 +914,11 @@ return output;`,
     };
 
     @node({
-        id: '3c1d9fc5-c06d-49de-87bd-d3d7d63a804a',
+        id: 'f73295b3-7c54-4b03-9852-00fc85e97b9a',
         name: 'error report 11',
         type: 'n8n-nodes-base.stopAndError',
         version: 1,
-        position: [1536, 5776],
+        position: [1440, 6944],
     })
     ErrorReport11 = {
         errorType: 'errorObject',
@@ -919,24 +941,29 @@ return output;`,
 }}"
   },
   "business": {
-    "id": "{{ $('data handler').item.json.business.id || '' }}",
-    "name": "{{ $('data handler').item.json.business.name || '' }}",
-    "phone": "{{ $('data handler').item.json.business.phone || '' }}"
+    "id": "{{ $('data handler').first().json.business?.id || '' }}",
+    "name": "{{ $('data handler').first().json.business?.name || '' }}",
+    "phone": "{{ $('data handler').first().json.business?.phone || '' }}"
   },
   "client": {
-    "remote_jid": "{{ $('data handler').item.json.client.remote_jid || '' }}",
-    "message_id": "{{ $('data handler').item.json.message.id || '' }}",
-    "message_text": "{{ $('data handler').item.json.message.text || '' }}"
+    "remote_jid": "{{ $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '' }}",
+    "message_id": "{{ $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '' }}",
+    "message_text": "{{ $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || '' }}"
+  },
+  "api": {
+    "url": "{{ $('data handler').first().json.api?.url || '' }}",
+    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,
     };
 
     @node({
-        id: 'b93cdf94-6c2a-4fba-ab2d-bde4017a2518',
+        id: '57cb90a5-eb67-4f27-bb87-d9221cbe9e01',
         name: 'error report 2',
         type: 'n8n-nodes-base.stopAndError',
         version: 1,
-        position: [848, 4528],
+        position: [752, 5696],
     })
     ErrorReport2 = {
         errorType: 'errorObject',
@@ -959,33 +986,29 @@ return output;`,
 }}"
   },
   "business": {
-    "id": "{{ $('data handler').item.json.business.id || '' }}",
-    "name": "{{ $('data handler').item.json.business.name || '' }}",
-    "phone": "{{ $('data handler').item.json.business.phone || '' }}"
+    "id": "{{ $('data handler').first().json.business?.id || '' }}",
+    "name": "{{ $('data handler').first().json.business?.name || '' }}",
+    "phone": "{{ $('data handler').first().json.business?.phone || '' }}"
   },
   "client": {
-    "remote_jid": "{{ $('data handler').item.json.client.remote_jid || '' }}",
-    "message_id": "{{ $('data handler').item.json.message.id || '' }}",
-    "message_text": "{{ $('data handler').item.json.message.text || '' }}"
+    "remote_jid": "{{ $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '' }}",
+    "message_id": "{{ $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '' }}",
+    "message_text": "{{ $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || '' }}"
+  },
+  "api": {
+    "url": "{{ $('data handler').first().json.api?.url || '' }}",
+    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,
     };
 
     @node({
-        id: '45831291-1d31-4283-8430-01d139ab4442',
-        name: 'No Operation, do nothing',
-        type: 'n8n-nodes-base.noOp',
-        version: 1,
-        position: [2416, 5680],
-    })
-    NoOperationDoNothing = {};
-
-    @node({
-        id: '92fd3c68-5583-4607-aacf-77fbd3b3ebf8',
+        id: '5fb762c2-4aa7-4ce8-86d2-5c42f8ceabbb',
         name: 'error report 22',
         type: 'n8n-nodes-base.executeWorkflow',
         version: 1.3,
-        position: [2144, 5840],
+        position: [2048, 7008],
     })
     ErrorReport22 = {
         workflowId: {
@@ -1016,15 +1039,16 @@ return output;`,
 } }}
 `,
                 business: `={{ {
-    id: $('data handler').item.json.business.id || '',
-    name: $('data handler').item.json.business.name || '',
-    phone: $('data handler').item.json.business.phone || ''
+  id: $('data handler').first().json.business?.id || '',
+  name: $('data handler').first().json.business?.name || '',
+  phone: $('data handler').first().json.business?.phone || ''
 } }}`,
                 client: `={{ {
-  remote_jid: $('data handler').item.json.client.remote_jid || '',
-  message_id: $('data handler').item.json.message.id || '',
-  message_text: $('data handler').item.json.message.text || ''
+  remote_jid: $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '',
+  message_id: $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '',
+  message_text: $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || ''
 } }}`,
+                api: "={{ $('data handler').first().json.api || {} }}",
             },
             matchingColumns: [],
             schema: [
@@ -1058,6 +1082,16 @@ return output;`,
                     type: 'object',
                     removed: false,
                 },
+                {
+                    id: 'api',
+                    displayName: 'api',
+                    required: false,
+                    defaultMatch: false,
+                    display: true,
+                    canBeUsedToMatch: true,
+                    type: 'object',
+                    removed: false,
+                },
             ],
             attemptToConvertTypes: true,
             convertFieldsToString: true,
@@ -1068,11 +1102,11 @@ return output;`,
     };
 
     @node({
-        id: 'c5b84cf1-404c-4bcb-8be7-e93442a6d337',
+        id: '06a19c5c-d1dc-46e4-8290-64017e1a0d3a',
         name: 'error report 23',
         type: 'n8n-nodes-base.executeWorkflow',
         version: 1.3,
-        position: [912, 5200],
+        position: [816, 6368],
     })
     ErrorReport23 = {
         workflowId: {
@@ -1103,15 +1137,16 @@ return output;`,
 } }}
 `,
                 business: `={{ {
-    id: $('data handler').item.json.business.id || '',
-    name: $('data handler').item.json.business.name || '',
-    phone: $('data handler').item.json.business.phone || ''
+  id: $('data handler').first().json.business?.id || '',
+  name: $('data handler').first().json.business?.name || '',
+  phone: $('data handler').first().json.business?.phone || ''
 } }}`,
                 client: `={{ {
-  remote_jid: $('data handler').item.json.client.remote_jid || '',
-  message_id: $('data handler').item.json.message.id || '',
-  message_text: $('data handler').item.json.message.text || ''
+  remote_jid: $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '',
+  message_id: $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '',
+  message_text: $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || ''
 } }}`,
+                api: "={{ $('data handler').first().json.api || {} }}",
             },
             matchingColumns: [],
             schema: [
@@ -1145,6 +1180,16 @@ return output;`,
                     type: 'object',
                     removed: false,
                 },
+                {
+                    id: 'api',
+                    displayName: 'api',
+                    required: false,
+                    defaultMatch: false,
+                    display: true,
+                    canBeUsedToMatch: true,
+                    type: 'object',
+                    removed: false,
+                },
             ],
             attemptToConvertTypes: true,
             convertFieldsToString: true,
@@ -1155,11 +1200,11 @@ return output;`,
     };
 
     @node({
-        id: '5dcebb5c-f4ee-433c-97e4-453df157ff96',
+        id: 'e4fd6b10-4400-4910-b83b-a083be164253',
         name: 'error report 24',
         type: 'n8n-nodes-base.executeWorkflow',
         version: 1.3,
-        position: [1760, 5360],
+        position: [1664, 6528],
     })
     ErrorReport24 = {
         workflowId: {
@@ -1190,15 +1235,16 @@ return output;`,
 } }}
 `,
                 business: `={{ {
-    id: $('data handler').item.json.business.id || '',
-    name: $('data handler').item.json.business.name || '',
-    phone: $('data handler').item.json.business.phone || ''
+  id: $('data handler').first().json.business?.id || '',
+  name: $('data handler').first().json.business?.name || '',
+  phone: $('data handler').first().json.business?.phone || ''
 } }}`,
                 client: `={{ {
-  remote_jid: $('data handler').item.json.client.remote_jid || '',
-  message_id: $('data handler').item.json.message.id || '',
-  message_text: $('data handler').item.json.message.text || ''
+  remote_jid: $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '',
+  message_id: $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '',
+  message_text: $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || ''
 } }}`,
+                api: "={{ $('data handler').first().json.api || {} }}",
             },
             matchingColumns: [],
             schema: [
@@ -1232,6 +1278,16 @@ return output;`,
                     type: 'object',
                     removed: false,
                 },
+                {
+                    id: 'api',
+                    displayName: 'api',
+                    required: false,
+                    defaultMatch: false,
+                    display: true,
+                    canBeUsedToMatch: true,
+                    type: 'object',
+                    removed: false,
+                },
             ],
             attemptToConvertTypes: true,
             convertFieldsToString: true,
@@ -1242,20 +1298,11 @@ return output;`,
     };
 
     @node({
-        id: 'd8f2bc72-32b0-44f3-b6c5-f8814eb3f3fb',
-        name: 'No Operation, do nothing1',
-        type: 'n8n-nodes-base.noOp',
-        version: 1,
-        position: [2016, 5200],
-    })
-    NoOperationDoNothing1 = {};
-
-    @node({
-        id: '9a846958-0450-4703-a0c1-3d00b5b2babc',
+        id: 'e46bd7f6-95b2-489f-a5d7-10d2ee7e0b47',
         name: 'error report 12',
         type: 'n8n-nodes-base.stopAndError',
         version: 1,
-        position: [1536, 5328],
+        position: [1440, 6496],
     })
     ErrorReport12 = {
         errorType: 'errorObject',
@@ -1278,24 +1325,29 @@ return output;`,
 }}"
   },
   "business": {
-    "id": "{{ $('data handler').item.json.business.id || '' }}",
-    "name": "{{ $('data handler').item.json.business.name || '' }}",
-    "phone": "{{ $('data handler').item.json.business.phone || '' }}"
+    "id": "{{ $('data handler').first().json.business?.id || '' }}",
+    "name": "{{ $('data handler').first().json.business?.name || '' }}",
+    "phone": "{{ $('data handler').first().json.business?.phone || '' }}"
   },
   "client": {
-    "remote_jid": "{{ $('data handler').item.json.client.remote_jid || '' }}",
-    "message_id": "{{ $('data handler').item.json.message.id || '' }}",
-    "message_text": "{{ $('data handler').item.json.message.text || '' }}"
+    "remote_jid": "{{ $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '' }}",
+    "message_id": "{{ $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '' }}",
+    "message_text": "{{ $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || '' }}"
+  },
+  "api": {
+    "url": "{{ $('data handler').first().json.api?.url || '' }}",
+    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,
     };
 
     @node({
-        id: '3de081a9-f581-4e54-8b77-139231fb5fcf',
+        id: 'c043e2a2-7440-45a8-b3ec-a6379d226938',
         name: 'error report ',
         type: 'n8n-nodes-base.executeWorkflow',
         version: 1.3,
-        position: [1328, 4816],
+        position: [1232, 5984],
     })
     ErrorReport = {
         workflowId: {
@@ -1326,15 +1378,16 @@ return output;`,
 } }}
 `,
                 business: `={{ {
-    id: $('data handler').item.json.business.id || '',
-    name: $('data handler').item.json.business.name || '',
-    phone: $('data handler').item.json.business.phone || ''
+  id: $('data handler').first().json.business?.id || '',
+  name: $('data handler').first().json.business?.name || '',
+  phone: $('data handler').first().json.business?.phone || ''
 } }}`,
                 client: `={{ {
-  remote_jid: $('data handler').item.json.client.remote_jid || '',
-  message_id: $('data handler').item.json.message.id || '',
-  message_text: $('data handler').item.json.message.text || ''
+  remote_jid: $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '',
+  message_id: $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '',
+  message_text: $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || ''
 } }}`,
+                api: "={{ $('data handler').first().json.api || {} }}",
             },
             matchingColumns: [],
             schema: [
@@ -1368,6 +1421,16 @@ return output;`,
                     type: 'object',
                     removed: false,
                 },
+                {
+                    id: 'api',
+                    displayName: 'api',
+                    required: false,
+                    defaultMatch: false,
+                    display: true,
+                    canBeUsedToMatch: true,
+                    type: 'object',
+                    removed: false,
+                },
             ],
             attemptToConvertTypes: true,
             convertFieldsToString: true,
@@ -1378,11 +1441,11 @@ return output;`,
     };
 
     @node({
-        id: 'a80fa36e-4d4e-4bb1-8f53-8c0b4fac5b78',
+        id: 'adf9afa9-b517-4174-b6e1-fe3bd489cb1a',
         name: 'error report 1',
         type: 'n8n-nodes-base.executeWorkflow',
         version: 1.3,
-        position: [2160, 4832],
+        position: [2064, 6000],
     })
     ErrorReport1 = {
         workflowId: {
@@ -1413,15 +1476,16 @@ return output;`,
 } }}
 `,
                 business: `={{ {
-    id: $('data handler').item.json.business.id || '',
-    name: $('data handler').item.json.business.name || '',
-    phone: $('data handler').item.json.business.phone || ''
+  id: $('data handler').first().json.business?.id || '',
+  name: $('data handler').first().json.business?.name || '',
+  phone: $('data handler').first().json.business?.phone || ''
 } }}`,
                 client: `={{ {
-  remote_jid: $('data handler').item.json.client.remote_jid || '',
-  message_id: $('data handler').item.json.message.id || '',
-  message_text: $('data handler').item.json.message.text || ''
+  remote_jid: $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '',
+  message_id: $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '',
+  message_text: $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || ''
 } }}`,
+                api: "={{ $('data handler').first().json.api || {} }}",
             },
             matchingColumns: [],
             schema: [
@@ -1455,6 +1519,16 @@ return output;`,
                     type: 'object',
                     removed: false,
                 },
+                {
+                    id: 'api',
+                    displayName: 'api',
+                    required: false,
+                    defaultMatch: false,
+                    display: true,
+                    canBeUsedToMatch: true,
+                    type: 'object',
+                    removed: false,
+                },
             ],
             attemptToConvertTypes: true,
             convertFieldsToString: true,
@@ -1465,11 +1539,11 @@ return output;`,
     };
 
     @node({
-        id: 'c47b9b35-8a22-42ad-bb5a-659ecb83ad5f',
+        id: 'bceb888c-0457-4cd2-b615-af925bcc55e8',
         name: 'services context',
         type: 'n8n-nodes-base.set',
         version: 3.4,
-        position: [2960, 4512],
+        position: [2864, 5680],
     })
     ServicesContext = {
         assignments: {
@@ -1498,11 +1572,11 @@ return output;`,
     };
 
     @node({
-        id: 'b0894cee-f177-4e75-a2d8-3f86521cb8dc',
+        id: 'b97db868-d3e2-4c56-8269-044ff98c245a',
         name: 'If',
         type: 'n8n-nodes-base.if',
         version: 2.3,
-        position: [1056, 4368],
+        position: [960, 5536],
     })
     If_1 = {
         conditions: {
@@ -1531,11 +1605,11 @@ return output;`,
     };
 
     @node({
-        id: 'c488547f-a1a8-48f2-9b98-fab6cac5731e',
+        id: 'cf227390-01e6-4676-a2f0-1b0b82f44c50',
         name: 'services data',
         type: 'n8n-nodes-base.set',
         version: 3.4,
-        position: [1328, 4496],
+        position: [1232, 5664],
     })
     ServicesData = {
         assignments: {
@@ -1559,11 +1633,11 @@ return output;`,
     };
 
     @node({
-        id: '13ce7f5d-9aa6-4b1c-bdde-48466de030a0',
+        id: 'aaf3cb1e-a07a-457a-bac1-65abcdbabc24',
         name: 'get',
         type: 'n8n-nodes-base.if',
         version: 2.3,
-        position: [704, 5472],
+        position: [608, 6640],
     })
     Get = {
         conditions: {
@@ -1592,11 +1666,11 @@ return output;`,
     };
 
     @node({
-        id: 'f6f061ff-8412-4825-b372-cbe99b9dee1e',
+        id: '9d87b01a-9b72-4019-b687-400ea50ea7ed',
         name: 'context',
         type: 'n8n-nodes-base.set',
         version: 3.4,
-        position: [1840, 5536],
+        position: [1744, 6704],
     })
     Context = {
         assignments: {
@@ -1630,6 +1704,28 @@ return output;`,
         options: {},
     };
 
+    @node({
+        id: '49e2480a-aac1-4f32-8fd7-09ddfd18feb8',
+        name: 'wait 2',
+        type: 'n8n-nodes-base.merge',
+        version: 3.2,
+        position: [2176, 6208],
+    })
+    Wait2 = {
+        mode: 'chooseBranch',
+    };
+
+    @node({
+        id: '11a91e3e-8f17-4a64-b63d-1979a032065e',
+        name: 'wait 1',
+        type: 'n8n-nodes-base.merge',
+        version: 3.2,
+        position: [2352, 6656],
+    })
+    Wait1 = {
+        mode: 'chooseBranch',
+    };
+
     // =====================================================================
     // ROUTAGE ET CONNEXIONS
     // =====================================================================
@@ -1653,16 +1749,18 @@ return output;`,
         this.GetContext1.out(0).to(this.HasData1.in(0));
         this.GetContext1.out(1).to(this.ErrorReport23.in(0));
         this.HasData1.out(0).to(this.Convert1.in(0));
+        this.HasData1.out(0).to(this.Wait2.in(1));
         this.HasData1.out(1).to(this.GetById.in(0));
         this.HasData2.out(0).to(this.Convert2.in(0));
+        this.HasData2.out(0).to(this.Wait1.in(1));
         this.HasData2.out(1).to(this.GetByName.in(0));
-        this.Aggregate1.out(0).to(this.ServicesContext.in(0));
-        this.Aggregate2.out(0).to(this.ServicesContext.in(0));
+        this.Aggregate1.out(0).to(this.Wait2.in(0));
+        this.Aggregate2.out(0).to(this.Wait1.in(0));
         this.PushContext.out(0).to(this.Loop.in(0));
         this.PushContext.out(1).to(this.ErrorReport1.in(0));
-        this.PushContext1.out(0).to(this.NoOperationDoNothing1.in(0));
+        this.PushContext1.out(0).to(this.Wait2.in(1));
         this.PushContext1.out(1).to(this.ErrorReport24.in(0));
-        this.PushContext2.out(0).to(this.NoOperationDoNothing.in(0));
+        this.PushContext2.out(0).to(this.Wait1.in(1));
         this.PushContext2.out(1).to(this.ErrorReport22.in(0));
         this.Loop.out(0).to(this.Wait.in(1));
         this.Loop.out(1).to(this.PushContext.in(0));
@@ -1675,9 +1773,9 @@ return output;`,
         this.If_.out(0).to(this.Wait.in(1));
         this.If_.out(1).to(this.Loop.in(0));
         this.ErrorReport21.out(0).to(this.HasData2.in(0));
-        this.ErrorReport22.out(0).to(this.NoOperationDoNothing.in(0));
+        this.ErrorReport22.out(0).to(this.Wait1.in(1));
         this.ErrorReport23.out(0).to(this.HasData1.in(0));
-        this.ErrorReport24.out(0).to(this.NoOperationDoNothing1.in(0));
+        this.ErrorReport24.out(0).to(this.Wait2.in(1));
         this.If_1.out(0).to(this.Wait.in(0));
         this.If_1.out(1).to(this.GetContext.in(0));
         this.If_1.out(1).to(this.ServicesData.in(0));
@@ -1685,5 +1783,7 @@ return output;`,
         this.Get.out(0).to(this.GetContext1.in(0));
         this.Get.out(1).to(this.GetContext2.in(0));
         this.Context.out(0).to(this.Aggregate2.in(0));
+        this.Wait2.out(0).to(this.ServicesContext.in(0));
+        this.Wait1.out(0).to(this.ServicesContext.in(0));
     }
 }

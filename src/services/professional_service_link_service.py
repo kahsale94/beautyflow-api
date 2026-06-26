@@ -5,6 +5,7 @@ from src.core import DataBaseDep
 from src.models import ProfessionalService
 from src.repositories import ProfessionalRepository, ServiceRepository, ProfessionalServiceRepository
 from src.schemas import ProfessionalServiceCreate
+from src.services.redis_cache_invalidator import RedisCacheInvalidator
 
 class ProfessionalServiceLinkNotFoundError(Exception):
     pass
@@ -22,11 +23,13 @@ class ProfessionalServiceLinkService:
         professional_repo: ProfessionalRepository,
         service_repo: ServiceRepository,
         professional_service_repo: ProfessionalServiceRepository,
+        cache_invalidator: RedisCacheInvalidator | None = None,
     ):
         self.db = db
         self.professional_repo = professional_repo
         self.service_repo = service_repo
         self.professional_service_repo = professional_service_repo
+        self.cache_invalidator = cache_invalidator or RedisCacheInvalidator()
 
     def _validate_professional_and_service(self, business_id: int, professional_id: int, service_id: int):
         professional = self.professional_repo.get_by_id(self.db, business_id, professional_id)
@@ -96,6 +99,8 @@ class ProfessionalServiceLinkService:
             raise ProfessionalServiceLinkAlreadyExistsError()
 
         self.db.refresh(professional_service)
+        self.cache_invalidator.invalidate_professional_context()
+        self.cache_invalidator.invalidate_service_context()
 
         return professional_service
 
@@ -113,6 +118,8 @@ class ProfessionalServiceLinkService:
 
         self.professional_service_repo.delete(self.db, professional_service)
         self.db.commit()
+        self.cache_invalidator.invalidate_professional_context()
+        self.cache_invalidator.invalidate_service_context()
 
         return
 
@@ -122,4 +129,5 @@ def get_professional_service_link_service(db: DataBaseDep):
         ProfessionalRepository(),
         ServiceRepository(),
         ProfessionalServiceRepository(),
+        RedisCacheInvalidator(),
     )

@@ -1,9 +1,19 @@
 # Geral
-z_files/
+.1 - ignore/
 docker-compose_dev.yml
 .tmp.driveupload/
 .n8nac/
 workflows/.n8n-sync-events.jsonl
+workflows/appointments-staging.workflow.ts
+workflows/availabilities-staging.workflow.ts
+workflows/businesses-staging.workflow.ts
+workflows/clients-staging.workflow.ts
+workflows/error-staging.workflow.ts
+workflows/main-staging.workflow.ts
+workflows/pending state-staging.workflow.ts
+workflows/professionals-staging.workflow.ts
+workflows/services-staging.workflow.ts
+alembic/versions_legacy_v1
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
