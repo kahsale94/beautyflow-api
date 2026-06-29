@@ -1,5 +1,3 @@
-import hmac
-import hashlib
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
@@ -7,10 +5,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from src.utils import normalize_phone
-from src.core import DataBaseDep, USER_SECRET_KEY
+from src.core import DataBaseDep
 from src.models import EvolutionInstance, User, BusinessIntegration, UserRefreshToken
 from src.repositories import BusinessRepository, IntegrationRepository
 from src.security import RefreshRequest, TokenManager, verify_hash, create_user_access_token, create_user_refresh_token, create_business_integration_token
+from src.security.key_rotation import current_hmac_digest, hmac_digest_candidates
 
 class InvalidCredentialError(Exception):
     pass
@@ -48,7 +47,10 @@ class AuthService:
         self.integration_repo = integration_repo
 
     def _hash_jti(self, jti: str) -> str:
-        return hmac.new(USER_SECRET_KEY.encode("utf-8"), jti.encode("utf-8"), hashlib.sha256).hexdigest()
+        return current_hmac_digest("user", jti)
+
+    def _jti_hash_candidates(self, jti: str) -> tuple[str, ...]:
+        return hmac_digest_candidates("user", jti)
 
     def _as_aware_datetime(self, value: datetime) -> datetime:
         if value.tzinfo is None:
@@ -104,11 +106,11 @@ class AuthService:
             raise DeactivatedUserError()
 
         now = datetime.now(timezone.utc)
-        current_jti_hash = self._hash_jti(str(jti))
+        current_jti_hashes = self._jti_hash_candidates(str(jti))
         refresh_record = self.db.scalars(
             select(UserRefreshToken).where(
                 UserRefreshToken.user_id == user.id,
-                UserRefreshToken.jti_hash == current_jti_hash,
+                UserRefreshToken.jti_hash.in_(current_jti_hashes),
             ).with_for_update()
         ).one_or_none()
 
@@ -147,9 +149,9 @@ class AuthService:
         if payload.get("type") != "user" or payload.get("token_type") != "refresh" or not payload.get("jti"):
             return
 
-        jti_hash = self._hash_jti(str(payload["jti"]))
+        jti_hashes = self._jti_hash_candidates(str(payload["jti"]))
         refresh_record = self.db.scalars(select(UserRefreshToken).where(
-            UserRefreshToken.jti_hash == jti_hash)).one_or_none()
+            UserRefreshToken.jti_hash.in_(jti_hashes))).one_or_none()
 
         if refresh_record and refresh_record.revoked_at is None:
             refresh_record.revoked_at = datetime.now(timezone.utc)
