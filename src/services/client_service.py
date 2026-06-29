@@ -10,6 +10,7 @@ from src.core import DataBaseDep
 from src.utils import normalize_phone
 from src.repositories import ClientRepository
 from src.schemas import ClientCreate, ClientUpdate
+from src.services.redis_cache_invalidator import RedisCacheInvalidator
 
 class ClientNotFoundError(Exception):
     pass
@@ -23,9 +24,11 @@ class ClientService:
         self,
         db: Session,
         client_repo: ClientRepository,
+        cache_invalidator: RedisCacheInvalidator | None = None,
     ):
         self.db = db
         self.client_repo = client_repo
+        self.cache_invalidator = cache_invalidator or RedisCacheInvalidator()
 
     def _get_valid(self, business_id: int, client_id: int):
         client = self.client_repo.get_by_id(self.db, business_id, client_id)
@@ -73,6 +76,7 @@ class ClientService:
             raise ClientAlreadyExistsError()
 
         self.db.refresh(client)
+        self.cache_invalidator.invalidate_client_context(client.phone)
 
         return client
 
@@ -85,11 +89,13 @@ class ClientService:
         client.name = name
         self.db.commit()
         self.db.refresh(client)
+        self.cache_invalidator.invalidate_client_context(client.phone)
 
         return client
 
     def update(self, business_id: int, client_id: int, data: ClientUpdate):
         client = self._get_valid(business_id, client_id)
+        previous_phone = client.phone
 
         update_data = data.model_dump(exclude_unset=True)
 
@@ -106,13 +112,18 @@ class ClientService:
             raise ClientAlreadyExistsError()
         
         self.db.refresh(client)
+        self.cache_invalidator.invalidate_client_context(previous_phone)
+        if client.phone != previous_phone:
+            self.cache_invalidator.invalidate_client_context(client.phone)
 
         return client
 
     def deactivate(self, business_id: int, client_id: int):
         client = self._get_valid(business_id, client_id)
+        previous_phone = client.phone
         client.is_active = False
         self.db.commit()
+        self.cache_invalidator.invalidate_client_context(previous_phone)
         return
 
     def delete(self, business_id: int, client_id: int):
@@ -122,4 +133,5 @@ def get_client_service(db: DataBaseDep):
     return ClientService(
         db,
         ClientRepository(),
+        RedisCacheInvalidator(),
     )

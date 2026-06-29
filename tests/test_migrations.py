@@ -20,6 +20,7 @@ def test_single_clean_initial_migration_exists():
         "0007_add_appointment_reminders.py",
         "0008_add_business_opening_hours.py",
         "0009_structured_business_hours.py",
+        "0010_add_business_attendance.py",
     ]
 
     source = read_source("alembic/versions/0001_initial_clean_schema.py")
@@ -86,3 +87,9 @@ def test_single_clean_initial_migration_exists():
     assert 'down_revision: Union[str, None] = "0008_add_business_opening_hours"' in source
     assert "business_opening_hours" in source
     assert "inspector.has_table" in source
+
+    source = read_source("alembic/versions/0010_add_business_attendance.py")
+    assert 'revision: str = "0010_add_business_attendance"' in source
+    assert 'down_revision: Union[str, None] = "0009_structured_business_hours"' in source
+    assert "businessattendanceplan" in source
+    assert "attendance_plan" in source

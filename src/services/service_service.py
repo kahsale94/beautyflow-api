@@ -6,6 +6,7 @@ from src.core import DataBaseDep
 from src.utils import normalize_text
 from src.repositories import ServiceRepository
 from src.schemas import ServiceCreate, ServiceUpdate
+from src.services.redis_cache_invalidator import RedisCacheInvalidator
 
 class ServiceNotFoundError(Exception):
     pass
@@ -19,9 +20,11 @@ class ServiceService:
         self,
         db: Session,
         service_repo: ServiceRepository,
+        cache_invalidator: RedisCacheInvalidator | None = None,
     ):
         self.db = db
         self.service_repo = service_repo
+        self.cache_invalidator = cache_invalidator or RedisCacheInvalidator()
 
     def _get_valid(self, business_id: int, service_id: int) -> Service:
         service = self.service_repo.get_by_id(self.db, business_id, service_id)
@@ -69,6 +72,7 @@ class ServiceService:
             raise ServiceAlreadyExistsError()
 
         self.db.refresh(service)
+        self.cache_invalidator.invalidate_service_context()
 
         return service
 
@@ -90,6 +94,7 @@ class ServiceService:
             raise ServiceAlreadyExistsError()
         
         self.db.refresh(service)
+        self.cache_invalidator.invalidate_service_context()
 
         return service
     
@@ -99,6 +104,7 @@ class ServiceService:
         service.is_active = False
 
         self.db.commit()
+        self.cache_invalidator.invalidate_service_context()
 
         return
 
@@ -109,4 +115,5 @@ def get_service_service(db: DataBaseDep):
     return ServiceService(
         db,
         ServiceRepository(),
+        RedisCacheInvalidator(),
     )

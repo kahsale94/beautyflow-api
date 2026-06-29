@@ -1,8 +1,8 @@
 import { workflow, node, links } from '@n8n-as-code/transformer';
 
 // <workflow-map>
-// Workflow : error
-// Nodes   : 23  |  Connections: 26
+// Workflow : error-prod
+// Nodes   : 18  |  Connections: 23
 //
 // NODE INDEX
 // ──────────────────────────────────────────────────────────────────
@@ -16,7 +16,6 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 // SplitOut                           splitOut
 // LoopResponse                       splitInBatches
 // SendResponse                       evolutionApi               [onError→out(1)] [creds] [retry]
-// TypingDelay                        code
 // SendResponse1                      evolutionApi               [onError→out(1)] [creds] [retry]
 // ClientReponse                      set
 // BusinessReponse                    set
@@ -26,10 +25,6 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 // SendResponse2                      evolutionApi               [onError→out(1)] [creds] [retry]
 // SendEmail                          gmail                      [onError→out(1)] [creds] [retry]
 // ErrorContext                       set
-// ErrorReport8                       stopAndError
-// ErrorReport9                       stopAndError
-// ErrorReport10                      stopAndError
-// ErrorReport                        stopAndError
 //
 // ROUTING MAP
 // ──────────────────────────────────────────────────────────────────
@@ -41,10 +36,9 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 //            → SplitOut
 //              → LoopResponse
 //                → ErrorContext
-//               .out(1) → TypingDelay
-//                  → SendResponse
-//                    → LoopResponse (↩ loop)
-//                   .out(1) → ErrorContext (↩ loop)
+//               .out(1) → SendResponse
+//                  → LoopResponse (↩ loop)
+//                 .out(1) → ErrorContext (↩ loop)
 //         .out(1) → BusinessReponse
 //            → SplitOut1
 //              → LoopResponse1
@@ -53,11 +47,9 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 //                  → LoopResponse1 (↩ loop)
 //                 .out(1) → ErrorContext (↩ loop)
 //         .out(2) → DevReponse
-//            → SendEmail
-//              → SendResponse2
-//                → ErrorContext (↩ loop)
-//               .out(1) → ErrorContext (↩ loop)
-//             .out(1) → SendResponse2 (↩ loop)
+//            → SendResponse2
+//              → ErrorContext (↩ loop)
+//             .out(1) → ErrorContext (↩ loop)
 // BackendErrorWebhook
 //    → DataHandler (↩ loop)
 // CallTrigger
@@ -70,18 +62,19 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 
 @workflow({
     id: 'bWdz3xBVwmycvfwW',
-    name: 'error',
+    name: 'error-prod',
     active: true,
     isArchived: false,
+    projectId: 'UVYVLJNFC5m6HlJG',
     tags: ['Kaiky', 'beautyflow-api'],
     settings: {
         executionOrder: 'v1',
-        availableInMCP: false,
+        availableInMCP: true,
         binaryMode: 'separate',
         callerPolicy: 'workflowsFromSameOwner',
     },
 })
-export class ErrorWorkflow {
+export class ErrorProdWorkflow {
     // =====================================================================
     // CONFIGURATION DES NOEUDS
     // =====================================================================
@@ -130,7 +123,7 @@ export class ErrorWorkflow {
         name: 'error trigger',
         type: 'n8n-nodes-base.errorTrigger',
         version: 1,
-        position: [272, 160],
+        position: [272, 80],
     })
     ErrorTrigger = {};
 
@@ -140,15 +133,13 @@ export class ErrorWorkflow {
         name: 'backend error webhook',
         type: 'n8n-nodes-base.webhook',
         version: 2,
-        position: [272, 512],
+        position: [272, 432],
         credentials: { httpHeaderAuth: { id: 'SgMhjuYgwqILwgel', name: 'Beautyflow Evolution Webhook' } },
     })
     BackendErrorWebhook = {
         httpMethod: 'POST',
         path: 'beautyflow-error',
         authentication: 'headerAuth',
-        responseMode: 'onReceived',
-        responseCode: 202,
         options: {},
     };
 
@@ -157,7 +148,7 @@ export class ErrorWorkflow {
         name: 'call trigger',
         type: 'n8n-nodes-base.executeWorkflowTrigger',
         version: 1.1,
-        position: [288, 352],
+        position: [272, 256],
     })
     CallTrigger = {
         workflowInputs: {
@@ -737,7 +728,7 @@ return [
         name: 'send response',
         type: 'n8n-nodes-evolution-api.evolutionApi',
         version: 1,
-        position: [2032, 0],
+        position: [1856, 0],
         credentials: { evolutionApi: { id: 'vlj9dRMZQEffBnHW', name: 'Evolution Credential - Kaiky' } },
         onError: 'continueErrorOutput',
         retryOnFail: true,
@@ -747,45 +738,8 @@ return [
         resource: 'messages-api',
         instanceName: "={{ $('data handler').first().json.api.evo_instance }}",
         remoteJid: "={{ $('data handler').first().json.client.remote_jid }}",
-        messageText: "={{ $('typing delay').item.json.response }}",
-        options_message: {
-            delay: "={{ $('typing delay').item.json.delay }}",
-        },
-    };
-
-    @node({
-        id: 'fd073df6-af5a-4f80-badf-e5ee8ac5d7b4',
-        name: 'typing delay',
-        type: 'n8n-nodes-base.code',
-        version: 2,
-        position: [1824, 0],
-    })
-    TypingDelay = {
-        jsCode: `const data = $input.first();
-
-let text = data.json.response;
-
-if (Array.isArray(text)) {
-  text = text.join(' ');
-}
-
-text = String(text || '');
-
-const charCount = text.length;
-
-const milliseconds = Math.max(
-  400,
-  Math.min(3000, Math.round((charCount / 40) * 1000))
-);
-
-return [
-  {
-    json: {
-      ...data.json,
-      delay: milliseconds,
-    }
-  }
-];`,
+        messageText: "=  {{ $('client reponse').first().json.response }}",
+        options_message: {},
     };
 
     @node({
@@ -854,7 +808,7 @@ return [
         name: 'dev reponse',
         type: 'n8n-nodes-base.set',
         version: 3.4,
-        position: [1216, 544],
+        position: [1216, 528],
     })
     DevReponse = {
         assignments: {
@@ -933,7 +887,7 @@ return [
         name: 'send response 2',
         type: 'n8n-nodes-evolution-api.evolutionApi',
         version: 1,
-        position: [1424, 640],
+        position: [1840, 528],
         credentials: { evolutionApi: { id: 'vlj9dRMZQEffBnHW', name: 'Evolution Credential - Kaiky' } },
         onError: 'continueErrorOutput',
         retryOnFail: true,
@@ -943,7 +897,7 @@ return [
         resource: 'messages-api',
         instanceName: "={{ $('data handler').first().json.api.evo_instance }}",
         remoteJid: '5511991549118@s.whatsapp.net',
-        messageText: "={{ $('dev reponse').item.json.response }}",
+        messageText: "={{ $('dev reponse').first().json.response }}",
         options_message: {},
     };
 
@@ -953,7 +907,7 @@ return [
         name: 'send email',
         type: 'n8n-nodes-base.gmail',
         version: 2.2,
-        position: [1664, 544],
+        position: [1664, 528],
         credentials: { gmailOAuth2: { id: 'KD9KohSq7p0CzQL0', name: 'gmail beautyflow' } },
         onError: 'continueErrorOutput',
         retryOnFail: true,
@@ -1105,170 +1059,10 @@ return [
         name: 'error context',
         type: 'n8n-nodes-base.set',
         version: 3.4,
-        position: [3120, -64],
+        position: [2496, -64],
     })
     ErrorContext = {
         options: {},
-    };
-
-    @node({
-        id: '94f8aa60-bdf5-44ca-a1df-660fdf77a022',
-        name: 'error report 8',
-        type: 'n8n-nodes-base.stopAndError',
-        version: 1,
-        position: [1664, 688],
-    })
-    ErrorReport8 = {
-        errorType: 'errorObject',
-        errorObject: `={
-  "error": {
-    "workflow": "{{ $workflow.id }}",
-    "execution": "{{ $execution.id }}",
-    "type": "external.gmail",
-    "node": "{{ $prevNode.name }}",
-    "code": "{{ $json.error.status || '' }}",
-    "description": "{{
-(() => {
-  try {
-    const part = $json.error.message.split(' - ')[1];
-    return JSON.parse(JSON.parse(part)).detail;
-  } catch (e) {
-    return $json.error.message;
-  }
-})()
-}}"
-  },
-  "business": {
-    "id": "{{ $('data handler').item.json.business.id || '' }}",
-    "name": "{{ $('data handler').item.json.business.name || '' }}",
-    "phone": "{{ $('data handler').item.json.business.phone || '' }}"
-  },
-  "client": {
-    "remote_jid": "{{ $('data handler').item.json.client.remote_jid || '' }}",
-    "message_id": "{{ $('data handler').item.json.client.message_id || '' }}",
-    "message_text": "{{ $('data handler').item.json.client.message_text || '' }}"
-  }
-}`,
-    };
-
-    @node({
-        id: '203b618a-10b2-4102-91f8-385d8bf7b575',
-        name: 'error report 9',
-        type: 'n8n-nodes-base.stopAndError',
-        version: 1,
-        position: [1424, 784],
-    })
-    ErrorReport9 = {
-        errorType: 'errorObject',
-        errorObject: `={
-  "error": {
-    "workflow": "{{ $workflow.id }}",
-    "execution": "{{ $execution.id }}",
-    "type": "external.evo.send_message",
-    "node": "{{ $prevNode.name }}",
-    "code": "{{ $json.error.status || '' }}",
-    "description": "{{
-(() => {
-  try {
-    const part = $json.error.message.split(' - ')[1];
-    return JSON.parse(JSON.parse(part)).detail;
-  } catch (e) {
-    return $json.error.message;
-  }
-})()
-}}"
-  },
-  "business": {
-    "id": "{{ $('data handler').item.json.business.id || '' }}",
-    "name": "{{ $('data handler').item.json.business.name || '' }}",
-    "phone": "{{ $('data handler').item.json.business.phone || '' }}"
-  },
-  "client": {
-    "remote_jid": "{{ $('data handler').item.json.client.remote_jid || '' }}",
-    "message_id": "{{ $('data handler').item.json.client.message_id || '' }}",
-    "message_text": "{{ $('data handler').item.json.client.message_text || '' }}"
-  }
-}`,
-    };
-
-    @node({
-        id: '75d16694-d222-4271-93f6-7b980edc4e61',
-        name: 'error report 10',
-        type: 'n8n-nodes-base.stopAndError',
-        version: 1,
-        position: [1840, 448],
-    })
-    ErrorReport10 = {
-        errorType: 'errorObject',
-        errorObject: `={
-  "error": {
-    "workflow": "{{ $workflow.id }}",
-    "execution": "{{ $execution.id }}",
-    "type": "external.evo.send_message",
-    "node": "{{ $prevNode.name }}",
-    "code": "{{ $json.error.status || '' }}",
-    "description": "{{
-(() => {
-  try {
-    const part = $json.error.message.split(' - ')[1];
-    return JSON.parse(JSON.parse(part)).detail;
-  } catch (e) {
-    return $json.error.message;
-  }
-})()
-}}"
-  },
-  "business": {
-    "id": "{{ $('data handler').item.json.business.id || '' }}",
-    "name": "{{ $('data handler').item.json.business.name || '' }}",
-    "phone": "{{ $('data handler').item.json.business.phone || '' }}"
-  },
-  "client": {
-    "remote_jid": "{{ $('data handler').item.json.client.remote_jid || '' }}",
-    "message_id": "{{ $('data handler').item.json.client.message_id || '' }}",
-    "message_text": "{{ $('data handler').item.json.client.message_text || '' }}"
-  }
-}`,
-    };
-
-    @node({
-        id: '79a9ba94-3dbc-42b6-83cc-2b13031f1104',
-        name: 'error report ',
-        type: 'n8n-nodes-base.stopAndError',
-        version: 1,
-        position: [2032, 144],
-    })
-    ErrorReport = {
-        errorType: 'errorObject',
-        errorObject: `={
-  "error": {
-    "workflow": "{{ $workflow.id }}",
-    "execution": "{{ $execution.id }}",
-    "type": "external.evo.send_message",
-    "node": "{{ $prevNode.name }}",
-    "code": "{{ $json.error.status || '' }}",
-    "description": "{{
-(() => {
-  try {
-    const part = $json.error.message.split(' - ')[1];
-    return JSON.parse(JSON.parse(part)).detail;
-  } catch (e) {
-    return $json.error.message;
-  }
-})()
-}}"
-  },
-  "business": {
-    "id": "{{ $('data handler').item.json.business.id || '' }}",
-    "name": "{{ $('data handler').item.json.business.name || '' }}",
-    "phone": "{{ $('data handler').item.json.business.phone || '' }}"
-  },
-  "client": {
-    "remote_jid": "{{ $('data handler').item.json.client.remote_jid || '' }}",
-    "message_id": "{{ $('data handler').item.json.client.message_id || '' }}",
-    "message_text": "{{ $('data handler').item.json.client.message_text || '' }}"
-  }
-}`,
     };
 
     // =====================================================================
@@ -1284,10 +1078,9 @@ return [
         this.NormalizeError.out(0).to(this.Switch_.in(0));
         this.SplitOut.out(0).to(this.LoopResponse.in(0));
         this.LoopResponse.out(0).to(this.ErrorContext.in(0));
-        this.LoopResponse.out(1).to(this.TypingDelay.in(0));
+        this.LoopResponse.out(1).to(this.SendResponse.in(0));
         this.SendResponse.out(0).to(this.LoopResponse.in(0));
         this.SendResponse.out(1).to(this.ErrorContext.in(0));
-        this.TypingDelay.out(0).to(this.SendResponse.in(0));
         this.Switch_.out(0).to(this.ClientReponse.in(0));
         this.Switch_.out(1).to(this.BusinessReponse.in(0));
         this.Switch_.out(2).to(this.DevReponse.in(0));
@@ -1295,13 +1088,11 @@ return [
         this.SendResponse1.out(1).to(this.ErrorContext.in(0));
         this.ClientReponse.out(0).to(this.SplitOut.in(0));
         this.BusinessReponse.out(0).to(this.SplitOut1.in(0));
-        this.DevReponse.out(0).to(this.SendEmail.in(0));
+        this.DevReponse.out(0).to(this.SendResponse2.in(0));
         this.SplitOut1.out(0).to(this.LoopResponse1.in(0));
         this.LoopResponse1.out(0).to(this.ErrorContext.in(0));
         this.LoopResponse1.out(1).to(this.SendResponse1.in(0));
         this.SendResponse2.out(0).to(this.ErrorContext.in(0));
         this.SendResponse2.out(1).to(this.ErrorContext.in(0));
-        this.SendEmail.out(0).to(this.SendResponse2.in(0));
-        this.SendEmail.out(1).to(this.SendResponse2.in(0));
     }
 }

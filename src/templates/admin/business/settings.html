@@ -10,7 +10,7 @@
     </div>
 </header>
 
-<form method="post" action="/admin/business" class="stack settings-form">
+<form method="post" action="/admin/business" class="stack settings-form" data-business-settings-form>
     <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
 
     <section class="settings-grid">
@@ -40,6 +40,16 @@
                         <option value="{{ business.timezone }}" selected>{{ business.timezone }}</option>
                     </select>
                 </label>
+                <label>Plano de atendimento
+                    <select name="attendance_plan" required>
+                        {% for plan in business_attendance_plans %}
+                        <option value="{{ plan.value }}" {% if plan == business.attendance_plan %}selected{% endif %}>
+                            {{ plan|admin_label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <span class="field-help">Controla quando o atendimento automatizado pode continuar.</span>
+                </label>
                 {% endif %}
             </div>
             <label>Descrição
@@ -47,36 +57,64 @@
             </label>
         </div>
 
-        <div class="card settings-card stack">
-            <h2 class="section-title">Contato e localização</h2>
-            <div class="form-grid compact-grid">
-                <label>Telefone
-                    <input name="phone" value="{{ business.phone or '' }}" />
-                </label>
-                <label>Email
-                    <input name="email" type="email" value="{{ business.email or '' }}" />
-                </label>
-                <label>Estado
-                    <select name="state" data-business-state data-current-value="{{ business.state or '' }}">
-                        {% if business.state %}
-                        <option value="{{ business.state }}" selected>{{ business.state }}</option>
-                        {% else %}
-                        <option value="">Selecione o estado</option>
-                        {% endif %}
-                    </select>
-                </label>
-                <label>Cidade
-                    <select name="city" data-business-city data-current-value="{{ business.city or '' }}">
-                        {% if business.city %}
-                        <option value="{{ business.city }}" selected>{{ business.city }}</option>
-                        {% else %}
-                        <option value="">Selecione a cidade</option>
-                        {% endif %}
-                    </select>
-                </label>
-                <label>Endereço
-                    <input name="address" value="{{ business.address or '' }}" />
-                </label>
+        <div class="settings-side-stack">
+            <div class="card settings-card stack">
+                <h2 class="section-title">Contatos</h2>
+                <div class="form-grid compact-grid">
+                    <label>Telefone
+                        <input name="phone" value="{{ business.phone or '' }}" />
+                    </label>
+                    <label>Email
+                        <input name="email" type="email" value="{{ business.email or '' }}" />
+                    </label>
+                </div>
+            </div>
+
+            <div class="card settings-card stack">
+                <h2 class="section-title">Localização</h2>
+                <div class="form-grid compact-grid">
+                    <label>CEP
+                        <input
+                            name="cep"
+                            inputmode="numeric"
+                            autocomplete="postal-code"
+                            placeholder="00000-000"
+                            maxlength="9"
+                            data-business-cep />
+                        <span class="field-help" data-business-cep-message role="status" aria-live="polite"></span>
+                    </label>
+                    <label>Rua
+                        <input
+                            name="address_street"
+                            value="{{ business_address_parts.street }}"
+                            data-business-address-street />
+                    </label>
+                    <label>Número do estabelecimento
+                        <input
+                            name="address_number"
+                            value="{{ business_address_parts.number }}"
+                            placeholder="123"
+                            data-business-address-number />
+                    </label>
+                    <label>Estado
+                        <select name="state" data-business-state data-current-value="{{ business.state or '' }}">
+                            {% if business.state %}
+                            <option value="{{ business.state }}" selected>{{ business.state }}</option>
+                            {% else %}
+                            <option value="">Selecione o estado</option>
+                            {% endif %}
+                        </select>
+                    </label>
+                    <label>Cidade
+                        <select name="city" data-business-city data-current-value="{{ business.city or '' }}">
+                            {% if business.city %}
+                            <option value="{{ business.city }}" selected>{{ business.city }}</option>
+                            {% else %}
+                            <option value="">Selecione a cidade</option>
+                            {% endif %}
+                        </select>
+                    </label>
+                </div>
             </div>
         </div>
     </section>

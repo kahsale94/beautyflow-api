@@ -1,49 +1,114 @@
 {
   "workflows": {
     "HH6KPg5oLoi1L6IG": {
-      "lastSyncedHash": "ca91ad14bd91f630bdf12e74edc1d2a759cea3ccfd6c679befcfd71c828e610e",
-      "lastSyncedAt": "2026-06-16T22:08:57.792Z",
-      "filename": "main agent_HH6KPg5o.workflow.ts"
+      "lastSyncedHash": "948e283b492a72e2afe67be43efaeb9356aa9571ea1e64394de515a86d9ffa11",
+      "lastSyncedAt": "2026-06-23T23:38:46.831Z",
+      "filename": "main-prod.workflow.ts"
     },
     "p2z28Yex6r93HRT0": {
-      "lastSyncedHash": "feef87ae373f0db0b8326887de20bf218740208abc25ca1a220d124cb3ba4d18",
-      "lastSyncedAt": "2026-06-15T19:25:07.546Z",
-      "filename": "clients.workflow.ts"
+      "lastSyncedHash": "2bde677628954de497109fa25bdb8b66a692e34cf02efed288dee58011aea8c5",
+      "lastSyncedAt": "2026-06-23T23:38:42.623Z",
+      "filename": "clients-prod.workflow.ts"
     },
     "j71qqEVnWkAMmhB3": {
-      "lastSyncedHash": "a8063a77fa34a5073ea6b7d39db097b3dc5a7dc4b1fb94778dd5dab36cad2fd2",
-      "lastSyncedAt": "2026-06-16T15:05:07.385Z",
-      "filename": "appointments.workflow.ts"
+      "lastSyncedHash": "a34d47f1aa8680f1e314aad66001f37751e8ad92748012a7f1e22618bb308e91",
+      "lastSyncedAt": "2026-06-23T23:38:36.993Z",
+      "filename": "appointments-prod.workflow.ts"
     },
     "bFSJIIiJrsHfBGcU": {
-      "lastSyncedHash": "9011d24f7ed09f6ba5374cf4c52fc76a87482d86da76112b9c0945aa88a41eb2",
-      "lastSyncedAt": "2026-06-15T19:25:10.606Z",
-      "filename": "professionals.workflow.ts"
+      "lastSyncedHash": "45039ce026d7c326c8d64eeec08f3c73ae43b94d0f422dfe89a7cc740258f87e",
+      "lastSyncedAt": "2026-06-23T23:38:49.230Z",
+      "filename": "professionals-prod.workflow.ts"
     },
     "JUmgL8OgChZeJAWe": {
-      "lastSyncedHash": "7ad13f4c5f4e5934cc0e346beb1561cc74a353f1a2acbe562417ffe80eb766da",
-      "lastSyncedAt": "2026-06-15T19:25:10.685Z",
-      "filename": "services.workflow.ts"
+      "lastSyncedHash": "6e43218c4c2778ab538a439d7d22d317ffc3e3669a158b8abe02a7dae3ffc728",
+      "lastSyncedAt": "2026-06-23T23:38:49.816Z",
+      "filename": "services-prod.workflow.ts"
     },
     "bWdz3xBVwmycvfwW": {
-      "lastSyncedHash": "3e43cdcb483e48590ce5c9bd57454c4eef72a0aa5b9f8f53dc71f58e37d6eaad",
-      "lastSyncedAt": "2026-06-16T22:08:47.628Z",
-      "filename": "error.workflow.ts"
+      "lastSyncedHash": "2e2841c2da2dd42b289692dda7b771d8a58a76c07c5519433a49c47faccf0bb1",
+      "lastSyncedAt": "2026-06-23T23:38:43.944Z",
+      "filename": "error-prod.workflow.ts"
     },
     "fI4FYgDFzKREs8oI": {
-      "lastSyncedHash": "f072a2bec302abfcda864ae077f513a2060c19eaa067e8e692a00456b6338581",
-      "lastSyncedAt": "2026-06-17T12:52:17.723Z",
-      "filename": "businesses.workflow.ts"
+      "lastSyncedHash": "f857f14f6e1d41ee70d7782ef00661a5ee51b7d9f942d4d4bcddacba4ab5a32a",
+      "lastSyncedAt": "2026-06-23T23:38:39.159Z",
+      "filename": "businesses-prod.workflow.ts"
     },
     "2BBY2GXe0CWMszlt": {
-      "lastSyncedHash": "eede24061fc10d9602dcc2d82c9e746ead820e178ae60ccb5275391d33512e0a",
-      "lastSyncedAt": "2026-06-15T19:25:09.378Z",
-      "filename": "pending state.workflow.ts"
+      "lastSyncedHash": "68d7d2514be98e3fefea82cc1d97b21b6399bafbc80e1cc607f140e052625b8a",
+      "lastSyncedAt": "2026-06-23T11:58:55.537Z",
+      "filename": "pending state-prod.workflow.ts"
     },
     "Mt6dV4M7Z3aoPihh": {
-      "lastSyncedHash": "1f642981b97145669f63d6bd65f025485436b98941b0885ac79ee71e247a0b54",
-      "lastSyncedAt": "2026-06-15T19:25:06.092Z",
-      "filename": "availabilities.workflow.ts"
+      "lastSyncedHash": "5395e870d94d259358bee224cfb47c6723b54e0e5861613985a93a462e7ea6f9",
+      "lastSyncedAt": "2026-06-23T23:38:38.823Z",
+      "filename": "availabilities-prod.workflow.ts"
+    },
+    "4HdDMg12MHYD0pW0": {
+      "lastSyncedHash": "cfc37a7e78cb7f889e33362d54848f1553e22a73acbb046d48a0a38da3745258",
+      "lastSyncedAt": "2026-06-26T19:08:54.293Z",
+      "filename": "main-staging.workflow.ts"
+    },
+    "249kJRLhcloHLPCk": {
+      "lastSyncedHash": "2ef4bd54f7c12e48bd1330b123c2b713cadbd409decf3dfdd4c517aae8f0cd26",
+      "lastSyncedAt": "2026-06-23T23:38:38.957Z",
+      "filename": "availabilities-staging.workflow.ts"
+    },
+    "el3GeDHzGRJaidKi": {
+      "lastSyncedHash": "66a11466d5d224b583713d0be457b5f94bf21624c4473bfaefbe5b65011c7449",
+      "lastSyncedAt": "2026-06-23T23:38:43.646Z",
+      "filename": "clients-staging.workflow.ts"
+    },
+    "VJhji9bH9TjYZy06": {
+      "lastSyncedHash": "f370203dbff2a22c9a664be2141333cecec8106a7e066028e69e716abfc84132",
+      "lastSyncedAt": "2026-06-23T23:38:47.087Z",
+      "filename": "pending state-staging.workflow.ts"
+    },
+    "rMEHtjR5lFuN97w0": {
+      "lastSyncedHash": "e945e2f48c20c5617f0b01522bc79ef34be5d9111729baf21cd660eddfa6faad",
+      "lastSyncedAt": "2026-06-23T23:38:49.690Z",
+      "filename": "professionals-staging.workflow.ts"
+    },
+    "tPtMFcuYvJPyKHQl": {
+      "lastSyncedHash": "2d8b7008b9ec3825827098116f01210e3861dc5d52a168eed9f41c056fcdbedf",
+      "lastSyncedAt": "2026-06-23T23:38:51.194Z",
+      "filename": "services-staging.workflow.ts"
+    },
+    "8Zv0enEr5Ktjbay1": {
+      "lastSyncedHash": "018984766ab0393b65e96df288afa119c922050854a88c0ce92efb44b0b57ad9",
+      "lastSyncedAt": "2026-06-23T23:38:37.526Z",
+      "filename": "appointments-staging.workflow.ts"
+    },
+    "dVtm2MJ8gTjXHIuE": {
+      "lastSyncedHash": "372df5abdaf4f36ad3fc17cb0ecb4b43965329e52b4d98a3670c3ab001ba316d",
+      "lastSyncedAt": "2026-06-23T22:43:08.849Z",
+      "filename": "businesses-staging.workflow.ts"
+    },
+    "BxyJLKjTEcfzV18k": {
+      "lastSyncedHash": "9e23588424c342eb0bee63c90856ae366288c49acce471ebe718c41a08ede061",
+      "lastSyncedAt": "2026-06-23T20:29:32.606Z",
+      "filename": "error-staging.workflow.ts"
+    },
+    "p2kzVWnvsVMpydTL7IEG4": {
+      "lastSyncedHash": "21a664d00b825e31eb2ab488d8a1fb8f7afa3664d2de6d4feb02c70e710ab668",
+      "lastSyncedAt": "2026-06-01T18:22:14.227Z",
+      "filename": "main.workflow.ts"
+    },
+    "P8X2SfwMgUmKvh1v": {
+      "lastSyncedHash": "ce0cea39bbbfe2bf6008f942de75d1916e3d80a21aeeed3e4d0fd818b1dd8cd0",
+      "lastSyncedAt": "2026-06-23T23:38:53.781Z",
+      "filename": "test-staging.workflow.ts"
+    },
+    "15JP8jcgfI6ZAAn8": {
+      "lastSyncedHash": "c01cf42bc039d96be74a65784356ea4bb7d2e88473d08bac0cb9a0f6fa011470",
+      "lastSyncedAt": "2026-06-23T22:43:43.609Z",
+      "filename": "cache-cleanup-prod.workflow.ts"
+    },
+    "cfrWX2pDQLbefiBu": {
+      "lastSyncedHash": "83f564d7de2f9eab9fe393afc41778d428608e4321fcfee906b048ae6fdd1d86",
+      "lastSyncedAt": "2026-06-23T23:38:41.614Z",
+      "filename": "cache-cleanup-staging.workflow.ts"
     }
   }
 }

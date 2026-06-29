@@ -5,6 +5,7 @@ from src.core import DataBaseDep
 from src.models import BusinessIntegration
 from src.repositories import BusinessIntegrationRepository
 from src.schemas import BusinessIntegrationCreate, BusinessIntegrationUpdate
+from src.services.redis_cache_invalidator import RedisCacheInvalidator
 
 class BusinessIntegrationNotFoundError(Exception):
     pass
@@ -18,9 +19,11 @@ class BusinessIntegrationService:
         self,
         db: Session,
         business_integration_repo: BusinessIntegrationRepository,
+        cache_invalidator: RedisCacheInvalidator | None = None,
     ):
         self.db = db
         self.business_integration_repo = business_integration_repo
+        self.cache_invalidator = cache_invalidator or RedisCacheInvalidator()
 
     def _get_valid(self, business_id: int, integration_id: int):
         result = self.business_integration_repo.get_by_ids(self.db, business_id, integration_id)
@@ -63,6 +66,7 @@ class BusinessIntegrationService:
             raise BusinessIntegrationAlreadyExistsError()
         
         self.db.refresh(result)
+        self.cache_invalidator.invalidate_business_context()
 
         return result
 
@@ -79,6 +83,7 @@ class BusinessIntegrationService:
 
         self.db.commit()
         self.db.refresh(result)
+        self.cache_invalidator.invalidate_business_context()
 
         return result
 
@@ -88,6 +93,7 @@ class BusinessIntegrationService:
         result.is_active = False
 
         self.db.commit()
+        self.cache_invalidator.invalidate_business_context()
 
         return
 
@@ -96,6 +102,7 @@ class BusinessIntegrationService:
 
         self.business_integration_repo.delete(self.db, result)
         self.db.commit()
+        self.cache_invalidator.invalidate_business_context()
 
         return
 
@@ -103,4 +110,5 @@ def get_business_integration_service(db: DataBaseDep):
     return BusinessIntegrationService(
         db,
         BusinessIntegrationRepository(),
+        RedisCacheInvalidator(),
     )

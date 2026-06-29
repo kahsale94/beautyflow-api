@@ -240,19 +240,38 @@ The global key must stay in environment variables only.
 
 ## n8n Workflows
 
-The nine Beautyflow workflows are versioned in `workflows/`:
+Beautyflow production workflows are versioned in `workflows/`. Staging workflow
+files are intentionally ignored by Git and can be kept locally for manual n8n
+testing. The workflow tests discover local staging files when they exist, but CI
+only depends on the versioned production files.
 
-| Workflow | Responsibility |
+The repository currently tracks 10 production workflow files:
+
+| Workflow files | Responsibility |
 | --- | --- |
-| `main agent` | Webhook intake, memory, agent, and tool routing |
-| `businesses` | Business context and configuration |
-| `clients` | Client identification and maintenance |
-| `professionals` | Professional lookup and selection |
-| `services` | Service lookup and selection |
-| `availabilities` | Slot checks and suggestions |
-| `appointments` | Appointment creation and maintenance |
-| `pending state` | Intermediate conversation state |
-| `error` | n8n failures and backend error reports |
+| `main-prod` | Webhook intake, memory, agent, and tool routing |
+| `businesses-prod` | Business context and configuration |
+| `clients-prod` | Client identification and maintenance |
+| `professionals-prod` | Professional lookup and selection |
+| `services-prod` | Service lookup and selection |
+| `availabilities-prod` | Slot checks and suggestions |
+| `appointments-prod` | Appointment creation, reminders, and maintenance |
+| `pending state-prod` | Intermediate conversation state |
+| `cache-cleanup-prod` | Redis/conversation state cleanup |
+| `error-prod` | n8n failures and backend error reports |
+
+Workflow notes:
+
+- Local staging workflow files are manual test artifacts. Keep them ignored
+  unless a staging workflow is intentionally promoted into the versioned set.
+- Static validation warns for `n8n-nodes-evolution-api` community nodes because
+  their schemas are not available to `n8nac`; those nodes still require runtime
+  credential and execution testing in n8n.
+
+As of the production-readiness audit on 2026-06-26, `npx --yes n8nac list`
+reported the Beautyflow workflow set with zero conflicts. Remote-only or local
+staging workflows in the same n8n project are outside the Git-tracked production
+set and should remain untouched unless they are intentionally adopted or removed.
 
 ### n8n Prerequisites
 
@@ -391,13 +410,47 @@ Local URLs:
 | `REDIS_URL` | no | Application Redis URL |
 | `ALGORITHM` | yes | `HS256`, `HS384`, or `HS512` |
 | `USER_SECRET_KEY` | yes | User token secret |
+| `USER_SECRET_KEY_ID` | no | Key id written as `kid` on new user JWTs |
+| `USER_SECRET_KEY_FALLBACKS` | no | Previous user secrets accepted only for validation |
 | `INTEGRATION_SECRET_KEY` | yes | Integration token secret |
+| `INTEGRATION_SECRET_KEY_ID` | no | Key id written as `kid` on new integration JWTs |
+| `INTEGRATION_SECRET_KEY_FALLBACKS` | no | Previous integration secrets accepted only for validation |
 | `BUSINESS_INTEGRATION_SECRET_KEY` | yes | Per-business token secret |
+| `BUSINESS_INTEGRATION_SECRET_KEY_ID` | no | Key id written as `kid` on new business integration JWTs |
+| `BUSINESS_INTEGRATION_SECRET_KEY_FALLBACKS` | no | Previous business integration secrets accepted only for validation |
 | `USER_ACCESS_TOKEN_EXPIRE_MINUTES` | yes | Access token duration |
 | `USER_REFRESH_TOKEN_EXPIRE_DAYS` | yes | Refresh token duration |
 | `INTEGRATION_TOKEN_EXPIRE_DAYS` | yes | Integration token duration |
 | `BUSINESS_INTEGRATION_TOKEN_EXPIRE_MINUTES` | yes | Business token duration |
 | `CORS_ORIGINS` | production | Allowed origins, comma-separated |
+
+### JWT Secret Rotation
+
+`USER_SECRET_KEY`, `INTEGRATION_SECRET_KEY`, and
+`BUSINESS_INTEGRATION_SECRET_KEY` are the current signing secrets. New JWTs are
+issued with a `kid` header from the matching `*_SECRET_KEY_ID` variable. The
+`*_SECRET_KEY_FALLBACKS` variables are comma-separated previous secrets accepted
+only for validation during a rotation window. A fallback entry can be either
+`kid:secret` or just `secret`; bare secrets support legacy tokens that were
+issued before `kid` existed.
+
+Recommended rotation process:
+
+1. Deploy code that supports rotation while keeping the existing current secret.
+2. For one token family at a time, set a new current secret and key id, and move
+   the previous current secret into that family's fallback list.
+3. Keep user fallbacks for at least `USER_REFRESH_TOKEN_EXPIRE_DAYS`, integration
+   fallbacks for at least `INTEGRATION_TOKEN_EXPIRE_DAYS`, and business
+   integration fallbacks for at least `BUSINESS_INTEGRATION_TOKEN_EXPIRE_MINUTES`
+   plus the deploy propagation window.
+4. After the window, remove the old fallback and restart the service. Tokens
+   signed only by that removed secret will then fail validation.
+
+For user refresh tokens, the stored `jti_hash` is generated with the current user
+secret. During rotation, refresh and logout lookups also try hashes generated
+with configured user fallbacks. A successful refresh replaces the old record with
+a new refresh token and a current-key `jti_hash`. Admin CSRF tokens use the same
+user fallback window.
 
 ### Security and Rate Limiting
 

@@ -1,7 +1,7 @@
 import { workflow, node, links } from '@n8n-as-code/transformer';
 
 // <workflow-map>
-// Workflow : availabilities
+// Workflow : availabilities-prod
 // Nodes   : 10  |  Connections: 9
 //
 // NODE INDEX
@@ -38,13 +38,14 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 
 @workflow({
     id: 'Mt6dV4M7Z3aoPihh',
-    name: 'availabilities',
+    name: 'availabilities-prod',
     active: true,
     isArchived: false,
+    projectId: 'UVYVLJNFC5m6HlJG',
     tags: ['Kaiky', 'beautyflow-api'],
     settings: {
         executionOrder: 'v1',
-        availableInMCP: false,
+        availableInMCP: true,
         binaryMode: 'separate',
         timeSavedMode: 'fixed',
         errorWorkflow: 'bWdz3xBVwmycvfwW',
@@ -52,7 +53,7 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
         callerPolicy: 'workflowsFromSameOwner',
     },
 })
-export class AvailabilitiesWorkflow {
+export class AvailabilitiesProdWorkflow {
     // =====================================================================
     // CONFIGURATION DES NOEUDS
     // =====================================================================
@@ -276,7 +277,8 @@ export class AvailabilitiesWorkflow {
         errorType: 'errorObject',
         errorObject: `={
   "error": {
-    "id": "{{ $execution.id }}",
+    "workflow": "{{ $workflow.id }}",
+    "execution": "{{ $execution.id }}",
     "type": "business.availability_get_slots",
     "node": "{{ $prevNode.name }}",
     "code": "{{ $json.error.status || '' }}",
@@ -292,14 +294,19 @@ export class AvailabilitiesWorkflow {
 }}"
   },
   "business": {
-    "id": "{{ $('data handler').item.json.business.id || '' }}",
-    "name": "{{ $('data handler').item.json.business.name || '' }}",
-    "phone": "{{ $('data handler').item.json.business.phone || '' }}"
+    "id": "{{ $('data handler').first().json.business?.id || '' }}",
+    "name": "{{ $('data handler').first().json.business?.name || '' }}",
+    "phone": "{{ $('data handler').first().json.business?.phone || '' }}"
   },
   "client": {
-    "remote_jid": "{{ $('data handler').item.json.client.remote_jid || '' }}",
-    "message_id": "{{ $('data handler').item.json.message.id || '' }}",
-    "message_text": "{{ $('data handler').item.json.message.text || '' }}"
+    "remote_jid": "{{ $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '' }}",
+    "message_id": "{{ $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '' }}",
+    "message_text": "{{ $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || '' }}"
+  },
+  "api": {
+    "url": "{{ $('data handler').first().json.api?.url || '' }}",
+    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,
     };
@@ -453,7 +460,8 @@ export class AvailabilitiesWorkflow {
         errorType: 'errorObject',
         errorObject: `={
   "error": {
-    "id": "{{ $execution.id }}",
+    "workflow": "{{ $workflow.id }}",
+    "execution": "{{ $execution.id }}",
     "type": "business.availability_check_and_suggest",
     "node": "{{ $prevNode.name }}",
     "code": "{{ $json.error.status || '' }}",
@@ -469,14 +477,19 @@ export class AvailabilitiesWorkflow {
 }}"
   },
   "business": {
-    "id": "{{ $('data handler').first().json.business.id || '' }}",
-    "name": "{{ $('data handler').first().json.business.name || '' }}",
-    "phone": "{{ $('data handler').first().json.business.phone || '' }}"
+    "id": "{{ $('data handler').first().json.business?.id || '' }}",
+    "name": "{{ $('data handler').first().json.business?.name || '' }}",
+    "phone": "{{ $('data handler').first().json.business?.phone || '' }}"
   },
   "client": {
-    "remote_jid": "{{ $('data handler').first().json.client.remote_jid || '' }}",
-    "message_id": "{{ $('data handler').first().json.message.id || '' }}",
-    "message_text": "{{ $('data handler').first().json.message.text || '' }}"
+    "remote_jid": "{{ $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '' }}",
+    "message_id": "{{ $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '' }}",
+    "message_text": "{{ $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || '' }}"
+  },
+  "api": {
+    "url": "{{ $('data handler').first().json.api?.url || '' }}",
+    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,
     };

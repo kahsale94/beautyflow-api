@@ -5,7 +5,8 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from pydantic import BaseModel, ConfigDict, field_validator, Field, EmailStr, model_validator
 
 from .base_schema import name_type, phone_type
-from src.models.business_model import BusinessType
+from src.models.business_model import BusinessAttendancePlan, BusinessType
+from src.utils import normalize_cep
 
 
 def validate_slug_value(value: str | None) -> str | None:
@@ -20,11 +21,13 @@ def validate_slug_value(value: str | None) -> str | None:
 class BusinessCreate(BaseModel):
     name: name_type
     type: BusinessType
+    attendance_plan: BusinessAttendancePlan = BusinessAttendancePlan.business_hours
     timezone: str = Field(examples=["America/Sao_Paulo"])
 
     slug: str | None = None
     phone: phone_type = Field(examples=["5511900000000"])
     email: EmailStr | None = None
+    cep: str | None = None
     address: str | None = None
     city: str | None = None
     state: str | None = None
@@ -54,14 +57,21 @@ class BusinessCreate(BaseModel):
     def validate_slug(cls, value: str | None) -> str | None:
         return validate_slug_value(value)
 
+    @field_validator("cep")
+    @classmethod
+    def validate_cep(cls, value: str | None) -> str | None:
+        return normalize_cep(value)
+
 class BusinessUpdate(BaseModel):
     name: name_type | None = None
     type: BusinessType | None = None
+    attendance_plan: BusinessAttendancePlan | None = None
     timezone: str | None = Field(default=None, examples=["America/Sao_Paulo"])
 
     slug: str | None = None
     phone: phone_type | None = Field(default=None, examples=["5511900000000"])
     email: EmailStr | None = None
+    cep: str | None = None
     address: str | None = None
     city: str | None = None
     state: str | None = None
@@ -94,6 +104,11 @@ class BusinessUpdate(BaseModel):
     def validate_slug(cls, value: str | None) -> str | None:
         return validate_slug_value(value)
 
+    @field_validator("cep")
+    @classmethod
+    def validate_cep(cls, value: str | None) -> str | None:
+        return normalize_cep(value)
+
 class BusinessOpeningHourCreate(BaseModel):
     weekday: int = Field(ge=0, le=6)
     start_time: time
@@ -114,11 +129,19 @@ class BusinessOpeningHourResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+class BusinessAttendanceStatusResponse(BaseModel):
+    plan: BusinessAttendancePlan
+    business_is_open: bool
+    allowed: bool
+    block_reason: str | None = None
+    checked_at: str
+
 class BusinessResponse(BaseModel):
     id: int
     name: name_type
     slug: str | None = None
     type: BusinessType
+    attendance_plan: BusinessAttendancePlan
     timezone: str = Field(examples=["America/Sao_Paulo"])
     created_at: datetime
     is_active: bool
@@ -138,5 +161,9 @@ class BusinessResponse(BaseModel):
     allow_client_cancel: bool
     cancel_limit_hours: int
     appointment_confirmation_required: bool
+    business_is_open: bool
+    attendance_allowed: bool
+    attendance_block_reason: str | None = None
+    attendance_status: BusinessAttendanceStatusResponse
 
     model_config = ConfigDict(from_attributes=True)

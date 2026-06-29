@@ -1,8 +1,8 @@
 import { workflow, node, links } from '@n8n-as-code/transformer';
 
 // <workflow-map>
-// Workflow : appointments
-// Nodes   : 44  |  Connections: 59
+// Workflow : appointments-prod
+// Nodes   : 44  |  Connections: 36
 //
 // NODE INDEX
 // ──────────────────────────────────────────────────────────────────
@@ -63,39 +63,13 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 //              → ServiceContext
 //                → AppointmentContext
 //                  → Action1
-//                    → AddToCalendar
-//                      → ConfirmationEmail
-//                        → ReturnContext
-//                          → Aggregate
-//                            → FinalReturn
-//                       .out(1) → ErrorReport24
-//                          → ReturnContext (↩ loop)
-//                     .out(1) → ErrorReport23
-//                        → ConfirmationEmail (↩ loop)
+//                    → ReturnContext
+//                      → Aggregate
+//                        → FinalReturn
 //                   .out(1) → ReturnContext (↩ loop)
-//                   .out(2) → GetEvent
-//                      → UpdateEvent
-//                        → GetEmail
-//                          → UpdateEmail
-//                            → ReturnContext (↩ loop)
-//                           .out(1) → ErrorReport26
-//                              → ReturnContext (↩ loop)
-//                         .out(1) → ErrorReport26 (↩ loop)
-//                       .out(1) → ErrorReport25
-//                          → GetEmail (↩ loop)
-//                     .out(1) → ErrorReport25 (↩ loop)
+//                   .out(2) → ReturnContext (↩ loop)
 //                   .out(3) → Cancel
-//                      → GetEvent1
-//                        → DeleteEvent
-//                          → GetEmail1
-//                            → DeleteEmail
-//                              → ReturnContext (↩ loop)
-//                             .out(1) → ErrorReport
-//                                → ReturnContext (↩ loop)
-//                           .out(1) → ErrorReport (↩ loop)
-//                         .out(1) → ErrorReport27
-//                            → GetEmail1 (↩ loop)
-//                       .out(1) → ErrorReport27 (↩ loop)
+//                      → ReturnContext (↩ loop)
 //                     .out(1) → ErrorReport21
 //         .out(1) → ErrorReport20
 //       .out(1) → Patch
@@ -109,6 +83,12 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 //         .out(1) → GetByClient
 //            → PreContext (↩ loop)
 //           .out(1) → ErrorReport16
+// ErrorReport24
+//    → ReturnContext (↩ loop)
+// ErrorReport26
+//    → ReturnContext (↩ loop)
+// ErrorReport
+//    → ReturnContext (↩ loop)
 // ReminderSchedule
 //    → ClaimReminders
 //      → SplitReminderClaims
@@ -123,13 +103,14 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 
 @workflow({
     id: 'j71qqEVnWkAMmhB3',
-    name: 'appointments',
+    name: 'appointments-prod',
     active: true,
     isArchived: false,
+    projectId: 'UVYVLJNFC5m6HlJG',
     tags: ['Kaiky', 'beautyflow-api'],
     settings: {
         executionOrder: 'v1',
-        availableInMCP: false,
+        availableInMCP: true,
         binaryMode: 'separate',
         timeSavedMode: 'fixed',
         errorWorkflow: 'bWdz3xBVwmycvfwW',
@@ -137,7 +118,7 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
         callerPolicy: 'workflowsFromSameOwner',
     },
 })
-export class AppointmentsWorkflow {
+export class AppointmentsProdWorkflow {
     // =====================================================================
     // CONFIGURATION DES NOEUDS
     // =====================================================================
@@ -1431,7 +1412,8 @@ return {
         errorType: 'errorObject',
         errorObject: `={
   "error": {
-    "id": "{{ $execution.id }}",
+    "workflow": "{{ $workflow.id }}",
+    "execution": "{{ $execution.id }}",
     "type": "internal.api.get_appointment",
     "node": "{{ $prevNode.name }}",
     "code": "{{ $json.error.status || '' }}",
@@ -1447,14 +1429,19 @@ return {
 }}"
   },
   "business": {
-    "id": "{{ $('data handler').item.json.business.id || '' }}",
-    "name": "{{ $('data handler').item.json.business.name || '' }}",
-    "phone": "{{ $('data handler').item.json.business.phone || '' }}"
+    "id": "{{ $('data handler').first().json.business?.id || '' }}",
+    "name": "{{ $('data handler').first().json.business?.name || '' }}",
+    "phone": "{{ $('data handler').first().json.business?.phone || '' }}"
   },
   "client": {
-    "remote_jid": "{{ $('data handler').item.json.client.remote_jid || '' }}",
-    "message_id": "{{ $('data handler').item.json.message.id || '' }}",
-    "message_text": "{{ $('data handler').item.json.message.text || '' }}"
+    "remote_jid": "{{ $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '' }}",
+    "message_id": "{{ $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '' }}",
+    "message_text": "{{ $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || '' }}"
+  },
+  "api": {
+    "url": "{{ $('data handler').first().json.api?.url || '' }}",
+    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,
     };
@@ -1470,7 +1457,8 @@ return {
         errorType: 'errorObject',
         errorObject: `={
   "error": {
-    "id": "{{ $execution.id }}",
+    "workflow": "{{ $workflow.id }}",
+    "execution": "{{ $execution.id }}",
     "type": "business.appointment_cancel",
     "node": "{{ $prevNode.name }}",
     "code": "{{ $json.error.status || '' }}",
@@ -1486,14 +1474,19 @@ return {
 }}"
   },
   "business": {
-    "id": "{{ $('data handler').item.json.business.id || '' }}",
-    "name": "{{ $('data handler').item.json.business.name || '' }}",
-    "phone": "{{ $('data handler').item.json.business.phone || '' }}"
+    "id": "{{ $('data handler').first().json.business?.id || '' }}",
+    "name": "{{ $('data handler').first().json.business?.name || '' }}",
+    "phone": "{{ $('data handler').first().json.business?.phone || '' }}"
   },
   "client": {
-    "remote_jid": "{{ $('data handler').item.json.client.remote_jid || '' }}",
-    "message_id": "{{ $('data handler').item.json.message.id || '' }}",
-    "message_text": "{{ $('data handler').item.json.message.text || '' }}"
+    "remote_jid": "{{ $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '' }}",
+    "message_id": "{{ $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '' }}",
+    "message_text": "{{ $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || '' }}"
+  },
+  "api": {
+    "url": "{{ $('data handler').first().json.api?.url || '' }}",
+    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,
     };
@@ -1509,7 +1502,8 @@ return {
         errorType: 'errorObject',
         errorObject: `={
   "error": {
-    "id": "{{ $execution.id }}",
+    "workflow": "{{ $workflow.id }}",
+    "execution": "{{ $execution.id }}",
     "type": "business.appointment_update",
     "node": "{{ $prevNode.name }}",
     "code": "{{ $json.error.status || '' }}",
@@ -1525,14 +1519,19 @@ return {
 }}"
   },
   "business": {
-    "id": "{{ $('data handler').item.json.business.id || '' }}",
-    "name": "{{ $('data handler').item.json.business.name || '' }}",
-    "phone": "{{ $('data handler').item.json.business.phone || '' }}"
+    "id": "{{ $('data handler').first().json.business?.id || '' }}",
+    "name": "{{ $('data handler').first().json.business?.name || '' }}",
+    "phone": "{{ $('data handler').first().json.business?.phone || '' }}"
   },
   "client": {
-    "remote_jid": "{{ $('data handler').item.json.client.remote_jid || '' }}",
-    "message_id": "{{ $('data handler').item.json.message.id || '' }}",
-    "message_text": "{{ $('data handler').item.json.message.text || '' }}"
+    "remote_jid": "{{ $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '' }}",
+    "message_id": "{{ $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '' }}",
+    "message_text": "{{ $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || '' }}"
+  },
+  "api": {
+    "url": "{{ $('data handler').first().json.api?.url || '' }}",
+    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,
     };
@@ -1548,7 +1547,8 @@ return {
         errorType: 'errorObject',
         errorObject: `={
   "error": {
-    "id": "{{ $execution.id }}",
+    "workflow": "{{ $workflow.id }}",
+    "execution": "{{ $execution.id }}",
     "type": "business.appointment_create",
     "node": "{{ $prevNode.name }}",
     "code": "{{ $json.error.status || '' }}",
@@ -1564,14 +1564,19 @@ return {
 }}"
   },
   "business": {
-    "id": "{{ $('data handler').item.json.business.id || '' }}",
-    "name": "{{ $('data handler').item.json.business.name || '' }}",
-    "phone": "{{ $('data handler').item.json.business.phone || '' }}"
+    "id": "{{ $('data handler').first().json.business?.id || '' }}",
+    "name": "{{ $('data handler').first().json.business?.name || '' }}",
+    "phone": "{{ $('data handler').first().json.business?.phone || '' }}"
   },
   "client": {
-    "remote_jid": "{{ $('data handler').item.json.client.remote_jid || '' }}",
-    "message_id": "{{ $('data handler').item.json.message.id || '' }}",
-    "message_text": "{{ $('data handler').item.json.message.text || '' }}"
+    "remote_jid": "{{ $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '' }}",
+    "message_id": "{{ $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '' }}",
+    "message_text": "{{ $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || '' }}"
+  },
+  "api": {
+    "url": "{{ $('data handler').first().json.api?.url || '' }}",
+    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,
     };
@@ -1598,7 +1603,7 @@ return {
   workflow: $workflow.id,
   execution: $execution.id,
   type: "external.calendar",
-  node: appointment_context,
+  node: $prevNode.name,
     code: $json.error.status || '',
     description:
   (() => {
@@ -1612,15 +1617,16 @@ return {
 } }}
 `,
                 business: `={{ {
-    id: $('data handler').item.json.business.id || '',
-    name: $('data handler').item.json.business.name || '',
-    phone: $('data handler').item.json.business.phone || ''
+  id: $('data handler').first().json.business?.id || '',
+  name: $('data handler').first().json.business?.name || '',
+  phone: $('data handler').first().json.business?.phone || ''
 } }}`,
                 client: `={{ {
-  remote_jid: $('data handler').item.json.client.remote_jid || '',
-  message_id: $('data handler').item.json.message.id || '',
-  message_text: $('data handler').item.json.message.text || ''
+  remote_jid: $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '',
+  message_id: $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '',
+  message_text: $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || ''
 } }}`,
+                api: "={{ $('data handler').first().json.api || {} }}",
             },
             matchingColumns: [],
             schema: [
@@ -1695,7 +1701,7 @@ return {
   workflow: $workflow.id,
   execution: $execution.id,
   type: "external.gmail",
-  node: appointment_context,
+  node: $prevNode.name,
     code: $json.error.status || '',
     description:
   (() => {
@@ -1709,15 +1715,16 @@ return {
 } }}
 `,
                 business: `={{ {
-    id: $('data handler').item.json.business.id || '',
-    name: $('data handler').item.json.business.name || '',
-    phone: $('data handler').item.json.business.phone || ''
+  id: $('data handler').first().json.business?.id || '',
+  name: $('data handler').first().json.business?.name || '',
+  phone: $('data handler').first().json.business?.phone || ''
 } }}`,
                 client: `={{ {
-  remote_jid: $('data handler').item.json.client.remote_jid || '',
-  message_id: $('data handler').item.json.message.id || '',
-  message_text: $('data handler').item.json.message.text || ''
+  remote_jid: $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '',
+  message_id: $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '',
+  message_text: $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || ''
 } }}`,
+                api: "={{ $('data handler').first().json.api || {} }}",
             },
             matchingColumns: [],
             schema: [
@@ -1744,6 +1751,16 @@ return {
                 {
                     id: 'client',
                     displayName: 'client',
+                    required: false,
+                    defaultMatch: false,
+                    display: true,
+                    canBeUsedToMatch: true,
+                    type: 'object',
+                    removed: false,
+                },
+                {
+                    id: 'api',
+                    displayName: 'api',
                     required: false,
                     defaultMatch: false,
                     display: true,
@@ -1782,7 +1799,7 @@ return {
   workflow: $workflow.id,
   execution: $execution.id,
   type: "external.calendar",
-  node: appointment_context,
+  node: $prevNode.name,
     code: $json.error.status || '',
     description:
   (() => {
@@ -1796,15 +1813,16 @@ return {
 } }}
 `,
                 business: `={{ {
-    id: $('data handler').item.json.business.id || '',
-    name: $('data handler').item.json.business.name || '',
-    phone: $('data handler').item.json.business.phone || ''
+  id: $('data handler').first().json.business?.id || '',
+  name: $('data handler').first().json.business?.name || '',
+  phone: $('data handler').first().json.business?.phone || ''
 } }}`,
                 client: `={{ {
-  remote_jid: $('data handler').item.json.client.remote_jid || '',
-  message_id: $('data handler').item.json.message.id || '',
-  message_text: $('data handler').item.json.message.text || ''
+  remote_jid: $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '',
+  message_id: $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '',
+  message_text: $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || ''
 } }}`,
+                api: "={{ $('data handler').first().json.api || {} }}",
             },
             matchingColumns: [],
             schema: [
@@ -1831,6 +1849,16 @@ return {
                 {
                     id: 'client',
                     displayName: 'client',
+                    required: false,
+                    defaultMatch: false,
+                    display: true,
+                    canBeUsedToMatch: true,
+                    type: 'object',
+                    removed: false,
+                },
+                {
+                    id: 'api',
+                    displayName: 'api',
                     required: false,
                     defaultMatch: false,
                     display: true,
@@ -1869,7 +1897,7 @@ return {
   workflow: $workflow.id,
   execution: $execution.id,
   type: "external.gmail",
-  node: appointment_context,
+  node: $prevNode.name,
     code: $json.error.status || '',
     description:
   (() => {
@@ -1883,15 +1911,16 @@ return {
 } }}
 `,
                 business: `={{ {
-    id: $('data handler').item.json.business.id || '',
-    name: $('data handler').item.json.business.name || '',
-    phone: $('data handler').item.json.business.phone || ''
+  id: $('data handler').first().json.business?.id || '',
+  name: $('data handler').first().json.business?.name || '',
+  phone: $('data handler').first().json.business?.phone || ''
 } }}`,
                 client: `={{ {
-  remote_jid: $('data handler').item.json.client.remote_jid || '',
-  message_id: $('data handler').item.json.message.id || '',
-  message_text: $('data handler').item.json.message.text || ''
+  remote_jid: $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '',
+  message_id: $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '',
+  message_text: $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || ''
 } }}`,
+                api: "={{ $('data handler').first().json.api || {} }}",
             },
             matchingColumns: [],
             schema: [
@@ -1918,6 +1947,16 @@ return {
                 {
                     id: 'client',
                     displayName: 'client',
+                    required: false,
+                    defaultMatch: false,
+                    display: true,
+                    canBeUsedToMatch: true,
+                    type: 'object',
+                    removed: false,
+                },
+                {
+                    id: 'api',
+                    displayName: 'api',
                     required: false,
                     defaultMatch: false,
                     display: true,
@@ -1956,7 +1995,7 @@ return {
   workflow: $workflow.id,
   execution: $execution.id,
   type: "external.calendar",
-  node: appointment_context,
+  node: $prevNode.name,
     code: $json.error.status || '',
     description:
   (() => {
@@ -1970,15 +2009,16 @@ return {
 } }}
 `,
                 business: `={{ {
-    id: $('data handler').item.json.business.id || '',
-    name: $('data handler').item.json.business.name || '',
-    phone: $('data handler').item.json.business.phone || ''
+  id: $('data handler').first().json.business?.id || '',
+  name: $('data handler').first().json.business?.name || '',
+  phone: $('data handler').first().json.business?.phone || ''
 } }}`,
                 client: `={{ {
-  remote_jid: $('data handler').item.json.client.remote_jid || '',
-  message_id: $('data handler').item.json.message.id || '',
-  message_text: $('data handler').item.json.message.text || ''
+  remote_jid: $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '',
+  message_id: $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '',
+  message_text: $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || ''
 } }}`,
+                api: "={{ $('data handler').first().json.api || {} }}",
             },
             matchingColumns: [],
             schema: [
@@ -2005,6 +2045,16 @@ return {
                 {
                     id: 'client',
                     displayName: 'client',
+                    required: false,
+                    defaultMatch: false,
+                    display: true,
+                    canBeUsedToMatch: true,
+                    type: 'object',
+                    removed: false,
+                },
+                {
+                    id: 'api',
+                    displayName: 'api',
                     required: false,
                     defaultMatch: false,
                     display: true,
@@ -2043,7 +2093,7 @@ return {
   workflow: $workflow.id,
   execution: $execution.id,
   type: "external.gmail",
-  node: appointment_context,
+  node: $prevNode.name,
     code: $json.error.status || '',
     description:
   (() => {
@@ -2057,15 +2107,16 @@ return {
 } }}
 `,
                 business: `={{ {
-    id: $('data handler').item.json.business.id || '',
-    name: $('data handler').item.json.business.name || '',
-    phone: $('data handler').item.json.business.phone || ''
+  id: $('data handler').first().json.business?.id || '',
+  name: $('data handler').first().json.business?.name || '',
+  phone: $('data handler').first().json.business?.phone || ''
 } }}`,
                 client: `={{ {
-  remote_jid: $('data handler').item.json.client.remote_jid || '',
-  message_id: $('data handler').item.json.message.id || '',
-  message_text: $('data handler').item.json.message.text || ''
+  remote_jid: $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '',
+  message_id: $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '',
+  message_text: $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || ''
 } }}`,
+                api: "={{ $('data handler').first().json.api || {} }}",
             },
             matchingColumns: [],
             schema: [
@@ -2099,6 +2150,16 @@ return {
                     type: 'object',
                     removed: false,
                 },
+                {
+                    id: 'api',
+                    displayName: 'api',
+                    required: false,
+                    defaultMatch: false,
+                    display: true,
+                    canBeUsedToMatch: true,
+                    type: 'object',
+                    removed: false,
+                },
             ],
             attemptToConvertTypes: true,
             convertFieldsToString: true,
@@ -2119,7 +2180,8 @@ return {
         errorType: 'errorObject',
         errorObject: `={
   "error": {
-    "id": "{{ $execution.id }}",
+    "workflow": "{{ $workflow.id }}",
+    "execution": "{{ $execution.id }}",
     "type": "business.appointment_cancel",
     "node": "{{ $prevNode.name }}",
     "code": "{{ $json.error.status || '' }}",
@@ -2135,14 +2197,19 @@ return {
 }}"
   },
   "business": {
-    "id": "{{ $('data handler').item.json.business.id || '' }}",
-    "name": "{{ $('data handler').item.json.business.name || '' }}",
-    "phone": "{{ $('data handler').item.json.business.phone || '' }}"
+    "id": "{{ $('data handler').first().json.business?.id || '' }}",
+    "name": "{{ $('data handler').first().json.business?.name || '' }}",
+    "phone": "{{ $('data handler').first().json.business?.phone || '' }}"
   },
   "client": {
-    "remote_jid": "{{ $('data handler').item.json.client.remote_jid || '' }}",
-    "message_id": "{{ $('data handler').item.json.message.id || '' }}",
-    "message_text": "{{ $('data handler').item.json.message.text || '' }}"
+    "remote_jid": "{{ $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '' }}",
+    "message_id": "{{ $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '' }}",
+    "message_text": "{{ $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || '' }}"
+  },
+  "api": {
+    "url": "{{ $('data handler').first().json.api?.url || '' }}",
+    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,
     };
@@ -2338,14 +2405,14 @@ return {
         name: 'reminder schedule',
         type: 'n8n-nodes-base.scheduleTrigger',
         version: 1.3,
-        position: [1232, 6128],
+        position: [2624, 7328],
     })
     ReminderSchedule = {
         rule: {
             interval: [
                 {
                     field: 'minutes',
-                    minutesInterval: 5,
+                    minutesInterval: 10,
                 },
             ],
         },
@@ -2356,8 +2423,8 @@ return {
         name: 'claim reminders',
         type: 'n8n-nodes-base.httpRequest',
         version: 4.4,
-        position: [1456, 6128],
-        credentials: { httpBearerAuth: { id: 'tHC4wEA5iAoOqLkj', name: 'N8N_BEAUTY_FLOW_API_TOKEN' } },
+        position: [2848, 7328],
+        credentials: { httpBearerAuth: { id: 'tHC4wEA5iAoOqLkj', name: 'n8n beautyflow token - prod' } },
         retryOnFail: true,
         waitBetweenTries: 1000,
     })
@@ -2377,7 +2444,7 @@ return {
         name: 'split reminder claims',
         type: 'n8n-nodes-base.splitOut',
         version: 1,
-        position: [1680, 6128],
+        position: [3072, 7328],
     })
     SplitReminderClaims = {
         fieldToSplitOut: 'reminders',
@@ -2389,7 +2456,7 @@ return {
         name: 'send reminder',
         type: 'n8n-nodes-evolution-api.evolutionApi',
         version: 1,
-        position: [1904, 6128],
+        position: [3296, 7328],
         credentials: { evolutionApi: { id: 'vlj9dRMZQEffBnHW', name: 'Evolution Credential - Kaiky' } },
         onError: 'continueErrorOutput',
         retryOnFail: true,
@@ -2410,8 +2477,8 @@ return {
         name: 'mark reminder sent',
         type: 'n8n-nodes-base.httpRequest',
         version: 4.4,
-        position: [2128, 6048],
-        credentials: { httpBearerAuth: { id: 'tHC4wEA5iAoOqLkj', name: 'N8N_BEAUTY_FLOW_API_TOKEN' } },
+        position: [3520, 7248],
+        credentials: { httpBearerAuth: { id: 'tHC4wEA5iAoOqLkj', name: 'n8n beautyflow token - prod' } },
         retryOnFail: true,
         waitBetweenTries: 1000,
     })
@@ -2442,8 +2509,8 @@ return {
         name: 'mark reminder failed',
         type: 'n8n-nodes-base.httpRequest',
         version: 4.4,
-        position: [2128, 6208],
-        credentials: { httpBearerAuth: { id: 'tHC4wEA5iAoOqLkj', name: 'N8N_BEAUTY_FLOW_API_TOKEN' } },
+        position: [3520, 7408],
+        credentials: { httpBearerAuth: { id: 'tHC4wEA5iAoOqLkj', name: 'n8n beautyflow token - prod' } },
         retryOnFail: true,
         waitBetweenTries: 1000,
     })
@@ -2481,36 +2548,16 @@ return {
         this.Action.out(1).to(this.Patch.in(0));
         this.Action.out(2).to(this.GetById.in(0));
         this.Action.out(3).to(this.Id.in(0));
-        this.AddToCalendar.out(0).to(this.ConfirmationEmail.in(0));
-        this.AddToCalendar.out(1).to(this.ErrorReport23.in(0));
         this.Post.out(0).to(this.PreContext.in(0));
         this.Post.out(1).to(this.ErrorReport20.in(0));
         this.Patch.out(0).to(this.PreContext.in(0));
         this.Patch.out(1).to(this.ErrorReport19.in(0));
-        this.GetEvent.out(0).to(this.UpdateEvent.in(0));
-        this.GetEvent.out(1).to(this.ErrorReport25.in(0));
-        this.UpdateEvent.out(0).to(this.GetEmail.in(0));
-        this.UpdateEvent.out(1).to(this.ErrorReport25.in(0));
-        this.GetEmail.out(0).to(this.UpdateEmail.in(0));
-        this.GetEmail.out(1).to(this.ErrorReport26.in(0));
-        this.Cancel.out(0).to(this.GetEvent1.in(0));
+        this.Cancel.out(0).to(this.ReturnContext.in(0));
         this.Cancel.out(1).to(this.ErrorReport21.in(0));
-        this.DeleteEvent.out(0).to(this.GetEmail1.in(0));
-        this.DeleteEvent.out(1).to(this.ErrorReport27.in(0));
-        this.GetEvent1.out(0).to(this.DeleteEvent.in(0));
-        this.GetEvent1.out(1).to(this.ErrorReport27.in(0));
-        this.GetEmail1.out(0).to(this.DeleteEmail.in(0));
-        this.GetEmail1.out(1).to(this.ErrorReport.in(0));
-        this.Action1.out(0).to(this.AddToCalendar.in(0));
+        this.Action1.out(0).to(this.ReturnContext.in(0));
         this.Action1.out(1).to(this.ReturnContext.in(0));
-        this.Action1.out(2).to(this.GetEvent.in(0));
+        this.Action1.out(2).to(this.ReturnContext.in(0));
         this.Action1.out(3).to(this.Cancel.in(0));
-        this.DeleteEmail.out(0).to(this.ReturnContext.in(0));
-        this.DeleteEmail.out(1).to(this.ErrorReport.in(0));
-        this.ConfirmationEmail.out(0).to(this.ReturnContext.in(0));
-        this.ConfirmationEmail.out(1).to(this.ErrorReport24.in(0));
-        this.UpdateEmail.out(0).to(this.ReturnContext.in(0));
-        this.UpdateEmail.out(1).to(this.ErrorReport26.in(0));
         this.Aggregate.out(0).to(this.FinalReturn.in(0));
         this.GetByClient.out(0).to(this.PreContext.in(0));
         this.GetByClient.out(1).to(this.ErrorReport16.in(0));
@@ -2526,11 +2573,8 @@ return {
         this.SplitReminderClaims.out(0).to(this.SendReminder.in(0));
         this.SendReminder.out(0).to(this.MarkReminderSent.in(0));
         this.SendReminder.out(1).to(this.MarkReminderFailed.in(0));
-        this.ErrorReport23.out(0).to(this.ConfirmationEmail.in(0));
         this.ErrorReport24.out(0).to(this.ReturnContext.in(0));
-        this.ErrorReport25.out(0).to(this.GetEmail.in(0));
         this.ErrorReport26.out(0).to(this.ReturnContext.in(0));
-        this.ErrorReport27.out(0).to(this.GetEmail1.in(0));
         this.ErrorReport.out(0).to(this.ReturnContext.in(0));
         this.ServiceContext.out(0).to(this.AppointmentContext.in(0));
         this.ProfessionalContext.out(0).to(this.ServiceContext.in(0));

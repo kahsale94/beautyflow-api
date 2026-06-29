@@ -36,6 +36,12 @@ REDIS_URL = os.getenv("REDIS_URL")
 USER_SECRET_KEY = get_required_env("USER_SECRET_KEY")
 INTEGRATION_SECRET_KEY = get_required_env("INTEGRATION_SECRET_KEY")
 BUSINESS_INTEGRATION_SECRET_KEY = get_required_env("BUSINESS_INTEGRATION_SECRET_KEY")
+USER_SECRET_KEY_ID = os.getenv("USER_SECRET_KEY_ID", "current")
+INTEGRATION_SECRET_KEY_ID = os.getenv("INTEGRATION_SECRET_KEY_ID", "current")
+BUSINESS_INTEGRATION_SECRET_KEY_ID = os.getenv("BUSINESS_INTEGRATION_SECRET_KEY_ID", "current")
+USER_SECRET_KEY_FALLBACKS = get_env_list("USER_SECRET_KEY_FALLBACKS")
+INTEGRATION_SECRET_KEY_FALLBACKS = get_env_list("INTEGRATION_SECRET_KEY_FALLBACKS")
+BUSINESS_INTEGRATION_SECRET_KEY_FALLBACKS = get_env_list("BUSINESS_INTEGRATION_SECRET_KEY_FALLBACKS")
 
 USER_ACCESS_TOKEN_EXPIRE_MINUTES = get_required_int_env("USER_ACCESS_TOKEN_EXPIRE_MINUTES")
 USER_REFRESH_TOKEN_EXPIRE_DAYS = get_required_int_env("USER_REFRESH_TOKEN_EXPIRE_DAYS")
@@ -90,15 +96,20 @@ if ADMIN_COOKIE_SAMESITE == "none" and not ADMIN_COOKIE_SECURE:
     raise RuntimeError("ADMIN_COOKIE_SAMESITE=none exige cookie Secure")
 
 if ENVIRONMENT == "production":
-    weak_secrets = [
-        name
-        for name, value in {
-            "USER_SECRET_KEY": USER_SECRET_KEY,
-            "INTEGRATION_SECRET_KEY": INTEGRATION_SECRET_KEY,
-            "BUSINESS_INTEGRATION_SECRET_KEY": BUSINESS_INTEGRATION_SECRET_KEY,
-        }.items()
-        if len(value) < 32
-    ]
+    secret_values = {
+        "USER_SECRET_KEY": USER_SECRET_KEY,
+        "INTEGRATION_SECRET_KEY": INTEGRATION_SECRET_KEY,
+        "BUSINESS_INTEGRATION_SECRET_KEY": BUSINESS_INTEGRATION_SECRET_KEY,
+    }
+    for name, fallback_entries in {
+        "USER_SECRET_KEY_FALLBACKS": USER_SECRET_KEY_FALLBACKS,
+        "INTEGRATION_SECRET_KEY_FALLBACKS": INTEGRATION_SECRET_KEY_FALLBACKS,
+        "BUSINESS_INTEGRATION_SECRET_KEY_FALLBACKS": BUSINESS_INTEGRATION_SECRET_KEY_FALLBACKS,
+    }.items():
+        for index, entry in enumerate(fallback_entries, start=1):
+            secret_values[f"{name}[{index}]"] = entry.split(":", 1)[1].strip() if ":" in entry else entry
+
+    weak_secrets = [name for name, value in secret_values.items() if len(value) < 32]
     if weak_secrets:
         raise RuntimeError(f"Segredos JWT devem ter ao menos 32 caracteres: {', '.join(weak_secrets)}")
 

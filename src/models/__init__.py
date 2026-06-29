@@ -2,7 +2,7 @@ from .user_model import User
 from .base_model import Base
 from .client_model import Client
 from .service_model import Service
-from .business_model import Business
+from .business_model import Business, BusinessAttendancePlan
 from .business_opening_hour_model import BusinessOpeningHour
 from .appointment_model import Appointment
 from .appointment_reminder_model import AppointmentReminder

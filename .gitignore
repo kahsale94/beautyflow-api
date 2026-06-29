@@ -1,9 +1,11 @@
 # Geral
-z_files/
+.1 - ignore/
 docker-compose_dev.yml
 .tmp.driveupload/
 .n8nac/
 workflows/.n8n-sync-events.jsonl
+workflows/*-staging.workflow.ts
+alembic/versions_legacy_v1
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

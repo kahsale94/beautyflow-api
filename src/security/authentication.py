@@ -10,8 +10,8 @@ from .token import TokenManager
 from .oauth import oauth2_scheme
 from src.models import Business, User, Integration, BusinessIntegration
 from .context import UserContext, IntegrationContext, BusinessIntegrationContext
-from src.core import (get_db, USER_ACCESS_TOKEN_EXPIRE_MINUTES, USER_REFRESH_TOKEN_EXPIRE_DAYS, INTEGRATION_TOKEN_EXPIRE_DAYS,
-    BUSINESS_INTEGRATION_TOKEN_EXPIRE_MINUTES, USER_SECRET_KEY, INTEGRATION_SECRET_KEY, BUSINESS_INTEGRATION_SECRET_KEY
+from src.core import (BUSINESS_INTEGRATION_TOKEN_EXPIRE_MINUTES, INTEGRATION_TOKEN_EXPIRE_DAYS, USER_ACCESS_TOKEN_EXPIRE_MINUTES,
+    USER_REFRESH_TOKEN_EXPIRE_DAYS, get_db,
 )
 
 
@@ -31,7 +31,7 @@ def create_user_access_token(user_id: int) -> str:
         "exp": datetime.now(timezone.utc) + timedelta(minutes=USER_ACCESS_TOKEN_EXPIRE_MINUTES),
     }
 
-    return TokenManager.encode(payload, USER_SECRET_KEY)
+    return TokenManager.encode(payload)
 
 def create_user_refresh_token(user_id: int, jti: str | None = None) -> tuple[str, str, datetime]:
     token_jti = jti or uuid4().hex
@@ -44,7 +44,7 @@ def create_user_refresh_token(user_id: int, jti: str | None = None) -> tuple[str
         "exp": expires_at,
     }
 
-    return TokenManager.encode(payload, USER_SECRET_KEY), token_jti, expires_at
+    return TokenManager.encode(payload), token_jti, expires_at
 
 def create_integration_token(integration_id: int) -> str:
     payload = {
@@ -54,7 +54,7 @@ def create_integration_token(integration_id: int) -> str:
         "exp": datetime.now(timezone.utc) + timedelta(days=INTEGRATION_TOKEN_EXPIRE_DAYS),
     }
 
-    return TokenManager.encode(payload, INTEGRATION_SECRET_KEY)
+    return TokenManager.encode(payload)
 
 def create_business_integration_token(business_id: int, integration_id: int) -> str:
     payload = {
@@ -65,7 +65,7 @@ def create_business_integration_token(business_id: int, integration_id: int) -> 
         "exp": datetime.now(timezone.utc) + timedelta(minutes=BUSINESS_INTEGRATION_TOKEN_EXPIRE_MINUTES),
     }
 
-    return TokenManager.encode(payload, BUSINESS_INTEGRATION_SECRET_KEY)
+    return TokenManager.encode(payload)
 
 def get_current_actor(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)) -> UserContext | BusinessIntegrationContext | IntegrationContext:
     payload = TokenManager.decode(token)

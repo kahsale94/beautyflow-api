@@ -1,5 +1,4 @@
 import hmac
-import hashlib
 import secrets
 from typing import Annotated
 from dataclasses import dataclass
@@ -10,8 +9,9 @@ from fastapi import Depends, HTTPException, Request
 from src.models import Business, User
 from src.models.user_model import UserRole
 from src.security import RefreshRequest, TokenManager, UserContext
+from src.security.key_rotation import current_hmac_digest, hmac_digest_candidates
 from src.services.auth_service import AuthService, DeactivatedUserError, InvalidTokenError, get_auth_service
-from src.core import ADMIN_ACCESS_COOKIE, ADMIN_BUSINESS_COOKIE, ADMIN_CSRF_COOKIE, ADMIN_REFRESH_COOKIE, USER_SECRET_KEY, get_db
+from src.core import ADMIN_ACCESS_COOKIE, ADMIN_BUSINESS_COOKIE, ADMIN_CSRF_COOKIE, ADMIN_REFRESH_COOKIE, get_db
 
 
 @dataclass(frozen=True)
@@ -30,7 +30,7 @@ def _redirect(location: str) -> None:
     raise HTTPException(status_code=303, headers={"Location": location})
 
 def _csrf_signature(raw: str) -> str:
-    return hmac.new(USER_SECRET_KEY.encode("utf-8"), raw.encode("utf-8"), hashlib.sha256).hexdigest()
+    return current_hmac_digest("user", raw)
 
 def create_csrf_token() -> str:
     raw = secrets.token_urlsafe(32)
@@ -40,8 +40,7 @@ def is_valid_csrf_token(token: str | None) -> bool:
     if not token or "." not in token:
         return False
     raw, signature = token.rsplit(".", 1)
-    expected = _csrf_signature(raw)
-    return hmac.compare_digest(signature, expected)
+    return any(hmac.compare_digest(signature, expected) for expected in hmac_digest_candidates("user", raw))
 
 def get_or_create_csrf_token(request: Request) -> str:
     token = request.cookies.get(ADMIN_CSRF_COOKIE)

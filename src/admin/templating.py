@@ -1,9 +1,9 @@
 import json
 import hashlib
-from datetime import datetime
-from functools import lru_cache
 from pathlib import Path
 from zoneinfo import ZoneInfo
+from datetime import datetime
+from functools import lru_cache
 from urllib.parse import quote, unquote
 
 from fastapi import Request
@@ -57,6 +57,9 @@ ADMIN_LABELS = {
     "barbershop": "Barbearia",
     "salon": "Salão de beleza",
     "clinic": "Clínica",
+    "business_hours": "Horário comercial",
+    "after_hours": "Fora do horário comercial",
+    "always": "24 horas",
 }
 
 templates = Jinja2Templates(directory="src/templates")

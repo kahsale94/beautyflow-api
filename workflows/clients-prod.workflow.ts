@@ -1,8 +1,8 @@
 import { workflow, node, links } from '@n8n-as-code/transformer';
 
 // <workflow-map>
-// Workflow : clients
-// Nodes   : 55  |  Connections: 66
+// Workflow : clients-prod
+// Nodes   : 55  |  Connections: 64
 //
 // NODE INDEX
 // ──────────────────────────────────────────────────────────────────
@@ -108,14 +108,11 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 //              → NameInMessage (↩ loop)
 //         .out(1) → ErrorReport1
 //       .out(1) → PostClient
-//          → SendConfirmation
-//            → ClientData
-//              → SetPendingState1
-//                → Response
-//                  → SplitOut (↩ loop)
-//               .out(1) → ErrorReport19
-//           .out(1) → ErrorReport22
-//              → ClientData (↩ loop)
+//          → ClientData
+//            → SetPendingState1
+//              → Response
+//                → SplitOut (↩ loop)
+//             .out(1) → ErrorReport19
 //         .out(1) → ErrorReport
 //       .out(2) → GetContext
 //          → HasData
@@ -132,6 +129,8 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 //               .out(1) → PostClient1
 //             .out(1) → ErrorReport13
 //         .out(1) → ErrorReport12
+// ErrorReport22
+//    → ClientData (↩ loop)
 //
 // AI CONNECTIONS
 // NameExtractor.uses({ ai_languageModel: OpenrouterChatModel })
@@ -143,13 +142,14 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 
 @workflow({
     id: 'p2z28Yex6r93HRT0',
-    name: 'clients',
+    name: 'clients-prod',
     active: true,
     isArchived: false,
+    projectId: 'UVYVLJNFC5m6HlJG',
     tags: ['Kaiky', 'beautyflow-api'],
     settings: {
         executionOrder: 'v1',
-        availableInMCP: false,
+        availableInMCP: true,
         binaryMode: 'separate',
         timeSavedMode: 'fixed',
         errorWorkflow: 'bWdz3xBVwmycvfwW',
@@ -157,7 +157,7 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
         timezone: 'America/Sao_Paulo',
     },
 })
-export class ClientsWorkflow {
+export class ClientsProdWorkflow {
     // =====================================================================
     // CONFIGURATION DES NOEUDS
     // =====================================================================
@@ -668,7 +668,7 @@ return [
         type: 'n8n-nodes-base.redis',
         version: 1,
         position: [2208, 4368],
-        credentials: { redis: { id: 'zMk8tatRFuFo6wmp', name: 'beautyflow' } },
+        credentials: { redis: { id: 'zMk8tatRFuFo6wmp', name: 'beautyflow prod' } },
         onError: 'continueErrorOutput',
         executeOnce: true,
         retryOnFail: true,
@@ -868,7 +868,7 @@ return [
         type: 'n8n-nodes-base.redis',
         version: 1,
         position: [624, 4992],
-        credentials: { redis: { id: 'zMk8tatRFuFo6wmp', name: 'beautyflow' } },
+        credentials: { redis: { id: 'zMk8tatRFuFo6wmp', name: 'beautyflow prod' } },
         onError: 'continueErrorOutput',
         retryOnFail: true,
     })
@@ -922,7 +922,7 @@ return [
         type: 'n8n-nodes-base.redis',
         version: 1,
         position: [-288, 4784],
-        credentials: { redis: { id: 'zMk8tatRFuFo6wmp', name: 'beautyflow' } },
+        credentials: { redis: { id: 'zMk8tatRFuFo6wmp', name: 'beautyflow prod' } },
         onError: 'continueErrorOutput',
     })
     GetContext = {
@@ -1020,7 +1020,7 @@ return output;`,
         type: 'n8n-nodes-base.redis',
         version: 1,
         position: [2176, 3648],
-        credentials: { redis: { id: 'zMk8tatRFuFo6wmp', name: 'beautyflow' } },
+        credentials: { redis: { id: 'zMk8tatRFuFo6wmp', name: 'beautyflow prod' } },
         onError: 'continueErrorOutput',
         executeOnce: true,
         retryOnFail: true,
@@ -1151,7 +1151,7 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
         type: 'n8n-nodes-base.redis',
         version: 1,
         position: [2384, 3632],
-        credentials: { redis: { id: 'zMk8tatRFuFo6wmp', name: 'beautyflow' } },
+        credentials: { redis: { id: 'zMk8tatRFuFo6wmp', name: 'beautyflow prod' } },
         onError: 'continueErrorOutput',
         executeOnce: false,
         retryOnFail: true,
@@ -1175,7 +1175,7 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
         type: 'n8n-nodes-base.redis',
         version: 1,
         position: [2432, 4352],
-        credentials: { redis: { id: 'zMk8tatRFuFo6wmp', name: 'beautyflow' } },
+        credentials: { redis: { id: 'zMk8tatRFuFo6wmp', name: 'beautyflow prod' } },
         onError: 'continueErrorOutput',
         executeOnce: false,
         retryOnFail: true,
@@ -1199,7 +1199,7 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
         type: 'n8n-nodes-base.redis',
         version: 1,
         position: [2592, 3616],
-        credentials: { redis: { id: 'zMk8tatRFuFo6wmp', name: 'beautyflow' } },
+        credentials: { redis: { id: 'zMk8tatRFuFo6wmp', name: 'beautyflow prod' } },
         onError: 'continueErrorOutput',
     })
     PushAiMemory = {
@@ -1231,7 +1231,7 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
         type: 'n8n-nodes-base.redis',
         version: 1,
         position: [2672, 4336],
-        credentials: { redis: { id: 'zMk8tatRFuFo6wmp', name: 'beautyflow' } },
+        credentials: { redis: { id: 'zMk8tatRFuFo6wmp', name: 'beautyflow prod' } },
         onError: 'continueErrorOutput',
     })
     PushAiMemory1 = {
@@ -1287,14 +1287,19 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
 }}"
   },
   "business": {
-    "id": "{{ $('data handler').item.json.id || '' }}",
-    "name": "{{ $('data handler').item.json.name || '' }}",
-    "phone": "{{ $('data handler').item.json.business.phone || '' }}"
+    "id": "{{ $('data handler').first().json.business?.id || '' }}",
+    "name": "{{ $('data handler').first().json.business?.name || '' }}",
+    "phone": "{{ $('data handler').first().json.business?.phone || '' }}"
   },
   "client": {
-    "remote_jid": "{{ $('data handler').item.json.client.remote_jid || '' }}",
-    "message_id": "{{ $('data handler').item.json.message.id || '' }}",
-    "message_text": "{{ $('data handler').item.json.message.text || '' }}"
+    "remote_jid": "{{ $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '' }}",
+    "message_id": "{{ $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '' }}",
+    "message_text": "{{ $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || '' }}"
+  },
+  "api": {
+    "url": "{{ $('data handler').first().json.api?.url || '' }}",
+    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,
     };
@@ -1335,15 +1340,16 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
 } }}
 `,
                 business: `={{ {
-    id: $('data handler').item.json.business.id || '',
-    name: $('data handler').item.json.business.name || '',
-    phone: $('data handler').item.json.business.phone || ''
+  id: $('data handler').first().json.business?.id || '',
+  name: $('data handler').first().json.business?.name || '',
+  phone: $('data handler').first().json.business?.phone || ''
 } }}`,
                 client: `={{ {
-  remote_jid: $('data handler').item.json.client.remote_jid || '',
-  message_id: $('data handler').item.json.message.id || '',
-  message_text: $('data handler').item.json.message.text || ''
+  remote_jid: $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '',
+  message_id: $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '',
+  message_text: $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || ''
 } }}`,
+                api: "={{ $('data handler').first().json.api || {} }}",
             },
             matchingColumns: [],
             schema: [
@@ -1424,14 +1430,19 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
 }}"
   },
   "business": {
-    "id": "{{ $('data handler').item.json.business.id || '' }}",
-    "name": "{{ $('data handler').item.json.business.name || '' }}",
-    "phone": "{{ $('data handler').item.json.business.phone || '' }}"
+    "id": "{{ $('data handler').first().json.business?.id || '' }}",
+    "name": "{{ $('data handler').first().json.business?.name || '' }}",
+    "phone": "{{ $('data handler').first().json.business?.phone || '' }}"
   },
   "client": {
-    "remote_jid": "{{ $('data handler').item.json.client.remote_jid || '' }}",
-    "message_id": "{{ $('data handler').item.json.message.id || '' }}",
-    "message_text": "{{ $('data handler').item.json.message.text || '' }}"
+    "remote_jid": "{{ $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '' }}",
+    "message_id": "{{ $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '' }}",
+    "message_text": "{{ $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || '' }}"
+  },
+  "api": {
+    "url": "{{ $('data handler').first().json.api?.url || '' }}",
+    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,
     };
@@ -1464,14 +1475,19 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
 }}"
   },
   "business": {
-    "id": "{{ $('data handler').item.json.business.id || '' }}",
-    "name": "{{ $('data handler').item.json.business.name || '' }}",
-    "phone": "{{ $('data handler').item.json.business.phone || '' }}"
+    "id": "{{ $('data handler').first().json.business?.id || '' }}",
+    "name": "{{ $('data handler').first().json.business?.name || '' }}",
+    "phone": "{{ $('data handler').first().json.business?.phone || '' }}"
   },
   "client": {
-    "remote_jid": "{{ $('data handler').item.json.client.remote_jid || '' }}",
-    "message_id": "{{ $('data handler').item.json.message.id || '' }}",
-    "message_text": "{{ $('data handler').item.json.message.text || '' }}"
+    "remote_jid": "{{ $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '' }}",
+    "message_id": "{{ $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '' }}",
+    "message_text": "{{ $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || '' }}"
+  },
+  "api": {
+    "url": "{{ $('data handler').first().json.api?.url || '' }}",
+    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,
     };
@@ -1512,15 +1528,16 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
 } }}
 `,
                 business: `={{ {
-    id: $('data handler').item.json.business.id || '',
-    name: $('data handler').item.json.business.name || '',
-    phone: $('data handler').item.json.business.phone || ''
+  id: $('data handler').first().json.business?.id || '',
+  name: $('data handler').first().json.business?.name || '',
+  phone: $('data handler').first().json.business?.phone || ''
 } }}`,
                 client: `={{ {
-  remote_jid: $('data handler').item.json.client.remote_jid || '',
-  message_id: $('data handler').item.json.message.id || '',
-  message_text: $('data handler').item.json.message.text || ''
+  remote_jid: $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '',
+  message_id: $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '',
+  message_text: $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || ''
 } }}`,
+                api: "={{ $('data handler').first().json.api || {} }}",
             },
             matchingColumns: [],
             schema: [
@@ -1547,6 +1564,16 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
                 {
                     id: 'client',
                     displayName: 'client',
+                    required: false,
+                    defaultMatch: false,
+                    display: true,
+                    canBeUsedToMatch: true,
+                    type: 'object',
+                    removed: false,
+                },
+                {
+                    id: 'api',
+                    displayName: 'api',
                     required: false,
                     defaultMatch: false,
                     display: true,
@@ -1591,14 +1618,19 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
 }}"
   },
   "business": {
-    "id": "{{ $('data handler').item.json.business.id || '' }}",
-    "name": "{{ $('data handler').item.json.business.name || '' }}",
-    "phone": "{{ $('data handler').item.json.business.phone || '' }}"
+    "id": "{{ $('data handler').first().json.business?.id || '' }}",
+    "name": "{{ $('data handler').first().json.business?.name || '' }}",
+    "phone": "{{ $('data handler').first().json.business?.phone || '' }}"
   },
   "client": {
-    "remote_jid": "{{ $('data handler').item.json.client.remote_jid || '' }}",
-    "message_id": "{{ $('data handler').item.json.message.id || '' }}",
-    "message_text": "{{ $('data handler').item.json.message.text || '' }}"
+    "remote_jid": "{{ $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '' }}",
+    "message_id": "{{ $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '' }}",
+    "message_text": "{{ $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || '' }}"
+  },
+  "api": {
+    "url": "{{ $('data handler').first().json.api?.url || '' }}",
+    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,
     };
@@ -1639,15 +1671,16 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
 } }}
 `,
                 business: `={{ {
-    id: $('data handler').item.json.business.id || '',
-    name: $('data handler').item.json.business.name || '',
-    phone: $('data handler').item.json.business.phone || ''
+  id: $('data handler').first().json.business?.id || '',
+  name: $('data handler').first().json.business?.name || '',
+  phone: $('data handler').first().json.business?.phone || ''
 } }}`,
                 client: `={{ {
-  remote_jid: $('data handler').item.json.client.remote_jid || '',
-  message_id: $('data handler').item.json.message.id || '',
-  message_text: $('data handler').item.json.message.text || ''
+  remote_jid: $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '',
+  message_id: $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '',
+  message_text: $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || ''
 } }}`,
+                api: "={{ $('data handler').first().json.api || {} }}",
             },
             matchingColumns: [],
             schema: [
@@ -1674,6 +1707,16 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
                 {
                     id: 'client',
                     displayName: 'client',
+                    required: false,
+                    defaultMatch: false,
+                    display: true,
+                    canBeUsedToMatch: true,
+                    type: 'object',
+                    removed: false,
+                },
+                {
+                    id: 'api',
+                    displayName: 'api',
                     required: false,
                     defaultMatch: false,
                     display: true,
@@ -1718,14 +1761,19 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
 }}"
   },
   "business": {
-    "id": "{{ $('data handler').item.json.business.id || '' }}",
-    "name": "{{ $('data handler').item.json.business.name || '' }}",
-    "phone": "{{ $('data handler').item.json.business.phone || '' }}"
+    "id": "{{ $('data handler').first().json.business?.id || '' }}",
+    "name": "{{ $('data handler').first().json.business?.name || '' }}",
+    "phone": "{{ $('data handler').first().json.business?.phone || '' }}"
   },
   "client": {
-    "remote_jid": "{{ $('data handler').item.json.client.remote_jid || '' }}",
-    "message_id": "{{ $('data handler').item.json.message.id || '' }}",
-    "message_text": "{{ $('data handler').item.json.message.text || '' }}"
+    "remote_jid": "{{ $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '' }}",
+    "message_id": "{{ $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '' }}",
+    "message_text": "{{ $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || '' }}"
+  },
+  "api": {
+    "url": "{{ $('data handler').first().json.api?.url || '' }}",
+    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,
     };
@@ -1758,14 +1806,19 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
 }}"
   },
   "business": {
-    "id": "{{ $('data handler').item.json.business.id || '' }}",
-    "name": "{{ $('data handler').item.json.business.name || '' }}",
-    "phone": "{{ $('data handler').item.json.business.phone || '' }}"
+    "id": "{{ $('data handler').first().json.business?.id || '' }}",
+    "name": "{{ $('data handler').first().json.business?.name || '' }}",
+    "phone": "{{ $('data handler').first().json.business?.phone || '' }}"
   },
   "client": {
-    "remote_jid": "{{ $('data handler').item.json.client.remote_jid || '' }}",
-    "message_id": "{{ $('data handler').item.json.message.id || '' }}",
-    "message_text": "{{ $('data handler').item.json.message.text || '' }}"
+    "remote_jid": "{{ $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '' }}",
+    "message_id": "{{ $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '' }}",
+    "message_text": "{{ $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || '' }}"
+  },
+  "api": {
+    "url": "{{ $('data handler').first().json.api?.url || '' }}",
+    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,
     };
@@ -1798,14 +1851,19 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
 }}"
   },
   "business": {
-    "id": "{{ $('data handler').item.json.business.id || '' }}",
-    "name": "{{ $('data handler').item.json.business.name || '' }}",
-    "phone": "{{ $('data handler').item.json.business.phone || '' }}"
+    "id": "{{ $('data handler').first().json.business?.id || '' }}",
+    "name": "{{ $('data handler').first().json.business?.name || '' }}",
+    "phone": "{{ $('data handler').first().json.business?.phone || '' }}"
   },
   "client": {
-    "remote_jid": "{{ $('data handler').item.json.client.remote_jid || '' }}",
-    "message_id": "{{ $('data handler').item.json.message.id || '' }}",
-    "message_text": "{{ $('data handler').item.json.message.text || '' }}"
+    "remote_jid": "{{ $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '' }}",
+    "message_id": "{{ $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '' }}",
+    "message_text": "{{ $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || '' }}"
+  },
+  "api": {
+    "url": "{{ $('data handler').first().json.api?.url || '' }}",
+    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,
     };
@@ -1846,15 +1904,16 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
 } }}
 `,
                 business: `={{ {
-    id: $('data handler').item.json.business.id || '',
-    name: $('data handler').item.json.business.name || '',
-    phone: $('data handler').item.json.business.phone || ''
+  id: $('data handler').first().json.business?.id || '',
+  name: $('data handler').first().json.business?.name || '',
+  phone: $('data handler').first().json.business?.phone || ''
 } }}`,
                 client: `={{ {
-  remote_jid: $('data handler').item.json.client.remote_jid || '',
-  message_id: $('data handler').item.json.message.id || '',
-  message_text: $('data handler').item.json.message.text || ''
+  remote_jid: $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '',
+  message_id: $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '',
+  message_text: $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || ''
 } }}`,
+                api: "={{ $('data handler').first().json.api || {} }}",
             },
             matchingColumns: [],
             schema: [
@@ -1881,6 +1940,16 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
                 {
                     id: 'client',
                     displayName: 'client',
+                    required: false,
+                    defaultMatch: false,
+                    display: true,
+                    canBeUsedToMatch: true,
+                    type: 'object',
+                    removed: false,
+                },
+                {
+                    id: 'api',
+                    displayName: 'api',
                     required: false,
                     defaultMatch: false,
                     display: true,
@@ -1933,15 +2002,16 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
 } }}
 `,
                 business: `={{ {
-    id: $('data handler').item.json.business.id || '',
-    name: $('data handler').item.json.business.name || '',
-    phone: $('data handler').item.json.business.phone || ''
+  id: $('data handler').first().json.business?.id || '',
+  name: $('data handler').first().json.business?.name || '',
+  phone: $('data handler').first().json.business?.phone || ''
 } }}`,
                 client: `={{ {
-  remote_jid: $('data handler').item.json.client.remote_jid || '',
-  message_id: $('data handler').item.json.message.id || '',
-  message_text: $('data handler').item.json.message.text || ''
+  remote_jid: $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '',
+  message_id: $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '',
+  message_text: $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || ''
 } }}`,
+                api: "={{ $('data handler').first().json.api || {} }}",
             },
             matchingColumns: [],
             schema: [
@@ -1968,6 +2038,16 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
                 {
                     id: 'client',
                     displayName: 'client',
+                    required: false,
+                    defaultMatch: false,
+                    display: true,
+                    canBeUsedToMatch: true,
+                    type: 'object',
+                    removed: false,
+                },
+                {
+                    id: 'api',
+                    displayName: 'api',
                     required: false,
                     defaultMatch: false,
                     display: true,
@@ -2012,14 +2092,19 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
 }}"
   },
   "business": {
-    "id": "{{ $('data handler').item.json.business.id || '' }}",
-    "name": "{{ $('data handler').item.json.business.name || '' }}",
-    "phone": "{{ $('data handler').item.json.business.phone || '' }}"
+    "id": "{{ $('data handler').first().json.business?.id || '' }}",
+    "name": "{{ $('data handler').first().json.business?.name || '' }}",
+    "phone": "{{ $('data handler').first().json.business?.phone || '' }}"
   },
   "client": {
-    "remote_jid": "{{ $('data handler').item.json.client.remote_jid || '' }}",
-    "message_id": "{{ $('data handler').item.json.message.id || '' }}",
-    "message_text": "{{ $('data handler').item.json.message.text || '' }}"
+    "remote_jid": "{{ $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '' }}",
+    "message_id": "{{ $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '' }}",
+    "message_text": "{{ $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || '' }}"
+  },
+  "api": {
+    "url": "{{ $('data handler').first().json.api?.url || '' }}",
+    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,
     };
@@ -2052,14 +2137,19 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
 }}"
   },
   "business": {
-    "id": "{{ $('data handler').item.json.business.id || '' }}",
-    "name": "{{ $('data handler').item.json.business.name || '' }}",
-    "phone": "{{ $('data handler').item.json.business.phone || '' }}"
+    "id": "{{ $('data handler').first().json.business?.id || '' }}",
+    "name": "{{ $('data handler').first().json.business?.name || '' }}",
+    "phone": "{{ $('data handler').first().json.business?.phone || '' }}"
   },
   "client": {
-    "remote_jid": "{{ $('data handler').item.json.client.remote_jid || '' }}",
-    "message_id": "{{ $('data handler').item.json.message.id || '' }}",
-    "message_text": "{{ $('data handler').item.json.message.text || '' }}"
+    "remote_jid": "{{ $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '' }}",
+    "message_id": "{{ $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '' }}",
+    "message_text": "{{ $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || '' }}"
+  },
+  "api": {
+    "url": "{{ $('data handler').first().json.api?.url || '' }}",
+    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,
     };
@@ -2137,14 +2227,19 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
 }}"
   },
   "business": {
-    "id": "{{ $('data handler').item.json.business.id || '' }}",
-    "name": "{{ $('data handler').item.json.business.name || '' }}",
-    "phone": "{{ $('data handler').item.json.business.phone || '' }}"
+    "id": "{{ $('data handler').first().json.business?.id || '' }}",
+    "name": "{{ $('data handler').first().json.business?.name || '' }}",
+    "phone": "{{ $('data handler').first().json.business?.phone || '' }}"
   },
   "client": {
-    "remote_jid": "{{ $('data handler').item.json.client.remote_jid || '' }}",
-    "message_id": "{{ $('data handler').item.json.message.id || '' }}",
-    "message_text": "{{ $('data handler').item.json.message.text || '' }}"
+    "remote_jid": "{{ $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '' }}",
+    "message_id": "{{ $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '' }}",
+    "message_text": "{{ $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || '' }}"
+  },
+  "api": {
+    "url": "{{ $('data handler').first().json.api?.url || '' }}",
+    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,
     };
@@ -2155,7 +2250,7 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
         type: 'n8n-nodes-base.redis',
         version: 1,
         position: [432, 4400],
-        credentials: { redis: { id: 'zMk8tatRFuFo6wmp', name: 'beautyflow' } },
+        credentials: { redis: { id: 'zMk8tatRFuFo6wmp', name: 'beautyflow prod' } },
         onError: 'continueErrorOutput',
         executeOnce: true,
         retryOnFail: true,
@@ -2172,7 +2267,7 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
         type: 'n8n-nodes-base.redis',
         version: 1,
         position: [2992, 3952],
-        credentials: { redis: { id: 'zMk8tatRFuFo6wmp', name: 'beautyflow' } },
+        credentials: { redis: { id: 'zMk8tatRFuFo6wmp', name: 'beautyflow prod' } },
         onError: 'continueErrorOutput',
         retryOnFail: true,
     })
@@ -2217,15 +2312,16 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
 } }}
 `,
                 business: `={{ {
-    id: $('data handler').item.json.business.id || '',
-    name: $('data handler').item.json.business.name || '',
-    phone: $('data handler').item.json.business.phone || ''
+  id: $('data handler').first().json.business?.id || '',
+  name: $('data handler').first().json.business?.name || '',
+  phone: $('data handler').first().json.business?.phone || ''
 } }}`,
                 client: `={{ {
-  remote_jid: $('data handler').item.json.client.remote_jid || '',
-  message_id: $('data handler').item.json.message.id || '',
-  message_text: $('data handler').item.json.message.text || ''
+  remote_jid: $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '',
+  message_id: $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '',
+  message_text: $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || ''
 } }}`,
+                api: "={{ $('data handler').first().json.api || {} }}",
             },
             matchingColumns: [],
             schema: [
@@ -2252,6 +2348,16 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
                 {
                     id: 'client',
                     displayName: 'client',
+                    required: false,
+                    defaultMatch: false,
+                    display: true,
+                    canBeUsedToMatch: true,
+                    type: 'object',
+                    removed: false,
+                },
+                {
+                    id: 'api',
+                    displayName: 'api',
                     required: false,
                     defaultMatch: false,
                     display: true,
@@ -2296,10 +2402,8 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
     @links()
     defineRouting() {
         this.DataHandler.out(0).to(this.Switch_.in(0));
-        this.PostClient.out(0).to(this.SendConfirmation.in(0));
+        this.PostClient.out(0).to(this.ClientData.in(0));
         this.PostClient.out(1).to(this.ErrorReport.in(0));
-        this.SendConfirmation.out(0).to(this.ClientData.in(0));
-        this.SendConfirmation.out(1).to(this.ErrorReport22.in(0));
         this.Webhook.out(0).to(this.DataHandler.in(0));
         this.NameExtractor.out(0).to(this.NameInMessage.in(0));
         this.NameExtractor.out(1).to(this.ErrorReport23.in(0));

@@ -6,6 +6,7 @@ from src.models import Professional
 from src.repositories import ProfessionalRepository
 from src.utils import normalize_text, normalize_phone
 from src.schemas import ProfessionalCreate, ProfessionalUpdate
+from src.services.redis_cache_invalidator import RedisCacheInvalidator
 
 class ProfessionalNotFoundError(Exception):
     pass
@@ -19,9 +20,11 @@ class ProfessionalService:
         self,
         db: Session,
         professional_repo: ProfessionalRepository,
+        cache_invalidator: RedisCacheInvalidator | None = None,
     ):
         self.db = db
         self.professional_repo = professional_repo
+        self.cache_invalidator = cache_invalidator or RedisCacheInvalidator()
 
     def _get_valid(self, business_id: int, professional_id: int) -> Professional:
         professional = self.professional_repo.get_by_id(self.db, business_id, professional_id)
@@ -80,6 +83,7 @@ class ProfessionalService:
             raise ProfessionalAlreadyExistsError()
 
         self.db.refresh(professional)
+        self.cache_invalidator.invalidate_professional_context()
 
         return professional
 
@@ -107,6 +111,7 @@ class ProfessionalService:
             raise ProfessionalAlreadyExistsError()
 
         self.db.refresh(professional)
+        self.cache_invalidator.invalidate_professional_context()
 
         return professional
 
@@ -116,6 +121,7 @@ class ProfessionalService:
         professional.is_active = False
 
         self.db.commit()
+        self.cache_invalidator.invalidate_professional_context()
 
         return
 
@@ -127,4 +133,5 @@ def get_professional_service(db: DataBaseDep):
     return ProfessionalService(
         db,
         ProfessionalRepository(),
+        RedisCacheInvalidator(),
     )
