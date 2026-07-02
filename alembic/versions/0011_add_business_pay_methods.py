@@ -61,6 +61,7 @@ def upgrade() -> None:
             "payment_methods",
             existing_type=payment_methods_type,
             existing_server_default=empty_payment_methods,
+            server_default=None,
             nullable=False,
         )
 

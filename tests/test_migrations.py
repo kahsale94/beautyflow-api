@@ -109,3 +109,4 @@ def test_single_clean_initial_migration_exists():
     assert "context.is_offline_mode()" in source
     assert "WHERE payment_methods IS NULL" in source
     assert 'op.alter_column(' in source
+    assert "server_default=None" in source
