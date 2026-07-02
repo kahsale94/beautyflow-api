@@ -8,7 +8,7 @@ from typing import Sequence, Union
 import re
 import unicodedata
 
-from alembic import op
+from alembic import context, op
 import sqlalchemy as sa
 
 
@@ -38,6 +38,9 @@ def _slug_with_suffix(base_slug: str, suffix: int) -> str:
 
 
 def upgrade() -> None:
+    if context.is_offline_mode():
+        return
+
     connection = op.get_bind()
     rows = connection.execute(
         sa.text("SELECT id, name, slug FROM businesses ORDER BY id")

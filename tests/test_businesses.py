@@ -8,7 +8,7 @@ from pydantic import ValidationError
 
 from src.clients.viacep_client import CepNotFoundError, _parse_viacep_payload
 from src.models import Business, BusinessOpeningHour
-from src.models.business_model import BusinessAttendancePlan, BusinessType
+from src.models.business_model import BusinessAttendancePlan, BusinessPaymentMethod, BusinessType, payment_method_labels
 from src.schemas import BusinessCreate, BusinessOpeningHourCreate, BusinessUpdate
 from src.services.business_service import BusinessService
 from src.utils import join_address_number, normalize_cep, split_address_number
@@ -40,21 +40,85 @@ def test_business_opening_hours_is_available_in_admin_and_api():
 
     assert 'opening_hours: Mapped[list["BusinessOpeningHour"]]' in model_source
     assert "BusinessAttendancePlan" in model_source
+    assert "BusinessPaymentMethod" in model_source
     assert "attendance_plan" in model_source
+    assert "payment_methods" in model_source
     assert 'back_populates="business"' in model_source
     assert "business_opening_hours" in opening_hour_model_source
     assert 'opening_hours: list["BusinessOpeningHourCreate"]' in schema_source
     assert "attendance_allowed" in schema_source
+    assert "payment_method_labels" in schema_source
     assert "BusinessOpeningHourCreate" in schema_source
     assert "_replace_opening_hours" in service_source
     assert "business.opening_hours" in service_source
     assert "_opening_hours_from_form" in admin_route_source
     assert "BusinessAttendancePlan" in admin_route_source
+    assert "BusinessPaymentMethod" in admin_route_source
     assert "Plano de atendimento" in template_source
+    assert "Métodos de pagamento" in template_source
+    assert 'name="payment_methods"' in template_source
     assert "Horário de Funcionamento" in template_source
     assert "business_weekday_{{ weekday }}_enabled" in template_source
     assert "business_opening_hours" in migration_source
     assert "businessattendanceplan" in attendance_migration_source
+
+def test_business_payment_methods_are_validated_labeled_and_persisted():
+    data = make_business_create("Salão Bela Vida")
+    data.payment_methods = [
+        BusinessPaymentMethod.money,
+        BusinessPaymentMethod.pix,
+    ]
+    service = BusinessService(FakeDatabase(), FakeBusinessRepository())
+
+    business = service.create(data)
+
+    assert business.payment_methods == [
+        BusinessPaymentMethod.money,
+        BusinessPaymentMethod.pix,
+    ]
+    assert payment_method_labels(business.payment_methods) == ["Dinheiro", "Pix"]
+
+    with pytest.raises(ValidationError):
+        BusinessCreate(
+            name="Salão Bela Vida",
+            type=BusinessType.salon,
+            timezone="America/Sao_Paulo",
+            phone="11922220001",
+            payment_methods=["bitcoin"],
+        )
+
+def test_business_payment_methods_update_accepts_multiple_and_empty_values():
+    business = SimpleNamespace(
+        id=1,
+        is_active=True,
+        name="Salão Bela Vida",
+        slug="bela-vida",
+        payment_methods=[BusinessPaymentMethod.pix],
+    )
+    service = BusinessService(
+        FakeDatabase(),
+        FakeBusinessRepository(business=business),
+    )
+
+    service.update(
+        1,
+        BusinessUpdate(
+            payment_methods=[
+                "credit_card",
+                "debit_card",
+                "credit_card",
+            ],
+        ),
+    )
+
+    assert business.payment_methods == [
+        BusinessPaymentMethod.credit_card,
+        BusinessPaymentMethod.debit_card,
+    ]
+
+    service.update(1, BusinessUpdate(payment_methods=[]))
+
+    assert business.payment_methods == []
 
 def test_business_attendance_plan_controls_allowed_status():
     business = Business(

@@ -41,7 +41,6 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
     name: 'availabilities-prod',
     active: true,
     isArchived: false,
-    projectId: 'UVYVLJNFC5m6HlJG',
     tags: ['Kaiky', 'beautyflow-api'],
     settings: {
         executionOrder: 'v1',
@@ -82,6 +81,10 @@ export class AvailabilitiesProdWorkflow {
                 },
                 {
                     name: 'requested_start',
+                    type: 'any',
+                },
+                {
+                    name: 'exclude_appointment_id',
                     type: 'any',
                 },
                 {
@@ -210,6 +213,12 @@ export class AvailabilitiesProdWorkflow {
                     type: 'string',
                 },
                 {
+                    id: 'bd80df92-6d31-4553-9e25-baa1a53b7cc7',
+                    name: 'data.exclude_appointment_id',
+                    value: "={{ String($json.exclude_appointment_id || '').trim() }}",
+                    type: 'string',
+                },
+                {
                     id: '855a93ad-2f0f-42b4-9de9-33b909002322',
                     name: 'data.max_suggestions',
                     value: '={{ Number($json.max_suggestions || 3) }}',
@@ -305,7 +314,7 @@ export class AvailabilitiesProdWorkflow {
   },
   "api": {
     "url": "{{ $('data handler').first().json.api?.url || '' }}",
-    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "token": "",
     "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,
@@ -365,30 +374,29 @@ export class AvailabilitiesProdWorkflow {
             ],
         },
         sendBody: true,
-        bodyParameters: {
-            parameters: [
-                {
-                    name: 'professional_id',
-                    value: "={{ Number($('data handler').first().json.data.professional_id) }}",
-                },
-                {
-                    name: 'service_id',
-                    value: "={{ Number($('data handler').first().json.data.service_id) }}",
-                },
-                {
-                    name: 'requested_start',
-                    value: "={{ $('data handler').first().json.data.requested_start }}",
-                },
-                {
-                    name: 'max_suggestions',
-                    value: "={{ Number($('data handler').first().json.data.max_suggestions || 3) }}",
-                },
-                {
-                    name: 'search_days_ahead',
-                    value: "={{ Number($('data handler').first().json.data.search_days_ahead || 7) }}",
-                },
-            ],
-        },
+        specifyBody: 'json',
+        jsonBody: `={{ (() => {
+  const data = $('data handler').first().json.data;
+  const client = $('data handler').first().json.client || {};
+  const optionalNumber = (value) => {
+    const text = String(value ?? '').trim();
+    if (!text) return undefined;
+    const number = Number(text);
+    return Number.isFinite(number) && number > 0 ? number : undefined;
+  };
+
+  return Object.fromEntries(
+    Object.entries({
+      professional_id: Number(data.professional_id),
+      service_id: Number(data.service_id),
+      requested_start: data.requested_start,
+      client_id: optionalNumber(client.id),
+      exclude_appointment_id: optionalNumber(data.exclude_appointment_id),
+      max_suggestions: Number(data.max_suggestions || 3),
+      search_days_ahead: Number(data.search_days_ahead || 7),
+    }).filter(([_, value]) => value !== undefined && value !== null && String(value).trim() !== '')
+  );
+})() }}`,
         options: {},
     };
 
@@ -488,7 +496,7 @@ export class AvailabilitiesProdWorkflow {
   },
   "api": {
     "url": "{{ $('data handler').first().json.api?.url || '' }}",
-    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "token": "",
     "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,

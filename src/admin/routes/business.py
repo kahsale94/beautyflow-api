@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 
 from src.clients import CepLookupError, CepNotFoundError, CepServiceUnavailableError, lookup_cep_async
 from src.dependecies import BusinessServiceDep
-from src.models.business_model import BusinessAttendancePlan, BusinessType
+from src.models.business_model import BusinessAttendancePlan, BusinessPaymentMethod, BusinessType
 from src.utils import form_bool, form_int, form_value, join_address_number, split_address_number
 from src.schemas import BusinessOpeningHourCreate, BusinessUpdate
 from src.services.business_service import BusinessAlreadyExistsError, BusinessNotFoundError
@@ -153,6 +153,10 @@ def business_settings_page(request: Request, service: BusinessServiceDep, sessio
     business = service.get_by_id(session.business_id)
     opening_hours_by_weekday = {item.weekday: item for item in business.opening_hours}
     address_parts = split_address_number(business.address)
+    selected_payment_methods = {
+        getattr(method, "value", method)
+        for method in (business.payment_methods or [])
+    }
 
     return render(
         request,
@@ -161,6 +165,8 @@ def business_settings_page(request: Request, service: BusinessServiceDep, sessio
             "business": business,
             "business_address_parts": address_parts,
             "business_attendance_plans": list(BusinessAttendancePlan),
+            "business_payment_methods": list(BusinessPaymentMethod),
+            "business_payment_methods_selected": selected_payment_methods,
             "business_types": list(BusinessType),
             "opening_hours_by_weekday": opening_hours_by_weekday,
         },
@@ -187,6 +193,7 @@ async def update_business_settings_action(request: Request, service: BusinessSer
             "city": form_value(form, "city"),
             "state": form_value(form, "state"),
             "description": form_value(form, "description"),
+            "payment_methods": form.getlist("payment_methods"),
             "opening_hours": _opening_hours_from_form(form),
             "booking_enabled": form_bool(form, "booking_enabled"),
             "slot_interval_minutes": form_int(form, "slot_interval_minutes"),

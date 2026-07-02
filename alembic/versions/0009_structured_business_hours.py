@@ -6,7 +6,7 @@ Create Date: 2026-06-17 00:00:00.000000
 """
 from typing import Sequence, Union
 
-from alembic import op
+from alembic import context, op
 import sqlalchemy as sa
 
 
@@ -17,11 +17,17 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def _has_column(table_name: str, column_name: str) -> bool:
+    if context.is_offline_mode():
+        return False
+
     inspector = sa.inspect(op.get_bind())
     return any(column["name"] == column_name for column in inspector.get_columns(table_name))
 
 
 def upgrade() -> None:
+    if context.is_offline_mode():
+        return
+
     inspector = sa.inspect(op.get_bind())
 
     if not inspector.has_table("business_opening_hours"):
@@ -48,6 +54,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    if context.is_offline_mode():
+        return
+
     inspector = sa.inspect(op.get_bind())
 
     if not _has_column("businesses", "opening_hours"):

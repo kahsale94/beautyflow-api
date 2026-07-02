@@ -145,7 +145,6 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
     name: 'clients-prod',
     active: true,
     isArchived: false,
-    projectId: 'UVYVLJNFC5m6HlJG',
     tags: ['Kaiky', 'beautyflow-api'],
     settings: {
         executionOrder: 'v1',
@@ -187,10 +186,17 @@ export class ClientsProdWorkflow {
                 {
                     id: 'fb5e9190-2904-431d-bee5-ad2bfe2d2bbb',
                     name: 'client',
-                    value: `={{ { 
-  ...$json.client,
-  "phone": String($json.client?.remote_jid || '').split('@')[0]
-} }}`,
+                    value: `={{ (() => {
+  const client = $json.client || {};
+  const explicitPhone = String(client.phone || '').trim();
+  const remoteJid = String(client.remote_jid || '');
+  const derivedPhone = remoteJid.includes('@g.us') ? '' : remoteJid.split('@')[0];
+
+  return {
+    ...client,
+    phone: explicitPhone || derivedPhone
+  };
+})() }}`,
                     type: 'object',
                 },
                 {
@@ -675,8 +681,10 @@ return [
     })
     SetPendingState = {
         operation: 'set',
-        key: "=beautyflow_bot.{{ $('data handler').item.json.client.remote_jid }}.state",
+        key: "=beautyflow_bot.{{ $('data handler').item.json.api.evo_instance || 'default' }}.{{ $('data handler').item.json.client.remote_jid }}.state",
         value: 'awaiting_name',
+        expire: true,
+        ttl: 86400,
     };
 
     @node({
@@ -874,13 +882,15 @@ return [
     })
     PushContext2 = {
         operation: 'set',
-        key: "=beautyflow_bot.{{ $('data handler').item.json.client.phone }}.client_context",
+        key: "=beautyflow_bot.{{ $('data handler').item.json.api.evo_instance || 'default' }}.{{ $('data handler').item.json.client.phone }}.client_context",
         value: `={{ JSON.stringify({
   id: $('get client 2').item.json.body[0].id,
   name: $('get client 2').item.json.body[0].name,
   phone: $('get client 2').item.json.body[0].phone
 }) }}`,
         keyType: 'string',
+        expire: true,
+        ttl: 86400,
     };
 
     @node({
@@ -927,7 +937,8 @@ return [
     })
     GetContext = {
         operation: 'keys',
-        keyPattern: "=beautyflow_bot.{{ $('data handler').item.json.client.phone }}.client_context",
+        keyPattern:
+            "=beautyflow_bot.{{ $('data handler').item.json.api.evo_instance || 'default' }}.{{ $('data handler').item.json.client.phone }}.client_context",
     };
 
     @node({
@@ -1027,7 +1038,7 @@ return output;`,
     })
     DeletePending = {
         operation: 'delete',
-        key: "=beautyflow_bot.{{ $('data handler').item.json.client.remote_jid }}.state",
+        key: "=beautyflow_bot.{{ $('data handler').item.json.api.evo_instance || 'default' }}.{{ $('data handler').item.json.client.remote_jid }}.state",
     };
 
     @node({
@@ -1158,7 +1169,7 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
     })
     PushHumanMemory = {
         operation: 'push',
-        list: "=beautyflow_bot.{{ $('data handler').item.json.client.remote_jid }}.chat_memory",
+        list: "=beautyflow_bot.{{ $('data handler').item.json.api.evo_instance || 'default' }}.{{ $('data handler').item.json.client.remote_jid }}.chat_memory",
         messageData: `={{ JSON.stringify({
   type: "human",
   data: {
@@ -1167,6 +1178,8 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
     response_metadata: {}
   }
 }) }}`,
+        expire: true,
+        ttl: 86400,
     };
 
     @node({
@@ -1182,7 +1195,7 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
     })
     PushHumanMemory1 = {
         operation: 'push',
-        list: "=beautyflow_bot.{{ $('data handler').item.json.client.remote_jid }}.chat_memory",
+        list: "=beautyflow_bot.{{ $('data handler').item.json.api.evo_instance || 'default' }}.{{ $('data handler').item.json.client.remote_jid }}.chat_memory",
         messageData: `={{ JSON.stringify({
   type: "human",
   data: {
@@ -1191,6 +1204,8 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
     response_metadata: {}
   }
 }) }}`,
+        expire: true,
+        ttl: 86400,
     };
 
     @node({
@@ -1204,7 +1219,7 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
     })
     PushAiMemory = {
         operation: 'push',
-        list: "=beautyflow_bot.{{ $('data handler').item.json.client.remote_jid }}.chat_memory",
+        list: "=beautyflow_bot.{{ $('data handler').item.json.api.evo_instance || 'default' }}.{{ $('data handler').item.json.client.remote_jid }}.chat_memory",
         messageData: `={{ (() => { 
   const raw = $('response 1').first().json.response
 
@@ -1223,6 +1238,8 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
     }
   });
 })() }}`,
+        expire: true,
+        ttl: 86400,
     };
 
     @node({
@@ -1236,7 +1253,7 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
     })
     PushAiMemory1 = {
         operation: 'push',
-        list: "=beautyflow_bot.{{ $('data handler').item.json.client.remote_jid }}.chat_memory",
+        list: "=beautyflow_bot.{{ $('data handler').item.json.api.evo_instance || 'default' }}.{{ $('data handler').item.json.client.remote_jid }}.chat_memory",
         messageData: `={{ (() => { 
   const raw = $('response 2').isExecuted
     ? $('response 2').first().json.response
@@ -1257,6 +1274,8 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
     }
   });
 })() }}`,
+        expire: true,
+        ttl: 86400,
     };
 
     @node({
@@ -1298,7 +1317,7 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
   },
   "api": {
     "url": "{{ $('data handler').first().json.api?.url || '' }}",
-    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "token": "",
     "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,
@@ -1349,7 +1368,7 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
   message_id: $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '',
   message_text: $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || ''
 } }}`,
-                api: "={{ $('data handler').first().json.api || {} }}",
+                api: "={{ ((api) => { const { token, Authorization, authorization, ...safeApi } = api || {}; return safeApi; })($('data handler').first().json.api || {}) }}",
             },
             matchingColumns: [],
             schema: [
@@ -1411,40 +1430,49 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
     })
     ErrorReport13 = {
         errorType: 'errorObject',
-        errorObject: `={
-  "error": {
-    "workflow": "{{ $workflow.id }}",
-    "execution": "{{ $execution.id }}",
-    "type": "internal.api.get_client",
-    "node": "{{ $prevNode.name }}",
-    "code": "{{ $json.error.status || '' }}",
-    "description": "{{
-(() => {
+        errorObject: `={{ JSON.stringify((() => {
+  const data = $('data handler').first().json || {};
+  let webhook = {};
   try {
-    const part = $json.error.message.split(' - ')[1];
-    return JSON.parse(JSON.parse(part)).detail;
-  } catch (e) {
-    return $json.error.message;
-  }
-})()
-}}"
-  },
-  "business": {
-    "id": "{{ $('data handler').first().json.business?.id || '' }}",
-    "name": "{{ $('data handler').first().json.business?.name || '' }}",
-    "phone": "{{ $('data handler').first().json.business?.phone || '' }}"
-  },
-  "client": {
-    "remote_jid": "{{ $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '' }}",
-    "message_id": "{{ $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '' }}",
-    "message_text": "{{ $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || '' }}"
-  },
-  "api": {
-    "url": "{{ $('data handler').first().json.api?.url || '' }}",
-    "token": "{{ $('data handler').first().json.api?.token || '' }}",
-    "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
-  }
-}`,
+    webhook = $('webhook').first().json || {};
+  } catch (e) {}
+
+  const sourceError = $json.error || {};
+  const rawMessage = String(sourceError.message || sourceError.description || '');
+  const description = (() => {
+    try {
+      const part = rawMessage.split(' - ')[1];
+      return JSON.parse(JSON.parse(part)).detail || rawMessage;
+    } catch (e) {
+      return rawMessage;
+    }
+  })();
+
+  return {
+    error: {
+      workflow: $workflow.id,
+      execution: $execution.id,
+      type: 'internal.api.get_client',
+      node: $prevNode.name,
+      code: sourceError.status || sourceError.code || '',
+      description,
+    },
+    business: {
+      id: data.business?.id || '',
+      name: data.business?.name || '',
+      phone: data.business?.phone || '',
+    },
+    client: {
+      remote_jid: data.client?.remote_jid || webhook.client?.remote_jid || '',
+      message_id: data.client?.message_id || webhook.client?.message_id || '',
+      message_text: data.client?.message_text || webhook.client?.message_text || '',
+    },
+    api: {
+      url: data.api?.url || '',
+      evo_instance: data.api?.evo_instance || '',
+    },
+  };
+})()) }}`,
     };
 
     @node({
@@ -1486,7 +1514,7 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
   },
   "api": {
     "url": "{{ $('data handler').first().json.api?.url || '' }}",
-    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "token": "",
     "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,
@@ -1537,7 +1565,7 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
   message_id: $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '',
   message_text: $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || ''
 } }}`,
-                api: "={{ $('data handler').first().json.api || {} }}",
+                api: "={{ ((api) => { const { token, Authorization, authorization, ...safeApi } = api || {}; return safeApi; })($('data handler').first().json.api || {}) }}",
             },
             matchingColumns: [],
             schema: [
@@ -1599,40 +1627,49 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
     })
     ErrorReport1 = {
         errorType: 'errorObject',
-        errorObject: `={
-  "error": {
-    "workflow": "{{ $workflow.id }}",
-    "execution": "{{ $execution.id }}",
-    "type": "internal.api.get_client",
-    "node": "{{ $prevNode.name }}",
-    "code": "{{ $json.error.status || '' }}",
-    "description": "{{
-(() => {
+        errorObject: `={{ JSON.stringify((() => {
+  const data = $('data handler').first().json || {};
+  let webhook = {};
   try {
-    const part = $json.error.message.split(' - ')[1];
-    return JSON.parse(JSON.parse(part)).detail;
-  } catch (e) {
-    return $json.error.message;
-  }
-})()
-}}"
-  },
-  "business": {
-    "id": "{{ $('data handler').first().json.business?.id || '' }}",
-    "name": "{{ $('data handler').first().json.business?.name || '' }}",
-    "phone": "{{ $('data handler').first().json.business?.phone || '' }}"
-  },
-  "client": {
-    "remote_jid": "{{ $('data handler').first().json.client?.remote_jid || $('webhook').first().json.client?.remote_jid || '' }}",
-    "message_id": "{{ $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '' }}",
-    "message_text": "{{ $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || '' }}"
-  },
-  "api": {
-    "url": "{{ $('data handler').first().json.api?.url || '' }}",
-    "token": "{{ $('data handler').first().json.api?.token || '' }}",
-    "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
-  }
-}`,
+    webhook = $('webhook').first().json || {};
+  } catch (e) {}
+
+  const sourceError = $json.error || {};
+  const rawMessage = String(sourceError.message || sourceError.description || '');
+  const description = (() => {
+    try {
+      const part = rawMessage.split(' - ')[1];
+      return JSON.parse(JSON.parse(part)).detail || rawMessage;
+    } catch (e) {
+      return rawMessage;
+    }
+  })();
+
+  return {
+    error: {
+      workflow: $workflow.id,
+      execution: $execution.id,
+      type: 'internal.api.get_client',
+      node: $prevNode.name,
+      code: sourceError.status || sourceError.code || '',
+      description,
+    },
+    business: {
+      id: data.business?.id || '',
+      name: data.business?.name || '',
+      phone: data.business?.phone || '',
+    },
+    client: {
+      remote_jid: data.client?.remote_jid || webhook.client?.remote_jid || '',
+      message_id: data.client?.message_id || webhook.client?.message_id || '',
+      message_text: data.client?.message_text || webhook.client?.message_text || '',
+    },
+    api: {
+      url: data.api?.url || '',
+      evo_instance: data.api?.evo_instance || '',
+    },
+  };
+})()) }}`,
     };
 
     @node({
@@ -1680,7 +1717,7 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
   message_id: $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '',
   message_text: $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || ''
 } }}`,
-                api: "={{ $('data handler').first().json.api || {} }}",
+                api: "={{ ((api) => { const { token, Authorization, authorization, ...safeApi } = api || {}; return safeApi; })($('data handler').first().json.api || {}) }}",
             },
             matchingColumns: [],
             schema: [
@@ -1772,7 +1809,7 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
   },
   "api": {
     "url": "{{ $('data handler').first().json.api?.url || '' }}",
-    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "token": "",
     "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,
@@ -1817,7 +1854,7 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
   },
   "api": {
     "url": "{{ $('data handler').first().json.api?.url || '' }}",
-    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "token": "",
     "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,
@@ -1862,7 +1899,7 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
   },
   "api": {
     "url": "{{ $('data handler').first().json.api?.url || '' }}",
-    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "token": "",
     "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,
@@ -1913,7 +1950,7 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
   message_id: $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '',
   message_text: $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || ''
 } }}`,
-                api: "={{ $('data handler').first().json.api || {} }}",
+                api: "={{ ((api) => { const { token, Authorization, authorization, ...safeApi } = api || {}; return safeApi; })($('data handler').first().json.api || {}) }}",
             },
             matchingColumns: [],
             schema: [
@@ -2011,7 +2048,7 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
   message_id: $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '',
   message_text: $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || ''
 } }}`,
-                api: "={{ $('data handler').first().json.api || {} }}",
+                api: "={{ ((api) => { const { token, Authorization, authorization, ...safeApi } = api || {}; return safeApi; })($('data handler').first().json.api || {}) }}",
             },
             matchingColumns: [],
             schema: [
@@ -2103,7 +2140,7 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
   },
   "api": {
     "url": "{{ $('data handler').first().json.api?.url || '' }}",
-    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "token": "",
     "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,
@@ -2148,7 +2185,7 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
   },
   "api": {
     "url": "{{ $('data handler').first().json.api?.url || '' }}",
-    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "token": "",
     "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,
@@ -2238,7 +2275,7 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
   },
   "api": {
     "url": "{{ $('data handler').first().json.api?.url || '' }}",
-    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "token": "",
     "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,
@@ -2257,8 +2294,10 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
     })
     SetPendingState1 = {
         operation: 'set',
-        key: "=beautyflow_bot.{{ $('data handler').item.json.client.remote_jid }}.state",
+        key: "=beautyflow_bot.{{ $('data handler').item.json.api.evo_instance || 'default' }}.{{ $('data handler').item.json.client.remote_jid }}.state",
         value: 'awaiting_name',
+        expire: true,
+        ttl: 86400,
     };
 
     @node({
@@ -2273,7 +2312,7 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
     })
     DeleteBuffer = {
         operation: 'delete',
-        key: "=beautyflow_bot.{{ $('data handler').item.json.client.remote_jid }}.chat_buffer",
+        key: "=beautyflow_bot.{{ $('data handler').item.json.api.evo_instance || 'default' }}.{{ $('data handler').item.json.client.remote_jid }}.chat_buffer",
     };
 
     @node({
@@ -2321,7 +2360,7 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
   message_id: $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '',
   message_text: $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || ''
 } }}`,
-                api: "={{ $('data handler').first().json.api || {} }}",
+                api: "={{ ((api) => { const { token, Authorization, authorization, ...safeApi } = api || {}; return safeApi; })($('data handler').first().json.api || {}) }}",
             },
             matchingColumns: [],
             schema: [

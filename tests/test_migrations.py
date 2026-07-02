@@ -21,7 +21,9 @@ def test_single_clean_initial_migration_exists():
         "0008_add_business_opening_hours.py",
         "0009_structured_business_hours.py",
         "0010_add_business_attendance.py",
+        "0011_add_business_pay_methods.py",
     ]
+    assert all(len(Path(filename).stem) <= 32 for filename in migration_files)
 
     source = read_source("alembic/versions/0001_initial_clean_schema.py")
     assert 'revision: str = "0001_initial_clean_schema"' in source
@@ -63,6 +65,7 @@ def test_single_clean_initial_migration_exists():
     source = read_source("alembic/versions/0006_backfill_business_slugs.py")
     assert 'revision: str = "0006_backfill_business_slugs"' in source
     assert 'down_revision: Union[str, None] = "0005_add_evolution_instances"' in source
+    assert "context.is_offline_mode()" in source
     assert "SELECT id, name, slug FROM businesses" in source
     assert "UPDATE businesses SET slug = :slug WHERE id = :id" in source
 
@@ -86,10 +89,23 @@ def test_single_clean_initial_migration_exists():
     assert 'revision: str = "0009_structured_business_hours"' in source
     assert 'down_revision: Union[str, None] = "0008_add_business_opening_hours"' in source
     assert "business_opening_hours" in source
+    assert "context.is_offline_mode()" in source
     assert "inspector.has_table" in source
 
     source = read_source("alembic/versions/0010_add_business_attendance.py")
     assert 'revision: str = "0010_add_business_attendance"' in source
     assert 'down_revision: Union[str, None] = "0009_structured_business_hours"' in source
     assert "businessattendanceplan" in source
+    assert "context.is_offline_mode()" in source
     assert "attendance_plan" in source
+
+    source = read_source("alembic/versions/0011_add_business_pay_methods.py")
+    assert 'revision: str = "0011_add_business_pay_methods"' in source
+    assert 'down_revision: Union[str, None] = "0010_add_business_attendance"' in source
+    assert "businesspaymentmethod" in source
+    assert "payment_methods" in source
+    assert "postgresql.ARRAY" in source
+    assert "ARRAY[]::businesspaymentmethod[]" in source
+    assert "context.is_offline_mode()" in source
+    assert "WHERE payment_methods IS NULL" in source
+    assert 'op.alter_column(' in source

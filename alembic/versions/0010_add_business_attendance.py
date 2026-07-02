@@ -6,7 +6,7 @@ Create Date: 2026-06-23 00:00:00.000000
 """
 from typing import Sequence, Union
 
-from alembic import op
+from alembic import context, op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
@@ -27,6 +27,9 @@ businessattendanceplan = postgresql.ENUM(
 
 
 def _has_column(table_name: str, column_name: str) -> bool:
+    if context.is_offline_mode():
+        return False
+
     inspector = sa.inspect(op.get_bind())
     return any(column["name"] == column_name for column in inspector.get_columns(table_name))
 

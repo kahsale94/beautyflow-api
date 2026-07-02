@@ -60,6 +60,10 @@ ADMIN_LABELS = {
     "business_hours": "Horário comercial",
     "after_hours": "Fora do horário comercial",
     "always": "24 horas",
+    "money": "Dinheiro",
+    "pix": "Pix",
+    "credit_card": "Cartão de crédito",
+    "debit_card": "Cartão de débito",
 }
 
 templates = Jinja2Templates(directory="src/templates")

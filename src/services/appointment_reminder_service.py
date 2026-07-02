@@ -1,24 +1,22 @@
-from datetime import datetime, timedelta, timezone
 from typing import Any
 from zoneinfo import ZoneInfo
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
 from src.core import DataBaseDep
-from src.models import Appointment, AppointmentReminder, Business
-from src.models.appointment_model import AppointmentStatus
-from src.models.appointment_reminder_model import AppointmentReminderStatus
 from src.repositories import AppointmentReminderRepository
+from src.models.appointment_model import AppointmentStatus
+from src.models import Appointment, AppointmentReminder, Business
+from src.models.appointment_reminder_model import AppointmentReminderStatus
 
 
 class AppointmentReminderNotFoundError(Exception):
     pass
 
-
 class AppointmentReminderInvalidStateError(Exception):
     pass
-
 
 class AppointmentReminderService:
     REMINDER_TYPE_UPCOMING = "appointment_upcoming"
@@ -67,86 +65,7 @@ class AppointmentReminderService:
             and appointment.start_datetime > now
         )
 
-    def schedule_for_appointment(
-        self,
-        appointment: Appointment,
-        business: Business,
-    ) -> AppointmentReminder | None:
-        if not self._is_schedulable(appointment):
-            return None
-
-        scheduled_for = self._calculate_scheduled_for(appointment, business)
-        existing = self.appointment_reminder_repo.get_by_appointment_snapshot(
-            self.db,
-            appointment.id,
-            self.REMINDER_TYPE_UPCOMING,
-            appointment.start_datetime,
-        )
-
-        if existing and existing.status == AppointmentReminderStatus.sent:
-            return existing
-
-        if existing:
-            previous_status = existing.status
-            existing.business_id = appointment.business_id
-            existing.scheduled_for = scheduled_for
-            existing.status = AppointmentReminderStatus.pending
-            existing.locked_until = None
-            existing.sent_at = None
-            existing.failed_at = None
-            existing.last_error = None
-            if previous_status in (
-                AppointmentReminderStatus.failed,
-                AppointmentReminderStatus.skipped,
-            ):
-                existing.attempts = 0
-            return existing
-
-        reminder = AppointmentReminder(
-            appointment_id=appointment.id,
-            business_id=appointment.business_id,
-            reminder_type=self.REMINDER_TYPE_UPCOMING,
-            appointment_start_datetime=appointment.start_datetime,
-            scheduled_for=scheduled_for,
-            status=AppointmentReminderStatus.pending,
-        )
-        self.appointment_reminder_repo.add(self.db, reminder)
-        return reminder
-
-    def get_latest_for_appointment(
-        self,
-        business_id: int,
-        appointment_id: int,
-        reminder_type: str | None = None,
-    ) -> AppointmentReminder | None:
-        return self.appointment_reminder_repo.get_latest_by_appointment(
-            self.db,
-            business_id,
-            appointment_id,
-            reminder_type,
-        )
-
-    def get_history_for_appointment(
-        self,
-        business_id: int,
-        appointment_id: int,
-        limit: int = 5,
-    ) -> list[AppointmentReminder]:
-        return list(
-            self.appointment_reminder_repo.get_by_appointment(
-                self.db,
-                business_id,
-                appointment_id,
-                limit=limit,
-            )
-        )
-
-    def _get_active_manual_for_appointment(
-        self,
-        appointment: Appointment,
-        *,
-        for_update: bool = False,
-    ) -> AppointmentReminder | None:
+    def _get_active_manual_for_appointment(self, appointment: Appointment, *, for_update: bool = False) -> AppointmentReminder | None:
         return self.appointment_reminder_repo.get_active_by_appointment_snapshot(
             self.db,
             appointment.id,
@@ -155,109 +74,8 @@ class AppointmentReminderService:
             for_update=for_update,
         )
 
-    def get_active_manual_for_appointment(self, appointment: Appointment) -> AppointmentReminder | None:
-        return self._get_active_manual_for_appointment(appointment)
-
-    def manual_unavailable_reason(
-        self,
-        appointment: Appointment,
-        business: Business,
-        active_manual_reminder: AppointmentReminder | None = None,
-    ) -> str | None:
-        now = self._now()
-        if appointment.status == AppointmentStatus.canceled:
-            return "Agendamento cancelado não pode receber lembrete."
-        if appointment.status == AppointmentStatus.completed:
-            return "Agendamento concluído não pode receber lembrete."
-        if appointment.status != AppointmentStatus.scheduled:
-            return "Apenas agendamentos ativos podem receber lembrete."
-        if appointment.confirmation_pending:
-            return "Confirme o agendamento antes de enviar lembrete."
-        if appointment.start_datetime <= now:
-            return "Agendamento passado não pode receber lembrete."
-
-        instance = getattr(business, "evolution_instance", None)
-        if not instance or not getattr(instance, "instance_name", None):
-            return "Conecte o WhatsApp da empresa antes de enviar lembrete."
-
-        instance_state = str(getattr(instance, "state", "") or "").lower()
-        if instance_state and instance_state not in {"open", "connected"}:
-            return "WhatsApp da empresa ainda não está conectado."
-
-        active_manual_reminder = active_manual_reminder or self.get_active_manual_for_appointment(appointment)
-        if active_manual_reminder:
-            return "Já existe um lembrete manual na fila para esse horário."
-
-        return None
-
-    def schedule_manual_for_appointment(
-        self,
-        appointment: Appointment,
-        business: Business,
-    ) -> AppointmentReminder:
-        active_manual_reminder = self._get_active_manual_for_appointment(
-            appointment,
-            for_update=True,
-        )
-        unavailable_reason = self.manual_unavailable_reason(
-            appointment,
-            business,
-            active_manual_reminder=active_manual_reminder,
-        )
-        if unavailable_reason:
-            raise AppointmentReminderInvalidStateError(unavailable_reason)
-
-        now = self._now()
-        reminder = AppointmentReminder(
-            appointment_id=appointment.id,
-            business_id=appointment.business_id,
-            reminder_type=self.REMINDER_TYPE_MANUAL,
-            appointment_start_datetime=appointment.start_datetime,
-            scheduled_for=now,
-            status=AppointmentReminderStatus.pending,
-        )
-        self.appointment_reminder_repo.add(self.db, reminder)
-        try:
-            self.db.commit()
-        except IntegrityError as exc:
-            self.db.rollback()
-            raise AppointmentReminderInvalidStateError(
-                "Já existe um lembrete manual na fila para esse horário."
-            ) from exc
-
-        return reminder
-
-    def skip_pending_for_appointment(self, appointment_id: int, reason: str = "appointment_changed") -> None:
-        reminders = self.appointment_reminder_repo.get_pending_for_appointment(self.db, appointment_id)
-        for reminder in reminders:
-            reminder.status = AppointmentReminderStatus.skipped
-            reminder.locked_until = None
-            reminder.last_error = reason
-
-    def recalculate_pending_for_business(self, business: Business) -> None:
-        reminders = self.appointment_reminder_repo.get_pending_for_business(self.db, business.id)
-        now = self._now()
-
-        for reminder in reminders:
-            appointment = reminder.appointment
-            if not self._is_schedulable(appointment, now):
-                reminder.status = AppointmentReminderStatus.skipped
-                reminder.locked_until = None
-                reminder.last_error = "appointment_no_longer_schedulable"
-                continue
-
-            reminder.appointment_start_datetime = appointment.start_datetime
-            reminder.scheduled_for = self._calculate_scheduled_for(appointment, business)
-            reminder.locked_until = None
-            reminder.last_error = None
-
     def _skip_invalid_due(self, integration_id: int, now: datetime, limit: int) -> None:
-        reminders = self.appointment_reminder_repo.get_due_invalid(
-            self.db,
-            integration_id,
-            now,
-            limit,
-        )
+        reminders = self.appointment_reminder_repo.get_due_invalid(self.db, integration_id, now, limit)
         for reminder in reminders:
             reminder.status = AppointmentReminderStatus.skipped
             reminder.locked_until = None
@@ -275,12 +93,7 @@ class AppointmentReminderService:
 
         return None
 
-    def _mark_terminal_failed(
-        self,
-        reminder: AppointmentReminder,
-        now: datetime,
-        error: str,
-    ) -> None:
+    def _mark_terminal_failed(self, reminder: AppointmentReminder, now: datetime, error: str) -> None:
         reminder.status = AppointmentReminderStatus.failed
         reminder.attempts += 1
         reminder.locked_until = None
@@ -359,6 +172,153 @@ class AppointmentReminderService:
             "message": self._build_message(reminder),
         }
 
+    def schedule_for_appointment(self, appointment: Appointment, business: Business) -> AppointmentReminder | None:
+        if not self._is_schedulable(appointment):
+            return None
+
+        scheduled_for = self._calculate_scheduled_for(appointment, business)
+        existing = self.appointment_reminder_repo.get_by_appointment_snapshot(
+            self.db,
+            appointment.id,
+            self.REMINDER_TYPE_UPCOMING,
+            appointment.start_datetime,
+        )
+
+        if existing and existing.status == AppointmentReminderStatus.sent:
+            return existing
+
+        if existing:
+            previous_status = existing.status
+            existing.business_id = appointment.business_id
+            existing.scheduled_for = scheduled_for
+            existing.status = AppointmentReminderStatus.pending
+            existing.locked_until = None
+            existing.sent_at = None
+            existing.failed_at = None
+            existing.last_error = None
+            if previous_status in (
+                AppointmentReminderStatus.failed,
+                AppointmentReminderStatus.skipped,
+            ):
+                existing.attempts = 0
+            return existing
+
+        reminder = AppointmentReminder(
+            appointment_id=appointment.id,
+            business_id=appointment.business_id,
+            reminder_type=self.REMINDER_TYPE_UPCOMING,
+            appointment_start_datetime=appointment.start_datetime,
+            scheduled_for=scheduled_for,
+            status=AppointmentReminderStatus.pending,
+        )
+        self.appointment_reminder_repo.add(self.db, reminder)
+        return reminder
+
+    def get_latest_for_appointment(self, business_id: int, appointment_id: int, reminder_type: str | None = None) -> AppointmentReminder | None:
+        return self.appointment_reminder_repo.get_latest_by_appointment(
+            self.db,
+            business_id,
+            appointment_id,
+            reminder_type,
+        )
+
+    def get_history_for_appointment(self, business_id: int, appointment_id: int, limit: int = 5) -> list[AppointmentReminder]:
+        return list(
+            self.appointment_reminder_repo.get_by_appointment(
+                self.db,
+                business_id,
+                appointment_id,
+                limit=limit,
+            )
+        )
+
+    def get_active_manual_for_appointment(self, appointment: Appointment) -> AppointmentReminder | None:
+        return self._get_active_manual_for_appointment(appointment)
+
+    def manual_unavailable_reason(self, appointment: Appointment, business: Business, active_manual_reminder: AppointmentReminder | None = None) -> str | None:
+        now = self._now()
+        if appointment.status == AppointmentStatus.canceled:
+            return "Agendamento cancelado não pode receber lembrete."
+        if appointment.status == AppointmentStatus.completed:
+            return "Agendamento concluído não pode receber lembrete."
+        if appointment.status != AppointmentStatus.scheduled:
+            return "Apenas agendamentos ativos podem receber lembrete."
+        if appointment.confirmation_pending:
+            return "Confirme o agendamento antes de enviar lembrete."
+        if appointment.start_datetime <= now:
+            return "Agendamento passado não pode receber lembrete."
+
+        instance = getattr(business, "evolution_instance", None)
+        if not instance or not getattr(instance, "instance_name", None):
+            return "Conecte o WhatsApp da empresa antes de enviar lembrete."
+
+        instance_state = str(getattr(instance, "state", "") or "").lower()
+        if instance_state and instance_state not in {"open", "connected"}:
+            return "WhatsApp da empresa ainda não está conectado."
+
+        active_manual_reminder = active_manual_reminder or self.get_active_manual_for_appointment(appointment)
+        if active_manual_reminder:
+            return "Já existe um lembrete manual na fila para esse horário."
+
+        return None
+
+    def schedule_manual_for_appointment(self, appointment: Appointment, business: Business) -> AppointmentReminder:
+        active_manual_reminder = self._get_active_manual_for_appointment(
+            appointment,
+            for_update=True,
+        )
+        unavailable_reason = self.manual_unavailable_reason(
+            appointment,
+            business,
+            active_manual_reminder=active_manual_reminder,
+        )
+        if unavailable_reason:
+            raise AppointmentReminderInvalidStateError(unavailable_reason)
+
+        now = self._now()
+        reminder = AppointmentReminder(
+            appointment_id=appointment.id,
+            business_id=appointment.business_id,
+            reminder_type=self.REMINDER_TYPE_MANUAL,
+            appointment_start_datetime=appointment.start_datetime,
+            scheduled_for=now,
+            status=AppointmentReminderStatus.pending,
+        )
+        self.appointment_reminder_repo.add(self.db, reminder)
+        try:
+            self.db.commit()
+        except IntegrityError as exc:
+            self.db.rollback()
+            raise AppointmentReminderInvalidStateError(
+                "Já existe um lembrete manual na fila para esse horário."
+            ) from exc
+
+        return reminder
+
+    def skip_pending_for_appointment(self, appointment_id: int, reason: str = "appointment_changed") -> None:
+        reminders = self.appointment_reminder_repo.get_pending_for_appointment(self.db, appointment_id)
+        for reminder in reminders:
+            reminder.status = AppointmentReminderStatus.skipped
+            reminder.locked_until = None
+            reminder.last_error = reason
+
+    def recalculate_pending_for_business(self, business: Business) -> None:
+        reminders = self.appointment_reminder_repo.get_pending_for_business(self.db, business.id)
+        now = self._now()
+
+        for reminder in reminders:
+            appointment = reminder.appointment
+            if not self._is_schedulable(appointment, now):
+                reminder.status = AppointmentReminderStatus.skipped
+                reminder.locked_until = None
+                reminder.last_error = "appointment_no_longer_schedulable"
+                continue
+
+            reminder.appointment_start_datetime = appointment.start_datetime
+            reminder.scheduled_for = self._calculate_scheduled_for(appointment, business)
+            reminder.locked_until = None
+            reminder.last_error = None
+
     def claim_due(self, integration_id: int, limit: int | None = None) -> list[dict[str, Any]]:
         claim_limit = self._limit(limit)
         now = self._now()
@@ -390,12 +350,7 @@ class AppointmentReminderService:
 
         return [self._to_claim_payload(reminder) for reminder in claimed]
 
-    def mark_sent(
-        self,
-        reminder_id: int,
-        integration_id: int,
-        external_message_id: str | None = None,
-    ) -> None:
+    def mark_sent(self, reminder_id: int, integration_id: int, external_message_id: str | None = None) -> None:
         reminder = self.appointment_reminder_repo.get_by_id_for_integration(
             self.db,
             reminder_id,
@@ -418,12 +373,7 @@ class AppointmentReminderService:
         reminder.external_message_id = external_message_id
         self.db.commit()
 
-    def mark_failed(
-        self,
-        reminder_id: int,
-        integration_id: int,
-        error: str,
-    ) -> None:
+    def mark_failed(self, reminder_id: int, integration_id: int, error: str) -> None:
         reminder = self.appointment_reminder_repo.get_by_id_for_integration(
             self.db,
             reminder_id,

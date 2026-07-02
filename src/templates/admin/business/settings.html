@@ -169,6 +169,22 @@
         </div>
     </section>
 
+    <section class="card settings-card stack">
+        <h2 class="section-title">Métodos de pagamento</h2>
+        <div class="checkbox-grid">
+            {% for method in business_payment_methods %}
+            <label class="check-card">
+                <input
+                    type="checkbox"
+                    name="payment_methods"
+                    value="{{ method.value }}"
+                    {% if method.value in business_payment_methods_selected %}checked{% endif %} />
+                <span>{{ method|admin_label }}</span>
+            </label>
+            {% endfor %}
+        </div>
+    </section>
+
     <section class="card settings-card stack weekly-schedule-card" data-weekly-schedule-panel data-schedule-kind="business">
         <div class="schedule-panel-header">
             <h2 class="section-title">Horário de Funcionamento</h2>

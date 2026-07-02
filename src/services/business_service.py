@@ -165,6 +165,7 @@ class BusinessService:
             city = data.city,
             state = data.state,
             description = data.description,
+            payment_methods = data.payment_methods,
             booking_enabled = data.booking_enabled,
             slot_interval_minutes = data.slot_interval_minutes,
             minimum_notice_minutes = data.minimum_notice_minutes,
@@ -208,6 +209,9 @@ class BusinessService:
 
         if update_data.get("slug") is None:
             update_data.pop("slug", None)
+
+        if update_data.get("payment_methods") is None:
+            update_data.pop("payment_methods", None)
 
         if not business.slug and "slug" not in update_data:
             update_data["slug"] = self._generate_unique_slug(

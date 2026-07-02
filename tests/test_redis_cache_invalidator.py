@@ -8,12 +8,16 @@ class FakeRedis:
 
     def scan_iter(self, match, count):
         keys_by_pattern = {
-            "beautyflow_bot.*.*.service_context": [
-                "beautyflow_bot.1.Corte.service_context",
-                "beautyflow_bot.2.Barba.service_context",
+            "beautyflow_bot.*.*.*.service_context": [
+                "beautyflow_bot.sale_instance.1.corte.service_context",
+                "beautyflow_bot.sale_instance.2.barba.service_context",
             ],
+            "beautyflow_bot.*.*.service_context": ["beautyflow_bot.1.Corte.service_context"],
             "beautyflow_bot.11922220001.business_context": [
                 "beautyflow_bot.11922220001.business_context",
+            ],
+            "beautyflow_bot.*.11922220001.business_context": [
+                "beautyflow_bot.sale_instance.11922220001.business_context",
             ],
         }
         yield from keys_by_pattern.get(match, [])
@@ -42,8 +46,24 @@ def test_redis_cache_invalidator_deletes_matching_context_keys():
 
     assert deleted == 3
     assert fake_redis.deleted == [
-        "beautyflow_bot.1.Corte.service_context",
-        "beautyflow_bot.2.Barba.service_context",
+        "beautyflow_bot.sale_instance.1.corte.service_context",
+        "beautyflow_bot.sale_instance.2.barba.service_context",
         "beautyflow_bot.11922220001.business_context",
     ]
     assert fake_redis.closed is True
+
+
+def test_specific_context_invalidation_matches_instance_scoped_and_legacy_keys():
+    fake_redis = FakeRedis()
+    invalidator = RedisCacheInvalidator(
+        redis_url="redis://redis:6379/0",
+        client_factory=lambda *args, **kwargs: fake_redis,
+    )
+
+    invalidator.invalidate_business_context("11922220001")
+
+    assert fake_redis.closed is True
+    assert fake_redis.deleted == [
+        "beautyflow_bot.sale_instance.11922220001.business_context",
+        "beautyflow_bot.11922220001.business_context",
+    ]

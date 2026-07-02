@@ -113,7 +113,6 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
     name: 'professionals-prod',
     active: true,
     isArchived: false,
-    projectId: 'UVYVLJNFC5m6HlJG',
     tags: ['Kaiky', 'beautyflow-api'],
     settings: {
         executionOrder: 'v1',
@@ -427,7 +426,8 @@ export class ProfessionalsProdWorkflow {
     })
     GetContext = {
         operation: 'keys',
-        keyPattern: 'beautyflow_bot.*.*.professional_context',
+        keyPattern:
+            "=beautyflow_bot.{{ $('data handler').first().json.api.evo_instance || 'default' }}.*.*.professional_context",
     };
 
     @node({
@@ -441,7 +441,8 @@ export class ProfessionalsProdWorkflow {
     })
     GetContext1 = {
         operation: 'keys',
-        keyPattern: "=beautyflow_bot.{{ $('data handler').item.json.professional.id }}.*.professional_context",
+        keyPattern:
+            "=beautyflow_bot.{{ $('data handler').first().json.api.evo_instance || 'default' }}.{{ $('data handler').item.json.professional.id }}.*.professional_context",
     };
 
     @node({
@@ -549,7 +550,7 @@ export class ProfessionalsProdWorkflow {
     })
     PushContext = {
         operation: 'set',
-        key: "=beautyflow_bot.{{ $('loop').item.json.id }}.{{ $('loop').item.json.name }}.professional_context",
+        key: "=beautyflow_bot.{{ $('data handler').first().json.api.evo_instance || 'default' }}.{{ $('loop').item.json.id }}.{{ String($('loop').item.json.name || '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').trim().toLowerCase() }}.professional_context",
         value: `={{ JSON.stringify({
   id: $('loop').item.json.id,
   name: $('loop').item.json.name,
@@ -557,6 +558,8 @@ export class ProfessionalsProdWorkflow {
   phone: $('loop').item.json.phone,
 }) }}`,
         keyType: 'string',
+        expire: true,
+        ttl: 86400,
     };
 
     @node({
@@ -570,7 +573,7 @@ export class ProfessionalsProdWorkflow {
     })
     PushContext1 = {
         operation: 'set',
-        key: "=beautyflow_bot.{{ $('get by id').item.json.id }}.{{ $('get by id').item.json.name }}.professional_context",
+        key: "=beautyflow_bot.{{ $('data handler').first().json.api.evo_instance || 'default' }}.{{ $('get by id').item.json.id }}.{{ String($('get by id').item.json.name || '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').trim().toLowerCase() }}.professional_context",
         value: `={{ JSON.stringify({
   id: $('get by id').item.json.id,
   name: $('get by id').item.json.name,
@@ -578,6 +581,8 @@ export class ProfessionalsProdWorkflow {
   phone: $('get by id').item.json.phone
 }) }}`,
         keyType: 'string',
+        expire: true,
+        ttl: 86400,
     };
 
     @node({
@@ -591,14 +596,16 @@ export class ProfessionalsProdWorkflow {
     })
     PushContext2 = {
         operation: 'set',
-        key: "=beautyflow_bot.{{ $('get by name').item.json.id }}.{{ $('get by name').item.json.name }}.professional_context",
+        key: "=beautyflow_bot.{{ $('data handler').first().json.api.evo_instance || 'default' }}.{{ $('get by name').item.json.body[0].id }}.{{ String($('get by name').item.json.body[0].name || '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').trim().toLowerCase() }}.professional_context",
         value: `={{ JSON.stringify({
-  id: $('get by name').item.json.id,
-  name: $('get by name').item.json.name,
-  email: $('get by name').item.json.email,
-  phone: $('get by name').item.json.phone
+  id: $('get by name').item.json.body[0].id,
+  name: $('get by name').item.json.body[0].name,
+  email: $('get by name').item.json.body[0].email,
+  phone: $('get by name').item.json.body[0].phone
 }) }}`,
         keyType: 'string',
+        expire: true,
+        ttl: 86400,
     };
 
     @node({
@@ -622,6 +629,7 @@ export class ProfessionalsProdWorkflow {
     Convert1 = {
         jsCode: `const items = $input.all();
 const output = [];
+const seenIds = new Set();
 
 for (const item of items) {
   for (const value of Object.values(item.json || {})) {
@@ -638,6 +646,10 @@ for (const item of items) {
     if (!professional || typeof professional !== 'object' || professional.id == null) {
       continue;
     }
+
+    const id = String(professional.id);
+    if (seenIds.has(id)) continue;
+    seenIds.add(id);
 
     output.push({
       json: {
@@ -663,6 +675,7 @@ return output;`,
     Convert2 = {
         jsCode: `const items = $input.all();
 const output = [];
+const seenIds = new Set();
 
 for (const item of items) {
   for (const value of Object.values(item.json || {})) {
@@ -679,6 +692,10 @@ for (const item of items) {
     if (!professional || typeof professional !== 'object' || professional.id == null) {
       continue;
     }
+
+    const id = String(professional.id);
+    if (seenIds.has(id)) continue;
+    seenIds.add(id);
 
     output.push({
       json: {
@@ -705,7 +722,8 @@ return output;`,
     })
     GetContext2 = {
         operation: 'keys',
-        keyPattern: "=beautyflow_bot.*.{{ $('data handler').item.json.professional.name }}.professional_context",
+        keyPattern:
+            "=beautyflow_bot.{{ $('data handler').first().json.api.evo_instance || 'default' }}.*.{{ String($('data handler').item.json.professional.name || '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').trim().toLowerCase() }}.professional_context",
     };
 
     @node({
@@ -851,7 +869,7 @@ return output;`,
   message_id: $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '',
   message_text: $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || ''
 } }}`,
-                api: "={{ $('data handler').first().json.api || {} }}",
+                api: "={{ ((api) => { const { token, Authorization, authorization, ...safeApi } = api || {}; return safeApi; })($('data handler').first().json.api || {}) }}",
             },
             matchingColumns: [],
             schema: [
@@ -943,7 +961,7 @@ return output;`,
   },
   "api": {
     "url": "{{ $('data handler').first().json.api?.url || '' }}",
-    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "token": "",
     "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,
@@ -994,7 +1012,7 @@ return output;`,
   message_id: $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '',
   message_text: $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || ''
 } }}`,
-                api: "={{ $('data handler').first().json.api || {} }}",
+                api: "={{ ((api) => { const { token, Authorization, authorization, ...safeApi } = api || {}; return safeApi; })($('data handler').first().json.api || {}) }}",
             },
             matchingColumns: [],
             schema: [
@@ -1092,7 +1110,7 @@ return output;`,
   message_id: $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '',
   message_text: $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || ''
 } }}`,
-                api: "={{ $('data handler').first().json.api || {} }}",
+                api: "={{ ((api) => { const { token, Authorization, authorization, ...safeApi } = api || {}; return safeApi; })($('data handler').first().json.api || {}) }}",
             },
             matchingColumns: [],
             schema: [
@@ -1184,7 +1202,7 @@ return output;`,
   },
   "api": {
     "url": "{{ $('data handler').first().json.api?.url || '' }}",
-    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "token": "",
     "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,
@@ -1229,7 +1247,7 @@ return output;`,
   },
   "api": {
     "url": "{{ $('data handler').first().json.api?.url || '' }}",
-    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "token": "",
     "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,
@@ -1278,7 +1296,7 @@ return output;`,
   message_id: $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '',
   message_text: $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || ''
 } }}`,
-                api: "={{ $('data handler').first().json.api || {} }}",
+                api: "={{ ((api) => { const { token, Authorization, authorization, ...safeApi } = api || {}; return safeApi; })($('data handler').first().json.api || {}) }}",
             },
             matchingColumns: [],
             schema: [
@@ -1374,7 +1392,7 @@ return output;`,
   message_id: $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '',
   message_text: $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || ''
 } }}`,
-                api: "={{ $('data handler').first().json.api || {} }}",
+                api: "={{ ((api) => { const { token, Authorization, authorization, ...safeApi } = api || {}; return safeApi; })($('data handler').first().json.api || {}) }}",
             },
             matchingColumns: [],
             schema: [
@@ -1472,7 +1490,7 @@ return output;`,
   message_id: $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '',
   message_text: $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || ''
 } }}`,
-                api: "={{ $('data handler').first().json.api || {} }}",
+                api: "={{ ((api) => { const { token, Authorization, authorization, ...safeApi } = api || {}; return safeApi; })($('data handler').first().json.api || {}) }}",
             },
             matchingColumns: [],
             schema: [

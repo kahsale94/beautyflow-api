@@ -55,7 +55,6 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
     name: 'businesses-prod',
     active: true,
     isArchived: false,
-    projectId: 'UVYVLJNFC5m6HlJG',
     tags: ['Kaiky', 'beautyflow-api'],
     settings: {
         executionOrder: 'v1',
@@ -171,7 +170,7 @@ export class BusinessesProdWorkflow {
 
   try {
     const business = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    return business?.cache_version === 2 ? 'valid' : '';
+    return business?.cache_version === 3 ? 'valid' : '';
   } catch (error) {
     return '';
   }
@@ -203,7 +202,7 @@ export class BusinessesProdWorkflow {
     GetContext = {
         operation: 'get',
         propertyName: 'business',
-        key: "=beautyflow_bot.{{ $('data handler').item.json.business.phone }}.business_context",
+        key: "=beautyflow_bot.{{ $('data handler').item.json.api.evo_instance || 'default' }}.{{ $('data handler').item.json.business.phone }}.business_context",
         options: {},
     };
 
@@ -267,9 +266,11 @@ return output;`,
     })
     PushContext = {
         operation: 'set',
-        key: "=beautyflow_bot.{{ $('data handler').item.json.business.phone }}.business_context",
+        key: "=beautyflow_bot.{{ $('data handler').item.json.api.evo_instance || 'default' }}.{{ $('data handler').item.json.business.phone }}.business_context",
         value: "={{ JSON.stringify($('business data').item.json.business) }}",
         keyType: 'string',
+        expire: true,
+        ttl: 86400,
     };
 
     @node({
@@ -317,7 +318,7 @@ return output;`,
   message_id: $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '',
   message_text: $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || ''
 } }}`,
-                api: "={{ $('data handler').first().json.api || {} }}",
+                api: "={{ ((api) => { const { token, Authorization, authorization, ...safeApi } = api || {}; return safeApi; })($('data handler').first().json.api || {}) }}",
             },
             matchingColumns: [],
             schema: [
@@ -409,7 +410,7 @@ return output;`,
   },
   "api": {
     "url": "{{ $('data handler').first().json.api?.url || '' }}",
-    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "token": "",
     "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,
@@ -460,7 +461,7 @@ return output;`,
   message_id: $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '',
   message_text: $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || ''
 } }}`,
-                api: "={{ $('data handler').first().json.api || {} }}",
+                api: "={{ ((api) => { const { token, Authorization, authorization, ...safeApi } = api || {}; return safeApi; })($('data handler').first().json.api || {}) }}",
             },
             matchingColumns: [],
             schema: [
@@ -579,6 +580,34 @@ return output;`,
 
     const n8nConfig = config?.n8n ?? {};
     const lateToleranceMinutes = n8nConfig.late_tolerance_minutes ?? 10;
+    const paymentMethodLabelsByValue = {
+      money: 'Dinheiro',
+      pix: 'Pix',
+      credit_card: 'Cartão de crédito',
+      debit_card: 'Cartão de débito',
+    };
+    const normalizePaymentMethods = (value) => {
+      const raw = Array.isArray(value) ? value : [];
+      const allowed = new Set(Object.keys(paymentMethodLabelsByValue));
+      const seen = new Set();
+
+      return raw
+        .map((method) => String(method || '').trim())
+        .filter((method) => {
+          if (!allowed.has(method) || seen.has(method)) return false;
+          seen.add(method);
+          return true;
+        });
+    };
+    const paymentMethods = normalizePaymentMethods(
+      business.payment_methods ?? n8nConfig.payment_methods
+    );
+    const configuredLabels = Array.isArray(business.payment_method_labels)
+      ? business.payment_method_labels
+      : n8nConfig.payment_method_labels;
+    const paymentMethodLabels = Array.isArray(configuredLabels) && configuredLabels.length === paymentMethods.length
+      ? configuredLabels.map((label) => String(label || '').trim()).filter(Boolean)
+      : paymentMethods.map((method) => paymentMethodLabelsByValue[method]).filter(Boolean);
 
     return {
       id: business.id,
@@ -604,7 +633,9 @@ return output;`,
       delay_policies: \`Em caso de atraso, recomendamos que o cliente avise o estabelecimento o quanto antes. A tolerância para atrasos é de até \${lateToleranceMinutes} minutos. Após esse período, o atendimento poderá ser remarcado ou cancelado conforme disponibilidade da agenda.\`,
 
       ...n8nConfig,
-      cache_version: 2,
+      payment_methods: paymentMethods,
+      payment_method_labels: paymentMethodLabels,
+      cache_version: 3,
       attendance_plan: business.attendance_plan || n8nConfig.attendance_plan || 'business_hours',
       business_is_open: Boolean(business.business_is_open),
       attendance_allowed: Boolean(business.attendance_allowed),
@@ -665,7 +696,7 @@ return output;`,
   },
   "api": {
     "url": "{{ $('data handler').first().json.api?.url || '' }}",
-    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "token": "",
     "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,

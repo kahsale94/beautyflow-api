@@ -65,7 +65,6 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
     name: 'error-prod',
     active: true,
     isArchived: false,
-    projectId: 'UVYVLJNFC5m6HlJG',
     tags: ['Kaiky', 'beautyflow-api'],
     settings: {
         executionOrder: 'v1',
@@ -110,7 +109,11 @@ export class ErrorProdWorkflow {
                 {
                     id: 'fbc577f0-e39a-4e8d-bb14-89e526927a96',
                     name: 'api',
-                    value: '={{ $json.api || $json.body?.api || $json.execution?.error?.context?.metadata?.api || {} }}',
+                    value: `={{ (() => {
+  const api = $json.api || $json.body?.api || $json.execution?.error?.context?.metadata?.api || {};
+  const { token, Authorization, authorization, ...safeApi } = api;
+  return safeApi;
+})() }}`,
                     type: 'object',
                 },
             ],
@@ -138,7 +141,7 @@ export class ErrorProdWorkflow {
     })
     BackendErrorWebhook = {
         httpMethod: 'POST',
-        path: 'beautyflow-error',
+        path: 'beautyflow-error-prod',
         authentication: 'headerAuth',
         options: {},
     };
@@ -318,6 +321,13 @@ const policies = {
     notifyOwner: true,
     notifyDev: true,
     customerMessage: 'Tive uma instabilidade no sistema agora e não consegui continuar o atendimento. A equipe já vai verificar.'
+  },
+
+  'internal.api.reminders': {
+    severity: 'high',
+    notifyCustomer: false,
+    notifyOwner: false,
+    notifyDev: true,
   },
 
   'internal.api.get_business': {

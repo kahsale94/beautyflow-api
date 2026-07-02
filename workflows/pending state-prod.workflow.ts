@@ -52,7 +52,6 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
     name: 'pending state-prod',
     active: true,
     isArchived: false,
-    projectId: 'UVYVLJNFC5m6HlJG',
     tags: ['Kaiky', 'beautyflow-api'],
     settings: {
         executionOrder: 'v1',
@@ -286,7 +285,7 @@ export class PendingStateProdWorkflow {
     })
     GetOutsideHoursContextKeys = {
         operation: 'keys',
-        keyPattern: 'beautyflow_bot.*.outside_hours_context',
+        keyPattern: 'beautyflow_bot.*.*.outside_hours_context',
         getValues: false,
     };
 
@@ -362,7 +361,7 @@ return [
     json: {
       ...context,
       context_key: context.context_key || $json.keys,
-      state_key: context.state_key || 'beautyflow_bot.' + remoteJid + '.state',
+      state_key: context.state_key || 'beautyflow_bot.' + evoInstance + '.' + remoteJid + '.state',
       resume_message:
         context.resume_message ||
         'Olá! O atendimento já está disponível novamente. Podemos continuar por aqui.',

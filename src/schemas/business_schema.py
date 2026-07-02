@@ -2,10 +2,16 @@ import re
 from datetime import datetime, time
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import BaseModel, ConfigDict, field_validator, Field, EmailStr, model_validator
+from pydantic import BaseModel, ConfigDict, computed_field, field_validator, Field, EmailStr, model_validator
 
 from .base_schema import name_type, phone_type
-from src.models.business_model import BusinessAttendancePlan, BusinessType
+from src.models.business_model import (
+    BusinessAttendancePlan,
+    BusinessPaymentMethod,
+    BusinessType,
+    normalize_payment_methods,
+    payment_method_labels as get_payment_method_labels,
+)
 from src.utils import normalize_cep
 
 
@@ -18,7 +24,22 @@ def validate_slug_value(value: str | None) -> str | None:
 
     return value
 
-class BusinessCreate(BaseModel):
+def validate_payment_methods_value(value):
+    if value is None:
+        return value
+
+    if isinstance(value, str):
+        raise ValueError("Métodos de pagamento devem ser enviados como lista.")
+
+    return normalize_payment_methods(value)
+
+class BusinessPaymentMethodsMixin(BaseModel):
+    @field_validator("payment_methods", mode="before", check_fields=False)
+    @classmethod
+    def validate_payment_methods(cls, value):
+        return validate_payment_methods_value(value)
+
+class BusinessCreate(BusinessPaymentMethodsMixin):
     name: name_type
     type: BusinessType
     attendance_plan: BusinessAttendancePlan = BusinessAttendancePlan.business_hours
@@ -32,6 +53,7 @@ class BusinessCreate(BaseModel):
     city: str | None = None
     state: str | None = None
     description: str | None = None
+    payment_methods: list[BusinessPaymentMethod] = Field(default_factory=list)
     opening_hours: list["BusinessOpeningHourCreate"] = Field(default_factory=list)
 
     booking_enabled: bool = True
@@ -62,7 +84,7 @@ class BusinessCreate(BaseModel):
     def validate_cep(cls, value: str | None) -> str | None:
         return normalize_cep(value)
 
-class BusinessUpdate(BaseModel):
+class BusinessUpdate(BusinessPaymentMethodsMixin):
     name: name_type | None = None
     type: BusinessType | None = None
     attendance_plan: BusinessAttendancePlan | None = None
@@ -76,6 +98,7 @@ class BusinessUpdate(BaseModel):
     city: str | None = None
     state: str | None = None
     description: str | None = None
+    payment_methods: list[BusinessPaymentMethod] | None = None
     opening_hours: list["BusinessOpeningHourCreate"] | None = None
 
     booking_enabled: bool | None = None
@@ -152,6 +175,7 @@ class BusinessResponse(BaseModel):
     city: str | None = None
     state: str | None = None
     description: str | None = None
+    payment_methods: list[BusinessPaymentMethod] = Field(default_factory=list)
     opening_hours: list[BusinessOpeningHourResponse] = Field(default_factory=list)
 
     booking_enabled: bool
@@ -167,3 +191,13 @@ class BusinessResponse(BaseModel):
     attendance_status: BusinessAttendanceStatusResponse
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("payment_methods", mode="before")
+    @classmethod
+    def validate_payment_methods(cls, value):
+        return validate_payment_methods_value(value) or []
+
+    @computed_field
+    @property
+    def payment_method_labels(self) -> list[str]:
+        return get_payment_method_labels(self.payment_methods)

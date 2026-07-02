@@ -2,7 +2,7 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 
 // <workflow-map>
 // Workflow : appointments-prod
-// Nodes   : 44  |  Connections: 36
+// Nodes   : 45  |  Connections: 37
 //
 // NODE INDEX
 // ──────────────────────────────────────────────────────────────────
@@ -46,11 +46,12 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 // ServiceContext                     executeWorkflow
 // ProfessionalContext                executeWorkflow
 // ReminderSchedule                   scheduleTrigger
-// ClaimReminders                     httpRequest                [creds] [retry]
+// ClaimReminders                     httpRequest                [onError→out(1)] [creds] [retry]
 // SplitReminderClaims                splitOut
 // SendReminder                       evolutionApi               [onError→out(1)] [creds] [retry]
 // MarkReminderSent                   httpRequest                [creds] [retry]
 // MarkReminderFailed                 httpRequest                [creds] [retry]
+// ErrorReport17                      stopAndError
 //
 // ROUTING MAP
 // ──────────────────────────────────────────────────────────────────
@@ -95,6 +96,7 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 //        → SendReminder
 //          → MarkReminderSent
 //         .out(1) → MarkReminderFailed
+//     .out(1) → ErrorReport17
 // </workflow-map>
 
 // =====================================================================
@@ -106,7 +108,6 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
     name: 'appointments-prod',
     active: true,
     isArchived: false,
-    projectId: 'UVYVLJNFC5m6HlJG',
     tags: ['Kaiky', 'beautyflow-api'],
     settings: {
         executionOrder: 'v1',
@@ -178,17 +179,22 @@ export class AppointmentsProdWorkflow {
                     id: '4142f544-89a2-44a1-b42f-4ffe05f8eda0',
                     name: 'data',
                     value: `={{ (() => {
+  const clean = (value) => {
+    const text = String(value ?? '').trim();
+    return !text || ['null', 'undefined'].includes(text.toLowerCase()) ? '' : text;
+  };
+
   return {
-    action: $json.action || 'get',
+    action: clean($json.action) || 'get',
     appointment: {
-      id: $json.appointment_id || '',
-      start_datetime: $json.start_datetime || ''
+      id: clean($json.appointment_id),
+      start_datetime: clean($json.start_datetime)
     },
     professional: {
-      id: $json.professional_id || ''
+      id: clean($json.professional_id)
     },
     service: {
-      id: $json.service_id || ''
+      id: clean($json.service_id)
     }
   };
 })() }}`,
@@ -595,10 +601,10 @@ Dia: {{ $('appointment context').item.json.date }} ({{ $('appointment context').
 
   return Object.fromEntries(
     Object.entries({
-      professional_id: data.professional_id,
-      service_id: data.service_id,
+      professional_id: data.professional.id,
+      service_id: data.service.id,
       start_datetime: appointment.start_datetime,
-    }).filter(([_, value]) => value !== undefined && value !== null)
+    }).filter(([_, value]) => value !== undefined && value !== null && String(value).trim() !== '')
   );
 })() }}`,
         options: {},
@@ -1440,7 +1446,7 @@ return {
   },
   "api": {
     "url": "{{ $('data handler').first().json.api?.url || '' }}",
-    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "token": "",
     "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,
@@ -1485,7 +1491,7 @@ return {
   },
   "api": {
     "url": "{{ $('data handler').first().json.api?.url || '' }}",
-    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "token": "",
     "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,
@@ -1530,7 +1536,7 @@ return {
   },
   "api": {
     "url": "{{ $('data handler').first().json.api?.url || '' }}",
-    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "token": "",
     "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,
@@ -1575,7 +1581,7 @@ return {
   },
   "api": {
     "url": "{{ $('data handler').first().json.api?.url || '' }}",
-    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "token": "",
     "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,
@@ -1626,7 +1632,7 @@ return {
   message_id: $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '',
   message_text: $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || ''
 } }}`,
-                api: "={{ $('data handler').first().json.api || {} }}",
+                api: "={{ ((api) => { const { token, Authorization, authorization, ...safeApi } = api || {}; return safeApi; })($('data handler').first().json.api || {}) }}",
             },
             matchingColumns: [],
             schema: [
@@ -1724,7 +1730,7 @@ return {
   message_id: $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '',
   message_text: $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || ''
 } }}`,
-                api: "={{ $('data handler').first().json.api || {} }}",
+                api: "={{ ((api) => { const { token, Authorization, authorization, ...safeApi } = api || {}; return safeApi; })($('data handler').first().json.api || {}) }}",
             },
             matchingColumns: [],
             schema: [
@@ -1822,7 +1828,7 @@ return {
   message_id: $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '',
   message_text: $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || ''
 } }}`,
-                api: "={{ $('data handler').first().json.api || {} }}",
+                api: "={{ ((api) => { const { token, Authorization, authorization, ...safeApi } = api || {}; return safeApi; })($('data handler').first().json.api || {}) }}",
             },
             matchingColumns: [],
             schema: [
@@ -1920,7 +1926,7 @@ return {
   message_id: $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '',
   message_text: $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || ''
 } }}`,
-                api: "={{ $('data handler').first().json.api || {} }}",
+                api: "={{ ((api) => { const { token, Authorization, authorization, ...safeApi } = api || {}; return safeApi; })($('data handler').first().json.api || {}) }}",
             },
             matchingColumns: [],
             schema: [
@@ -2018,7 +2024,7 @@ return {
   message_id: $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '',
   message_text: $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || ''
 } }}`,
-                api: "={{ $('data handler').first().json.api || {} }}",
+                api: "={{ ((api) => { const { token, Authorization, authorization, ...safeApi } = api || {}; return safeApi; })($('data handler').first().json.api || {}) }}",
             },
             matchingColumns: [],
             schema: [
@@ -2116,7 +2122,7 @@ return {
   message_id: $('data handler').first().json.client?.message_id || $('webhook').first().json.client?.message_id || '',
   message_text: $('data handler').first().json.client?.message_text || $('webhook').first().json.client?.message_text || ''
 } }}`,
-                api: "={{ $('data handler').first().json.api || {} }}",
+                api: "={{ ((api) => { const { token, Authorization, authorization, ...safeApi } = api || {}; return safeApi; })($('data handler').first().json.api || {}) }}",
             },
             matchingColumns: [],
             schema: [
@@ -2208,7 +2214,7 @@ return {
   },
   "api": {
     "url": "{{ $('data handler').first().json.api?.url || '' }}",
-    "token": "{{ $('data handler').first().json.api?.token || '' }}",
+    "token": "",
     "evo_instance": "{{ $('data handler').first().json.api?.evo_instance || '' }}"
   }
 }`,
@@ -2405,7 +2411,7 @@ return {
         name: 'reminder schedule',
         type: 'n8n-nodes-base.scheduleTrigger',
         version: 1.3,
-        position: [2624, 7328],
+        position: [2624, 7344],
     })
     ReminderSchedule = {
         rule: {
@@ -2423,8 +2429,9 @@ return {
         name: 'claim reminders',
         type: 'n8n-nodes-base.httpRequest',
         version: 4.4,
-        position: [2848, 7328],
+        position: [2848, 7344],
         credentials: { httpBearerAuth: { id: 'tHC4wEA5iAoOqLkj', name: 'n8n beautyflow token - prod' } },
+        onError: 'continueErrorOutput',
         retryOnFail: true,
         waitBetweenTries: 1000,
     })
@@ -2536,6 +2543,36 @@ return {
         options: {},
     };
 
+    @node({
+        id: '26c98fae-a5a1-4200-a09c-438f694e37bf',
+        name: 'error report 17',
+        type: 'n8n-nodes-base.stopAndError',
+        version: 1,
+        position: [2848, 7488],
+    })
+    ErrorReport17 = {
+        errorType: 'errorObject',
+        errorObject: `={
+  "error": {
+    "workflow": "{{ $workflow.id }}",
+    "execution": "{{ $execution.id }}",
+    "type": "internal.api.reminders",
+    "node": "{{ $prevNode.name }}",
+    "code": "{{ $json.error.status || '' }}",
+    "description": "{{
+(() => {
+  try {
+    const part = $json.error.message.split(' - ')[1];
+    return JSON.parse(JSON.parse(part)).detail;
+  } catch (e) {
+    return $json.error.message;
+  }
+})()
+}}"
+  }
+}`,
+    };
+
     // =====================================================================
     // ROUTAGE ET CONNEXIONS
     // =====================================================================
@@ -2570,6 +2607,7 @@ return {
         this.ReturnContext.out(0).to(this.Aggregate.in(0));
         this.ReminderSchedule.out(0).to(this.ClaimReminders.in(0));
         this.ClaimReminders.out(0).to(this.SplitReminderClaims.in(0));
+        this.ClaimReminders.out(1).to(this.ErrorReport17.in(0));
         this.SplitReminderClaims.out(0).to(this.SendReminder.in(0));
         this.SendReminder.out(0).to(this.MarkReminderSent.in(0));
         this.SendReminder.out(1).to(this.MarkReminderFailed.in(0));

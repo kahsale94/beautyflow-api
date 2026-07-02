@@ -5,8 +5,7 @@ from fastapi import APIRouter, HTTPException
 from src.schemas import AppointmentCreate, AppointmentResponse, AppointmentUpdate
 from src.dependecies import AdminDep, AppointmentServiceDep, BusinessScopeDep, UserOrBusinessIntegrationDep
 from src.services.appointment_service import (AppointmentAlreadyCanceledError, AppointmentAlreadyCompletedError, AppointmentBlockedByScheduleBlockError,
-    AppointmentCancellationDeadlineError, AppointmentClientCancellationDisabledError,
-    AppointmentConfirmationPendingError,
+    AppointmentCancellationDeadlineError, AppointmentClientCancellationDisabledError, AppointmentConfirmationPendingError,
     AppointmentInvalidSlotIntervalError, AppointmentMaximumScheduleWindowError, AppointmentMinimumNoticeError, AppointmentNotFoundError,
     AppointmentTimeConflictError,  BusinessNotAvailableForBookingError, ClientNotFoundError, DatetimeFormatError, InvalidBusinessTimezoneError,
     ProfessionalNotAvailableError, ProfessionalServiceMismatchError, ServiceNotAvailableError,

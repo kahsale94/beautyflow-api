@@ -3,7 +3,10 @@ from zoneinfo import ZoneInfo
 from enum import Enum as PyEnum
 from typing import TYPE_CHECKING, Optional
 
+from sqlalchemy.ext.mutable import MutableList
 from sqlalchemy.orm import relationship, Mapped, mapped_column
+from sqlalchemy.types import JSON, TypeDecorator
+from sqlalchemy.dialects import postgresql
 from sqlalchemy import Enum as SAEnum, func, DateTime, String, Text, Integer, Boolean, UniqueConstraint
 
 from .base_model import Base, intpk, name_type, phone_type
@@ -32,6 +35,59 @@ class BusinessAttendancePlan(str, PyEnum):
     after_hours = "after_hours"
     always = "always"
 
+class BusinessPaymentMethod(str, PyEnum):
+    money = "money"
+    pix = "pix"
+    credit_card = "credit_card"
+    debit_card = "debit_card"
+
+BUSINESS_PAYMENT_METHOD_LABELS: dict[BusinessPaymentMethod, str] = {
+    BusinessPaymentMethod.money: "Dinheiro",
+    BusinessPaymentMethod.pix: "Pix",
+    BusinessPaymentMethod.credit_card: "Cartão de crédito",
+    BusinessPaymentMethod.debit_card: "Cartão de débito",
+}
+
+def normalize_payment_methods(value) -> list[BusinessPaymentMethod]:
+    methods: list[BusinessPaymentMethod] = []
+    seen: set[BusinessPaymentMethod] = set()
+
+    for item in value or []:
+        method = item if isinstance(item, BusinessPaymentMethod) else BusinessPaymentMethod(str(item))
+        if method in seen:
+            continue
+        seen.add(method)
+        methods.append(method)
+
+    return methods
+
+def payment_method_labels(value) -> list[str]:
+    return [BUSINESS_PAYMENT_METHOD_LABELS[method] for method in normalize_payment_methods(value)]
+
+class BusinessPaymentMethodsType(TypeDecorator):
+    impl = JSON
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == "postgresql":
+            return dialect.type_descriptor(
+                postgresql.ARRAY(
+                    postgresql.ENUM(
+                        BusinessPaymentMethod,
+                        name="businesspaymentmethod",
+                        create_type=False,
+                    )
+                )
+            )
+
+        return dialect.type_descriptor(JSON())
+
+    def process_bind_param(self, value, dialect):
+        return [method.value for method in normalize_payment_methods(value)]
+
+    def process_result_value(self, value, dialect):
+        return normalize_payment_methods(value)
+
 class Business(Base):
     __tablename__ = "businesses"
 
@@ -59,6 +115,11 @@ class Business(Base):
     city: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     state: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    payment_methods: Mapped[list[BusinessPaymentMethod]] = mapped_column(
+        MutableList.as_mutable(BusinessPaymentMethodsType()),
+        nullable=False,
+        default=list,
+    )
 
     booking_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
     slot_interval_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=15, server_default="15")

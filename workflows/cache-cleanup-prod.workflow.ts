@@ -31,7 +31,6 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
     name: 'cache-cleanup-prod',
     active: true,
     isArchived: false,
-    projectId: 'UVYVLJNFC5m6HlJG',
     settings: {
         timezone: 'America/Sao_Paulo',
         executionOrder: 'v1',
@@ -73,11 +72,15 @@ export class CacheCleanupProdWorkflow {
     })
     CachePatterns = {
         jsCode: `const patterns = [
+  'beautyflow_bot.*.*.business_context',
+  'beautyflow_bot.*.*.*.service_context',
+  'beautyflow_bot.*.*.*.professional_context',
+  'beautyflow_bot.*.*.client_context',
+  // Legacy pre-instance context keys kept here only to clean stale migrated data.
   'beautyflow_bot.*.business_context',
   'beautyflow_bot.*.*.service_context',
   'beautyflow_bot.*.*.professional_context',
   'beautyflow_bot.*.client_context',
-  'beautyflow_bot.*.outside_hours_context',
 ];
 
 return patterns.map(pattern => ({ json: { pattern } }));`,

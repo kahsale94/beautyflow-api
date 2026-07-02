@@ -10,6 +10,7 @@ from src.models import Availability
 from src.schemas import (AvailabilityCreate, AvailabilityUpdate, AvailabilitySlotsResponse,
     AvailabilityCheckAndSuggestRequest, AvailabilityCheckAndSuggestResponse, AvailabilitySuggestionResponse,
 )
+from src.schemas.appointment_schema import AppointmentStatus
 from src.repositories import (AvailabilityRepository, ProfessionalRepository, AppointmentRepository,
     ServiceRepository, ProfessionalServiceRepository, ScheduleBlockRepository
 )
@@ -162,7 +163,39 @@ class AvailabilityService:
 
         return gaps
 
-    def _get_slot_datetimes_for_date(self, business_id: int, professional, service, target_date: date, now: datetime):
+    def _resolve_excluded_appointment_id(
+        self,
+        business_id: int,
+        professional_id: int,
+        exclude_appointment_id: int | None,
+        client_id: int | None = None,
+    ) -> int | None:
+        if exclude_appointment_id is None:
+            return None
+
+        appointment = self.appointment_repo.get_by_id(self.db, business_id, exclude_appointment_id)
+        if (
+            not appointment
+            or appointment.business_id != business_id
+            or appointment.professional_id != professional_id
+            or appointment.status != AppointmentStatus.scheduled
+        ):
+            return None
+
+        if client_id is not None and appointment.client_id != client_id:
+            return None
+
+        return appointment.id
+
+    def _get_slot_datetimes_for_date(
+        self,
+        business_id: int,
+        professional,
+        service,
+        target_date: date,
+        now: datetime,
+        exclude_appointment_id: int | None = None,
+    ):
         tz = ZoneInfo(professional.business.timezone)
         weekday = target_date.weekday()
 
@@ -192,6 +225,9 @@ class AvailabilityService:
             start_of_day,
             end_of_day,
         )
+        if exclude_appointment_id is not None:
+            appointments = [item for item in appointments if item.id != exclude_appointment_id]
+
         schedule_blocks = self.schedule_block_repo.get_active_by_professional_and_date(
             self.db,
             business_id,
@@ -304,6 +340,12 @@ class AvailabilityService:
         now = datetime.now(tz)
         requested_start = data.requested_start.astimezone(tz).replace(second=0, microsecond=0)
         requested_end = requested_start + timedelta(minutes=service.duration_minutes)
+        exclude_appointment_id = self._resolve_excluded_appointment_id(
+            business_id,
+            professional.id,
+            data.exclude_appointment_id,
+            data.client_id,
+        )
 
         if requested_start.date() < now.date():
             raise ProfessionalUnavailableError()
@@ -320,6 +362,7 @@ class AvailabilityService:
             service,
             requested_start.date(),
             now,
+            exclude_appointment_id,
         )
 
         if requested_start in requested_day_slots:
@@ -372,6 +415,7 @@ class AvailabilityService:
                 service,
                 target_date,
                 now,
+                exclude_appointment_id,
             )
 
             add_suggestions(slot_datetimes)

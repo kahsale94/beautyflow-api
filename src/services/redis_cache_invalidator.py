@@ -17,10 +17,14 @@ RedisClientFactory = Callable[..., Any]
 
 
 class RedisCacheInvalidator:
-    SERVICE_CONTEXT_PATTERN = "beautyflow_bot.*.*.service_context"
-    PROFESSIONAL_CONTEXT_PATTERN = "beautyflow_bot.*.*.professional_context"
-    CLIENT_CONTEXT_PATTERN = "beautyflow_bot.*.client_context"
-    BUSINESS_CONTEXT_PATTERN = "beautyflow_bot.*.business_context"
+    SERVICE_CONTEXT_PATTERN = "beautyflow_bot.*.*.*.service_context"
+    PROFESSIONAL_CONTEXT_PATTERN = "beautyflow_bot.*.*.*.professional_context"
+    CLIENT_CONTEXT_PATTERN = "beautyflow_bot.*.*.client_context"
+    BUSINESS_CONTEXT_PATTERN = "beautyflow_bot.*.*.business_context"
+    LEGACY_SERVICE_CONTEXT_PATTERN = "beautyflow_bot.*.*.service_context"
+    LEGACY_PROFESSIONAL_CONTEXT_PATTERN = "beautyflow_bot.*.*.professional_context"
+    LEGACY_CLIENT_CONTEXT_PATTERN = "beautyflow_bot.*.client_context"
+    LEGACY_BUSINESS_CONTEXT_PATTERN = "beautyflow_bot.*.business_context"
 
     def __init__(
         self,
@@ -79,15 +83,23 @@ class RedisCacheInvalidator:
                 close()
 
     def invalidate_business_context(self, phone: str | None = None) -> int:
-        pattern = f"beautyflow_bot.{phone}.business_context" if phone else self.BUSINESS_CONTEXT_PATTERN
-        return self.invalidate_patterns([pattern])
+        patterns = (
+            [f"beautyflow_bot.*.{phone}.business_context", f"beautyflow_bot.{phone}.business_context"]
+            if phone
+            else [self.BUSINESS_CONTEXT_PATTERN, self.LEGACY_BUSINESS_CONTEXT_PATTERN]
+        )
+        return self.invalidate_patterns(patterns)
 
     def invalidate_client_context(self, phone: str | None = None) -> int:
-        pattern = f"beautyflow_bot.{phone}.client_context" if phone else self.CLIENT_CONTEXT_PATTERN
-        return self.invalidate_patterns([pattern])
+        patterns = (
+            [f"beautyflow_bot.*.{phone}.client_context", f"beautyflow_bot.{phone}.client_context"]
+            if phone
+            else [self.CLIENT_CONTEXT_PATTERN, self.LEGACY_CLIENT_CONTEXT_PATTERN]
+        )
+        return self.invalidate_patterns(patterns)
 
     def invalidate_service_context(self) -> int:
-        return self.invalidate_patterns([self.SERVICE_CONTEXT_PATTERN])
+        return self.invalidate_patterns([self.SERVICE_CONTEXT_PATTERN, self.LEGACY_SERVICE_CONTEXT_PATTERN])
 
     def invalidate_professional_context(self) -> int:
-        return self.invalidate_patterns([self.PROFESSIONAL_CONTEXT_PATTERN])
+        return self.invalidate_patterns([self.PROFESSIONAL_CONTEXT_PATTERN, self.LEGACY_PROFESSIONAL_CONTEXT_PATTERN])
