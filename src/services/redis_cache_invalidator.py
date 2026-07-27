@@ -1,4 +1,5 @@
 import logging
+import time
 from collections.abc import Callable, Iterable
 from typing import Any
 
@@ -30,9 +31,13 @@ class RedisCacheInvalidator:
         self,
         redis_url: str | None = REDIS_URL,
         client_factory: RedisClientFactory | None = None,
+        max_attempts: int = 3,
+        retry_delay_seconds: float = 0.1,
     ):
         self.redis_url = redis_url
         self.client_factory = client_factory
+        self.max_attempts = max(1, int(max_attempts))
+        self.retry_delay_seconds = max(0.0, float(retry_delay_seconds))
 
     def _client(self):
         if not self.redis_url or redis is None:
@@ -51,36 +56,64 @@ class RedisCacheInvalidator:
         if not unique_patterns:
             return 0
 
-        client = self._client()
-        if client is None:
+        if not self.redis_url or redis is None:
+            logger.error(
+                "Redis n8n cache invalidation is unavailable",
+                extra={"patterns": unique_patterns},
+            )
             return 0
 
         deleted = 0
 
-        try:
-            for pattern in unique_patterns:
-                keys = list(client.scan_iter(match=pattern, count=500))
-                if not keys:
-                    continue
+        for attempt in range(1, self.max_attempts + 1):
+            client = None
 
-                for index in range(0, len(keys), 500):
-                    chunk = keys[index : index + 500]
-                    deleted += int(client.delete(*chunk) or 0)
+            try:
+                client = self._client()
+                if client is None:
+                    logger.error(
+                        "Redis n8n cache invalidation is unavailable",
+                        extra={"patterns": unique_patterns},
+                    )
+                    return deleted
 
-            if deleted:
-                logger.info("Invalidated Redis n8n cache keys", extra={"deleted": deleted})
+                for pattern in unique_patterns:
+                    keys = list(client.scan_iter(match=pattern, count=500))
+                    if not keys:
+                        continue
 
-            return deleted
-        except Exception:
-            logger.exception(
-                "Redis n8n cache invalidation failed",
-                extra={"patterns": unique_patterns},
-            )
-            return 0
-        finally:
-            close = getattr(client, "close", None)
-            if close:
-                close()
+                    for index in range(0, len(keys), 500):
+                        chunk = keys[index : index + 500]
+                        deleted += int(client.delete(*chunk) or 0)
+
+                if deleted:
+                    logger.info("Invalidated Redis n8n cache keys", extra={"deleted": deleted})
+
+                return deleted
+            except Exception:
+                if attempt == self.max_attempts:
+                    logger.exception(
+                        "Redis n8n cache invalidation failed after retries",
+                        extra={"patterns": unique_patterns, "attempts": self.max_attempts},
+                    )
+                else:
+                    logger.warning(
+                        "Redis n8n cache invalidation attempt failed",
+                        extra={"patterns": unique_patterns, "attempt": attempt},
+                        exc_info=True,
+                    )
+            finally:
+                close = getattr(client, "close", None)
+                if close:
+                    try:
+                        close()
+                    except Exception:
+                        logger.warning("Failed to close Redis cache invalidation client", exc_info=True)
+
+            if attempt < self.max_attempts and self.retry_delay_seconds:
+                time.sleep(self.retry_delay_seconds)
+
+        return deleted
 
     def invalidate_business_context(self, phone: str | None = None) -> int:
         patterns = (
@@ -101,5 +134,10 @@ class RedisCacheInvalidator:
     def invalidate_service_context(self) -> int:
         return self.invalidate_patterns([self.SERVICE_CONTEXT_PATTERN, self.LEGACY_SERVICE_CONTEXT_PATTERN])
 
-    def invalidate_professional_context(self) -> int:
-        return self.invalidate_patterns([self.PROFESSIONAL_CONTEXT_PATTERN, self.LEGACY_PROFESSIONAL_CONTEXT_PATTERN])
+    def invalidate_professional_context(self, professional_id: int) -> int:
+        return self.invalidate_patterns(
+            [
+                f"beautyflow_bot.*.{professional_id}.*.professional_context",
+                f"beautyflow_bot.{professional_id}.*.professional_context",
+            ]
+        )

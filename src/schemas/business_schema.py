@@ -171,6 +171,7 @@ class BusinessResponse(BaseModel):
 
     phone: phone_type
     email: EmailStr | None = None
+    cep: str | None = None
     address: str | None = None
     city: str | None = None
     state: str | None = None

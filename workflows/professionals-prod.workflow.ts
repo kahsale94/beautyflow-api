@@ -2,7 +2,7 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 
 // <workflow-map>
 // Workflow : professionals-prod
-// Nodes   : 38  |  Connections: 53
+// Nodes   : 39  |  Connections: 55
 //
 // NODE INDEX
 // ──────────────────────────────────────────────────────────────────
@@ -29,10 +29,10 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 // Compare                            code
 // If_                                if
 // Wait                               merge
-// ErrorReport23                      executeWorkflow
+// ErrorReport23                      executeWorkflow            [onError→regular]
 // ErrorReport                        stopAndError
 // ErrorReport24                      executeWorkflow
-// ErrorReport25                      executeWorkflow
+// ErrorReport25                      executeWorkflow            [onError→regular]
 // ErrorReport1                       stopAndError
 // ErrorReport2                       stopAndError
 // ErrorReport18                      executeWorkflow
@@ -41,6 +41,7 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 // ProfessionalsContext               set
 // ProfessionalsData                  set
 // Get1                               if
+// FreshId                            if
 // If1                                if
 // Context                            set
 // Wait1                              merge
@@ -69,22 +70,24 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 //              → Wait (↩ loop)
 //         .out(1) → ErrorReport2
 //       .out(1) → Get1
-//          → GetContext1
-//            → HasData1
-//              → Convert1
-//                → Aggregate1
-//                  → Wait1
-//                    → ProfessionalsContext (↩ loop)
-//              → Wait1.in(1) (↩ loop)
-//             .out(1) → GetById
-//                → PushContext1
+//          → FreshId
+//            → GetById
+//              → PushContext1
+//                → Wait1.in(1)
+//                  → ProfessionalsContext (↩ loop)
+//               .out(1) → ErrorReport26
 //                  → Wait1.in(1) (↩ loop)
-//                 .out(1) → ErrorReport26
-//                    → Wait1.in(1) (↩ loop)
-//                → Aggregate1 (↩ loop)
-//               .out(1) → ErrorReport1
-//           .out(1) → ErrorReport25
-//              → HasData1 (↩ loop)
+//              → Aggregate1
+//                → Wait1 (↩ loop)
+//             .out(1) → ErrorReport1
+//           .out(1) → GetContext1
+//              → HasData1
+//                → Convert1
+//                  → Aggregate1 (↩ loop)
+//                → Wait1.in(1) (↩ loop)
+//               .out(1) → GetById (↩ loop)
+//             .out(1) → ErrorReport25
+//                → GetById (↩ loop)
 //         .out(1) → GetContext2
 //            → HasData2
 //              → Convert2
@@ -101,7 +104,7 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 //                  → Aggregate2 (↩ loop)
 //               .out(1) → ErrorReport
 //           .out(1) → ErrorReport23
-//              → HasData2 (↩ loop)
+//              → GetByName (↩ loop)
 // </workflow-map>
 
 // =====================================================================
@@ -147,6 +150,10 @@ export class ProfessionalsProdWorkflow {
                 },
                 {
                     name: 'professional_name',
+                },
+                {
+                    name: 'fresh',
+                    type: 'boolean',
                 },
                 {
                     name: 'client',
@@ -245,6 +252,12 @@ export class ProfessionalsProdWorkflow {
   })()
 }}`,
                     type: 'object',
+                },
+                {
+                    id: '47b743e6-b1ef-4bcb-95e8-8b968ae4b7fe',
+                    name: 'fresh',
+                    value: "={{ $json.fresh === true || String($json.fresh ?? '').trim().toLowerCase() === 'true' }}",
+                    type: 'boolean',
                 },
                 {
                     id: '686b06f0-02a5-4161-8e45-feaa667bdc2a',
@@ -390,7 +403,13 @@ export class ProfessionalsProdWorkflow {
                 },
             ],
         },
-        options: {},
+        options: {
+            response: {
+                response: {
+                    fullResponse: true,
+                },
+            },
+        },
     };
 
     @node({
@@ -830,6 +849,7 @@ return output;`,
         type: 'n8n-nodes-base.executeWorkflow',
         version: 1.3,
         position: [16, 4352],
+        onError: 'continueRegularOutput',
     })
     ErrorReport23 = {
         workflowId: {
@@ -1071,6 +1091,7 @@ return output;`,
         type: 'n8n-nodes-base.executeWorkflow',
         version: 1.3,
         position: [32, 3856],
+        onError: 'continueRegularOutput',
     })
     ErrorReport25 = {
         workflowId: {
@@ -1632,6 +1653,38 @@ return output;`,
     };
 
     @node({
+        id: '67dd8b18-87f5-4e5e-9f45-31af20c1f85e',
+        name: 'fresh id?',
+        type: 'n8n-nodes-base.if',
+        version: 2.3,
+        position: [0, 4080],
+    })
+    FreshId = {
+        conditions: {
+            options: {
+                caseSensitive: true,
+                leftValue: '',
+                typeValidation: 'strict',
+                version: 3,
+            },
+            conditions: [
+                {
+                    id: 'aaf7e9bf-498d-4c11-bdfd-e078362f73e9',
+                    leftValue: "={{ $('data handler').first().json.fresh }}",
+                    rightValue: '',
+                    operator: {
+                        type: 'boolean',
+                        operation: 'true',
+                        singleValue: true,
+                    },
+                },
+            ],
+            combinator: 'and',
+        },
+        options: {},
+    };
+
+    @node({
         id: '0070678b-5064-4c1c-a825-99313398b8f6',
         name: 'if 1',
         type: 'n8n-nodes-base.if',
@@ -1771,13 +1824,15 @@ return output;`,
         this.If_.out(0).to(this.Wait.in(1));
         this.If_.out(1).to(this.Loop.in(0));
         this.Wait.out(0).to(this.ProfessionalsContext.in(0));
-        this.ErrorReport23.out(0).to(this.HasData2.in(0));
+        this.ErrorReport23.out(0).to(this.GetByName.in(0));
         this.ErrorReport24.out(0).to(this.Wait2.in(1));
-        this.ErrorReport25.out(0).to(this.HasData1.in(0));
+        this.ErrorReport25.out(0).to(this.GetById.in(0));
         this.ErrorReport26.out(0).to(this.Wait1.in(1));
         this.ProfessionalsData.out(0).to(this.Wait.in(0));
-        this.Get1.out(0).to(this.GetContext1.in(0));
+        this.Get1.out(0).to(this.FreshId.in(0));
         this.Get1.out(1).to(this.GetContext2.in(0));
+        this.FreshId.out(0).to(this.GetById.in(0));
+        this.FreshId.out(1).to(this.GetContext1.in(0));
         this.If1.out(0).to(this.Wait.in(0));
         this.If1.out(1).to(this.GetContext.in(0));
         this.If1.out(1).to(this.ProfessionalsData.in(0));

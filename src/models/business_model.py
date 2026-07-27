@@ -111,6 +111,7 @@ class Business(Base):
 
     phone: Mapped[phone_type] = mapped_column(nullable=False)
     email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    cep: Mapped[Optional[str]] = mapped_column(String(8), nullable=True)
     address: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     city: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     state: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)

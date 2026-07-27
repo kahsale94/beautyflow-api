@@ -2,7 +2,7 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 
 // <workflow-map>
 // Workflow : appointments-prod
-// Nodes   : 45  |  Connections: 37
+// Nodes   : 51  |  Connections: 58
 //
 // NODE INDEX
 // ──────────────────────────────────────────────────────────────────
@@ -17,7 +17,7 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 // Patch                              httpRequest                [onError→out(1)]
 // GetEvent                           googleCalendar             [onError→out(1)] [creds]
 // UpdateEvent                        googleCalendar             [onError→out(1)] [creds]
-// GetEmail                           gmail                      [onError→out(1)] [creds]
+// FindSentNotification               gmail                      [onError→out(1)] [creds] [alwaysOutput]
 // UpdateEmail                        gmail                      [onError→out(1)] [creds]
 // DeleteEvent                        googleCalendar             [onError→out(1)] [creds]
 // GetEvent1                          googleCalendar             [onError→out(1)] [creds]
@@ -31,17 +31,23 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 // Id                                 if
 // PreContext                         set
 // AppointmentContext                 code
+// PrepareEmailNotification           code
+// CanSendEmail                       if
+// EmailAlreadySent                   if
+// ClaimNotification                  redis                      [onError→out(1)] [creds]
+// NotificationClaimed                if
+// NotificationAction                 switch
 // ReturnContext                      code
 // ErrorReport16                      stopAndError
 // ErrorReport18                      stopAndError
 // ErrorReport19                      stopAndError
 // ErrorReport20                      stopAndError
 // ErrorReport23                      executeWorkflow
-// ErrorReport24                      executeWorkflow
+// ErrorReport24                      executeWorkflow            [onError→regular]
 // ErrorReport25                      executeWorkflow
-// ErrorReport26                      executeWorkflow
+// ErrorReport26                      executeWorkflow            [onError→regular]
 // ErrorReport27                      executeWorkflow
-// ErrorReport                        executeWorkflow
+// ErrorReport                        executeWorkflow            [onError→regular]
 // ErrorReport21                      stopAndError
 // ServiceContext                     executeWorkflow
 // ProfessionalContext                executeWorkflow
@@ -64,13 +70,37 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 //              → ServiceContext
 //                → AppointmentContext
 //                  → Action1
-//                    → ReturnContext
-//                      → Aggregate
-//                        → FinalReturn
+//                    → PrepareEmailNotification
+//                      → CanSendEmail
+//                        → FindSentNotification
+//                          → EmailAlreadySent
+//                            → ReturnContext
+//                              → Aggregate
+//                                → FinalReturn
+//                           .out(1) → ClaimNotification
+//                              → NotificationClaimed
+//                                → NotificationAction
+//                                  → ConfirmationEmail
+//                                    → ReturnContext (↩ loop)
+//                                   .out(1) → ErrorReport24
+//                                      → ReturnContext (↩ loop)
+//                                 .out(1) → UpdateEmail
+//                                    → ReturnContext (↩ loop)
+//                                   .out(1) → ErrorReport26
+//                                      → ReturnContext (↩ loop)
+//                                 .out(2) → DeleteEmail
+//                                    → ReturnContext (↩ loop)
+//                                   .out(1) → ErrorReport
+//                                      → ReturnContext (↩ loop)
+//                                 .out(3) → ReturnContext (↩ loop)
+//                               .out(1) → ReturnContext (↩ loop)
+//                             .out(1) → NotificationAction (↩ loop)
+//                         .out(1) → ClaimNotification (↩ loop)
+//                       .out(1) → ReturnContext (↩ loop)
 //                   .out(1) → ReturnContext (↩ loop)
-//                   .out(2) → ReturnContext (↩ loop)
+//                   .out(2) → PrepareEmailNotification (↩ loop)
 //                   .out(3) → Cancel
-//                      → ReturnContext (↩ loop)
+//                      → PrepareEmailNotification (↩ loop)
 //                     .out(1) → ErrorReport21
 //         .out(1) → ErrorReport20
 //       .out(1) → Patch
@@ -84,12 +114,6 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 //         .out(1) → GetByClient
 //            → PreContext (↩ loop)
 //           .out(1) → ErrorReport16
-// ErrorReport24
-//    → ReturnContext (↩ loop)
-// ErrorReport26
-//    → ReturnContext (↩ loop)
-// ErrorReport
-//    → ReturnContext (↩ loop)
 // ReminderSchedule
 //    → ClaimReminders
 //      → SplitReminderClaims
@@ -184,8 +208,11 @@ export class AppointmentsProdWorkflow {
     return !text || ['null', 'undefined'].includes(text.toLowerCase()) ? '' : text;
   };
 
+  const requestedAction = (clean($json.action) || 'get').toLowerCase();
+  const action = requestedAction === 'delete' ? 'cancel' : requestedAction;
+
   return {
-    action: clean($json.action) || 'get',
+    action,
     appointment: {
       id: clean($json.appointment_id),
       start_datetime: clean($json.start_datetime)
@@ -411,9 +438,9 @@ Dia: {{ $('appointment context').item.json.date }} ({{ $('appointment context').
         onError: 'continueErrorOutput',
     })
     ConfirmationEmail = {
-        sendTo: "={{ $('appointment context').item.json.professional.email }}",
+        sendTo: "={{ $('prepare email notification').item.json.recipient }}",
         subject:
-            "=Novo Agendamento Confirmado - {{ $('appointment context').item.json.client.name }} - (#{{ $('appointment context').item.json.id }})",
+            "=Novo agendamento confirmado - {{ $('prepare email notification').item.json.clientName }} - [{{ $('prepare email notification').item.json.eventKey }}]",
         message: `=<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -438,7 +465,7 @@ Dia: {{ $('appointment context').item.json.date }} ({{ $('appointment context').
           <tr>
             <td style="padding:32px;">
               <p style="margin:0 0 16px 0; font-size:16px; line-height:24px;">
-                Olá, <strong>{{ $('appointment context').item.json.professional.name }}</strong>.
+                Olá, <strong>{{ $('prepare email notification').item.json.safe.professionalName }}</strong>.
               </p>
 
               <p style="margin:0 0 24px 0; font-size:16px; line-height:24px;">
@@ -451,7 +478,7 @@ Dia: {{ $('appointment context').item.json.date }} ({{ $('appointment context').
                     Cliente
                   </td>
                   <td style="padding:12px 0; border-bottom:1px solid #e5e7eb; font-size:15px; font-weight:600;">
-                    {{ $('appointment context').item.json.client.name }}
+                    {{ $('prepare email notification').item.json.safe.clientName }}
                   </td>
                 </tr>
                 <tr>
@@ -459,7 +486,7 @@ Dia: {{ $('appointment context').item.json.date }} ({{ $('appointment context').
                     Serviço
                   </td>
                   <td style="padding:12px 0; border-bottom:1px solid #e5e7eb; font-size:15px; font-weight:600;">
-                    {{ $('appointment context').item.json.service.name }}
+                    {{ $('prepare email notification').item.json.safe.serviceName }}
                   </td>
                 </tr>
                 <tr>
@@ -467,7 +494,7 @@ Dia: {{ $('appointment context').item.json.date }} ({{ $('appointment context').
                     Data
                   </td>
                   <td style="padding:12px 0; border-bottom:1px solid #e5e7eb; font-size:15px; font-weight:600;">
-                    {{ $('appointment context').item.json.date }}
+                    {{ $('prepare email notification').item.json.safe.dateLabel }}
                   </td>
                 </tr>
                 <tr>
@@ -475,7 +502,7 @@ Dia: {{ $('appointment context').item.json.date }} ({{ $('appointment context').
                     Horário
                   </td>
                   <td style="padding:12px 0; border-bottom:1px solid #e5e7eb; font-size:15px; font-weight:600;">
-                    {{ $('appointment context').item.json.start_time }}
+                    {{ $('prepare email notification').item.json.safe.timeLabel }}
                   </td>
                 </tr>
                 <tr>
@@ -483,7 +510,7 @@ Dia: {{ $('appointment context').item.json.date }} ({{ $('appointment context').
                     Duração
                   </td>
                   <td style="padding:12px 0; border-bottom:1px solid #e5e7eb; font-size:15px; font-weight:600;">
-                    {{ $('appointment context').item.json.service.duration_minutes }} min
+                    {{ $('prepare email notification').item.json.safe.durationLabel }}
                   </td>
                 </tr>
                 <tr>
@@ -491,7 +518,7 @@ Dia: {{ $('appointment context').item.json.date }} ({{ $('appointment context').
                     Unidade / Local
                   </td>
                   <td style="padding:12px 0; font-size:15px; font-weight:600;">
-                    {{ $('appointment context').item.json.business.address }}
+                    {{ $('prepare email notification').item.json.safe.businessAddress }}
                   </td>
                 </tr>
               </table>
@@ -502,7 +529,7 @@ Dia: {{ $('appointment context').item.json.date }} ({{ $('appointment context').
 
               <p style="margin:0; font-size:15px; line-height:24px;">
                 Atenciosamente,<br />
-                <strong>{{ $('appointment context').item.json.business.bot_name }}</strong>, seu(sua) assistente de agendamento 😊!
+                <strong>{{ $('prepare email notification').item.json.safe.botName }}</strong>, seu(sua) assistente de agendamento 😊!
               </p>
             </td>
           </tr>
@@ -510,7 +537,8 @@ Dia: {{ $('appointment context').item.json.date }} ({{ $('appointment context').
           <tr>
             <td style="padding:20px 32px; background-color:#f9fafb; border-top:1px solid #e5e7eb; text-align:center;">
               <p style="margin:0; font-size:12px; line-height:18px; color:#6b7280;">
-                Este é um e-mail automático de confirmação de agendamento.
+                Este é um e-mail automático de confirmação de agendamento.<br />
+                Referência: {{ $('prepare email notification').item.json.safe.eventKey }}
               </p>
             </td>
           </tr>
@@ -523,7 +551,6 @@ Dia: {{ $('appointment context').item.json.date }} ({{ $('appointment context').
 </html>`,
         options: {
             appendAttribution: true,
-            bccList: 'ultimateclash22@gmail.com',
         },
     };
 
@@ -669,18 +696,19 @@ Dia: {{ $('appointment context').item.json.date }} ({{ $('appointment context').
     @node({
         id: '7edbc6b1-828c-4969-b3fc-51c00aef1675',
         webhookId: '7b0df6e3-ebf1-4bd3-97e4-80827c3e8791',
-        name: 'get email',
+        name: 'find sent notification',
         type: 'n8n-nodes-base.gmail',
         version: 2.2,
         position: [4384, 6976],
         credentials: { gmailOAuth2: { id: 'KD9KohSq7p0CzQL0', name: 'gmail beautyflow' } },
         onError: 'continueErrorOutput',
+        alwaysOutputData: true,
     })
-    GetEmail = {
+    FindSentNotification = {
         operation: 'getAll',
         limit: 1,
         filters: {
-            q: "=Agendamento {{ $('appointment context').item.json.client.name }} {{ $('appointment context').item.json.id }} {{ $('appointment context').item.json.professional.name }}",
+            q: '=in:sent subject:"{{ $(\'prepare email notification\').item.json.eventKey }}"',
         },
     };
 
@@ -695,14 +723,15 @@ Dia: {{ $('appointment context').item.json.date }} ({{ $('appointment context').
         onError: 'continueErrorOutput',
     })
     UpdateEmail = {
-        operation: 'reply',
-        messageId: "={{ $('get email').item.json.id }}",
+        sendTo: "={{ $('prepare email notification').item.json.recipient }}",
+        subject:
+            "=Agendamento atualizado - {{ $('prepare email notification').item.json.clientName }} - [{{ $('prepare email notification').item.json.eventKey }}]",
         message: `=<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Novo agendamento confirmado</title>
+  <title>Agendamento atualizado</title>
 </head>
 <body style="margin:0; padding:0; background-color:#f4f6f8; font-family:Arial, Helvetica, sans-serif; color:#1f2937;">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f4f6f8; margin:0; padding:24px 0;">
@@ -721,7 +750,7 @@ Dia: {{ $('appointment context').item.json.date }} ({{ $('appointment context').
           <tr>
             <td style="padding:32px;">
               <p style="margin:0 0 16px 0; font-size:16px; line-height:24px;">
-                Olá, <strong>{{ $('appointment context').item.json.professional.name }}</strong>.
+                Olá, <strong>{{ $('prepare email notification').item.json.safe.professionalName }}</strong>.
               </p>
 
               <p style="margin:0 0 24px 0; font-size:16px; line-height:24px;">
@@ -734,7 +763,7 @@ Dia: {{ $('appointment context').item.json.date }} ({{ $('appointment context').
                     Cliente
                   </td>
                   <td style="padding:12px 0; border-bottom:1px solid #e5e7eb; font-size:15px; font-weight:600;">
-                    {{ $('appointment context').item.json.client.name }}
+                    {{ $('prepare email notification').item.json.safe.clientName }}
                   </td>
                 </tr>
                 <tr>
@@ -742,7 +771,7 @@ Dia: {{ $('appointment context').item.json.date }} ({{ $('appointment context').
                     Serviço
                   </td>
                   <td style="padding:12px 0; border-bottom:1px solid #e5e7eb; font-size:15px; font-weight:600;">
-                    {{ $('appointment context').item.json.service.name }}
+                    {{ $('prepare email notification').item.json.safe.serviceName }}
                   </td>
                 </tr>
                 <tr>
@@ -750,7 +779,7 @@ Dia: {{ $('appointment context').item.json.date }} ({{ $('appointment context').
                     Data
                   </td>
                   <td style="padding:12px 0; border-bottom:1px solid #e5e7eb; font-size:15px; font-weight:600;">
-                    {{ $('appointment context').item.json.date }}
+                    {{ $('prepare email notification').item.json.safe.dateLabel }}
                   </td>
                 </tr>
                 <tr>
@@ -758,7 +787,7 @@ Dia: {{ $('appointment context').item.json.date }} ({{ $('appointment context').
                     Horário
                   </td>
                   <td style="padding:12px 0; border-bottom:1px solid #e5e7eb; font-size:15px; font-weight:600;">
-                    {{ $('appointment context').item.json.start_time }}
+                    {{ $('prepare email notification').item.json.safe.timeLabel }}
                   </td>
                 </tr>
                 <tr>
@@ -766,7 +795,7 @@ Dia: {{ $('appointment context').item.json.date }} ({{ $('appointment context').
                     Duração
                   </td>
                   <td style="padding:12px 0; border-bottom:1px solid #e5e7eb; font-size:15px; font-weight:600;">
-                    {{ $('appointment context').item.json.service.duration_minutes }} min
+                    {{ $('prepare email notification').item.json.safe.durationLabel }}
                   </td>
                 </tr>
                 <tr>
@@ -774,7 +803,7 @@ Dia: {{ $('appointment context').item.json.date }} ({{ $('appointment context').
                     Unidade / Local
                   </td>
                   <td style="padding:12px 0; font-size:15px; font-weight:600;">
-                    {{ $('appointment context').item.json.business.address }}
+                    {{ $('prepare email notification').item.json.safe.businessAddress }}
                   </td>
                 </tr>
               </table>
@@ -785,7 +814,7 @@ Dia: {{ $('appointment context').item.json.date }} ({{ $('appointment context').
 
               <p style="margin:0; font-size:15px; line-height:24px;">
                 Atenciosamente,<br />
-                <strong>{{ $('appointment context').item.json.business.bot_name }}</strong>, seu(sua) assistente de agendamento 😊!
+                <strong>{{ $('prepare email notification').item.json.safe.botName }}</strong>, seu(sua) assistente de agendamento 😊!
               </p>
             </td>
           </tr>
@@ -793,7 +822,8 @@ Dia: {{ $('appointment context').item.json.date }} ({{ $('appointment context').
           <tr>
             <td style="padding:20px 32px; background-color:#f9fafb; border-top:1px solid #e5e7eb; text-align:center;">
               <p style="margin:0; font-size:12px; line-height:18px; color:#6b7280;">
-                Este é um e-mail automático de confirmação de agendamento.
+                Este é um e-mail automático de atualização de agendamento.<br />
+                Referência: {{ $('prepare email notification').item.json.safe.eventKey }}
               </p>
             </td>
           </tr>
@@ -866,14 +896,15 @@ Dia: {{ $('appointment context').item.json.date }} ({{ $('appointment context').
         onError: 'continueErrorOutput',
     })
     DeleteEmail = {
-        operation: 'reply',
-        messageId: "={{ $('get email 1').item.json.id }}",
+        sendTo: "={{ $('prepare email notification').item.json.recipient }}",
+        subject:
+            "=Agendamento cancelado - {{ $('prepare email notification').item.json.clientName }} - [{{ $('prepare email notification').item.json.eventKey }}]",
         message: `=<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Novo agendamento confirmado</title>
+  <title>Agendamento cancelado</title>
 </head>
 <body style="margin:0; padding:0; background-color:#f4f6f8; font-family:Arial, Helvetica, sans-serif; color:#1f2937;">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f4f6f8; margin:0; padding:24px 0;">
@@ -884,7 +915,7 @@ Dia: {{ $('appointment context').item.json.date }} ({{ $('appointment context').
           <tr>
             <td style="background-color:#111827; padding:24px 32px; text-align:center;">
               <h1 style="margin:0; font-size:22px; line-height:30px; color:#ffffff; font-weight:700;">
-                Agendamento atualizado
+                Agendamento cancelado
               </h1>
             </td>
           </tr>
@@ -892,11 +923,11 @@ Dia: {{ $('appointment context').item.json.date }} ({{ $('appointment context').
           <tr>
             <td style="padding:32px;">
               <p style="margin:0 0 16px 0; font-size:16px; line-height:24px;">
-                Olá, <strong>{{ $('appointment context').item.json.professional.name }}</strong>.
+                Olá, <strong>{{ $('prepare email notification').item.json.safe.professionalName }}</strong>.
               </p>
 
               <p style="margin:0 0 24px 0; font-size:16px; line-height:24px;">
-                Informamos que o agendamento abaixo foi atualizado em sua agenda. Abaixo estão os detalhes atualizados:
+                Informamos que o agendamento abaixo foi cancelado e removido da sua agenda. Estes são os dados do compromisso cancelado:
               </p>
 
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse; margin-bottom:24px;">
@@ -905,7 +936,7 @@ Dia: {{ $('appointment context').item.json.date }} ({{ $('appointment context').
                     Cliente
                   </td>
                   <td style="padding:12px 0; border-bottom:1px solid #e5e7eb; font-size:15px; font-weight:600;">
-                    {{ $('appointment context').item.json.client.name }}
+                    {{ $('prepare email notification').item.json.safe.clientName }}
                   </td>
                 </tr>
                 <tr>
@@ -913,7 +944,7 @@ Dia: {{ $('appointment context').item.json.date }} ({{ $('appointment context').
                     Serviço
                   </td>
                   <td style="padding:12px 0; border-bottom:1px solid #e5e7eb; font-size:15px; font-weight:600;">
-                    {{ $('appointment context').item.json.service.name }}
+                    {{ $('prepare email notification').item.json.safe.serviceName }}
                   </td>
                 </tr>
                 <tr>
@@ -921,7 +952,7 @@ Dia: {{ $('appointment context').item.json.date }} ({{ $('appointment context').
                     Data
                   </td>
                   <td style="padding:12px 0; border-bottom:1px solid #e5e7eb; font-size:15px; font-weight:600;">
-                    {{ $('appointment context').item.json.date }}
+                    {{ $('prepare email notification').item.json.safe.dateLabel }}
                   </td>
                 </tr>
                 <tr>
@@ -929,7 +960,7 @@ Dia: {{ $('appointment context').item.json.date }} ({{ $('appointment context').
                     Horário
                   </td>
                   <td style="padding:12px 0; border-bottom:1px solid #e5e7eb; font-size:15px; font-weight:600;">
-                    {{ $('appointment context').item.json.start_time }}
+                    {{ $('prepare email notification').item.json.safe.timeLabel }}
                   </td>
                 </tr>
                 <tr>
@@ -937,7 +968,7 @@ Dia: {{ $('appointment context').item.json.date }} ({{ $('appointment context').
                     Duração
                   </td>
                   <td style="padding:12px 0; border-bottom:1px solid #e5e7eb; font-size:15px; font-weight:600;">
-                    {{ $('appointment context').item.json.service.duration_minutes }} min
+                    {{ $('prepare email notification').item.json.safe.durationLabel }}
                   </td>
                 </tr>
                 <tr>
@@ -945,18 +976,18 @@ Dia: {{ $('appointment context').item.json.date }} ({{ $('appointment context').
                     Unidade / Local
                   </td>
                   <td style="padding:12px 0; font-size:15px; font-weight:600;">
-                    {{ $('appointment context').item.json.business.address }}
+                    {{ $('prepare email notification').item.json.safe.businessAddress }}
                   </td>
                 </tr>
               </table>
 
               <p style="margin:0 0 24px 0; font-size:15px; line-height:24px; color:#374151;">
-                Caso necessário, revise sua agenda para se organizar com antecedência.
+                O horário correspondente está novamente disponível em sua agenda.
               </p>
 
               <p style="margin:0; font-size:15px; line-height:24px;">
                 Atenciosamente,<br />
-                <strong>{{ $('appointment context').item.json.business.bot_name }}</strong>, seu(sua) assistente de agendamento 😊!
+                <strong>{{ $('prepare email notification').item.json.safe.botName }}</strong>, seu(sua) assistente de agendamento 😊!
               </p>
             </td>
           </tr>
@@ -964,7 +995,8 @@ Dia: {{ $('appointment context').item.json.date }} ({{ $('appointment context').
           <tr>
             <td style="padding:20px 32px; background-color:#f9fafb; border-top:1px solid #e5e7eb; text-align:center;">
               <p style="margin:0; font-size:12px; line-height:18px; color:#6b7280;">
-                Este é um e-mail automático de confirmação de agendamento.
+                Este é um e-mail automático de cancelamento de agendamento.<br />
+                Referência: {{ $('prepare email notification').item.json.safe.eventKey }}
               </p>
             </td>
           </tr>
@@ -1291,8 +1323,9 @@ let client = {};
 let business = {};
 
 try {
-  const raw = $('professional context').item.json.professionals[0];
+  const raw = $('professional context').item.json.professionals?.[0] ?? {};
   professional = { ...raw };
+  professional.email = String(professional.email ?? '').trim();
   delete professional.business_id;
   delete professional.is_active;
 } catch (e) {}
@@ -1381,6 +1414,352 @@ return {
     business,
   }
 };`,
+    };
+
+    @node({
+        id: '1bbc45ff-734d-42d8-8d10-b574e8f2a919',
+        name: 'prepare email notification',
+        type: 'n8n-nodes-base.code',
+        version: 2,
+        position: [3856, 6752],
+    })
+    PrepareEmailNotification = {
+        mode: 'runOnceForEachItem',
+        jsCode: `const appointment = $('appointment context').item.json ?? {};
+const data = $('data handler').item.json.data ?? {};
+
+const clean = (value) => {
+  const normalized = String(value ?? '').trim();
+  return !normalized || ['null', 'undefined'].includes(normalized.toLowerCase()) ? '' : normalized;
+};
+
+const escapeHtml = (value) => clean(value)
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#39;');
+
+const action = clean(data.action).toLowerCase();
+const workflowScope = clean($workflow.id) || 'unknown-workflow';
+const businessId = clean(appointment.business?.id ?? $('data handler').item.json.business?.id);
+const appointmentId = clean(appointment.id);
+const clientId = clean(appointment.client?.id);
+const professionalId = clean(appointment.professional?.id);
+const serviceId = clean(appointment.service?.id);
+const professionalName = clean(appointment.professional?.name);
+const recipient = clean(appointment.professional?.email);
+const clientName = clean(appointment.client?.name);
+const serviceName = clean(appointment.service?.name);
+const date = clean(appointment.date);
+const weekday = clean(appointment.weekday);
+const startTime = clean(appointment.start_time);
+const endTime = clean(appointment.end_time);
+const startDatetime = clean(appointment.start_datetime);
+const endDatetime = clean(appointment.end_datetime);
+const durationMinutes = clean(appointment.service?.duration_minutes);
+const businessAddress = clean(appointment.business?.address);
+const botName = clean(appointment.business?.name);
+const sourceEventId = clean($('data handler').item.json.client?.message_id);
+
+const reasons = [];
+if (!['post', 'update', 'cancel'].includes(action)) reasons.push('unsupported_action');
+if (!appointmentId) reasons.push('missing_appointment_id');
+if (!professionalId) reasons.push('missing_professional_id');
+if (!serviceId) reasons.push('missing_service_id');
+if (!professionalName) reasons.push('missing_professional_name');
+if (!recipient) {
+  reasons.push('missing_professional_email');
+} else if (recipient.length > 254 || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(recipient)) {
+  reasons.push('invalid_professional_email');
+}
+if (!clientName) reasons.push('missing_client_name');
+if (!serviceName) reasons.push('missing_service_name');
+if (!date) reasons.push('missing_appointment_date');
+if (!startTime) reasons.push('missing_appointment_time');
+if (!startDatetime) reasons.push('missing_start_datetime');
+
+const fnv1a = (value) => {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0');
+};
+
+const signature = [
+  workflowScope,
+  businessId,
+  action,
+  appointmentId,
+  clientId,
+  professionalId,
+  serviceId,
+  startDatetime,
+  endDatetime,
+  recipient,
+  sourceEventId,
+].join('|');
+const signatureHash = fnv1a(signature);
+const eventKey = 'beautyflow-notify-' + action + '-' + appointmentId + '-' + signatureHash;
+const claimKey = [
+  'beautyflow_notify',
+  workflowScope,
+  businessId || 'unknown-business',
+  action,
+  appointmentId,
+  signatureHash,
+].join('.');
+const dateLabel = date ? (weekday ? date + ' (' + weekday + ')' : date) : 'Não informada';
+const timeLabel = startTime ? (endTime ? startTime + ' - ' + endTime : startTime) : 'Não informado';
+const durationLabel = durationMinutes ? durationMinutes + ' min' : 'Não informada';
+
+return {
+  json: {
+    action,
+    workflowScope,
+    businessId,
+    appointmentId,
+    clientId,
+    professionalId,
+    serviceId,
+    professionalName,
+    recipient,
+    clientName,
+    serviceName,
+    date,
+    weekday,
+    startTime,
+    endTime,
+    startDatetime,
+    endDatetime,
+    durationMinutes,
+    signature,
+    eventKey,
+    claimKey,
+    sourceEventId,
+    canSend: reasons.length === 0,
+    skipReason: reasons.join(','),
+    safe: {
+      appointmentId: escapeHtml(appointmentId || 'Não informado'),
+      professionalName: escapeHtml(professionalName || 'Profissional'),
+      clientName: escapeHtml(clientName || 'Cliente'),
+      serviceName: escapeHtml(serviceName || 'Serviço não informado'),
+      dateLabel: escapeHtml(dateLabel),
+      timeLabel: escapeHtml(timeLabel),
+      durationLabel: escapeHtml(durationLabel),
+      businessAddress: escapeHtml(businessAddress || 'Não informado'),
+      botName: escapeHtml(botName || 'Equipe de agendamento'),
+      eventKey: escapeHtml(eventKey),
+    },
+  },
+};`,
+    };
+
+    @node({
+        id: 'b80d1991-f52a-4266-8b11-98ce4b27065b',
+        name: 'can send email?',
+        type: 'n8n-nodes-base.if',
+        version: 2.3,
+        position: [4080, 6752],
+    })
+    CanSendEmail = {
+        conditions: {
+            options: {
+                caseSensitive: true,
+                leftValue: '',
+                typeValidation: 'strict',
+                version: 3,
+            },
+            conditions: [
+                {
+                    id: '4570692f-e65a-42c4-b40d-fd971e36f4bb',
+                    leftValue: '={{ $json.canSend }}',
+                    rightValue: '',
+                    operator: {
+                        type: 'boolean',
+                        operation: 'true',
+                        singleValue: true,
+                    },
+                },
+            ],
+            combinator: 'and',
+        },
+        options: {},
+    };
+
+    @node({
+        id: 'd89e8f97-8ef7-4f7a-b497-2f3541131aa7',
+        name: 'email already sent?',
+        type: 'n8n-nodes-base.if',
+        version: 2.3,
+        position: [4560, 6752],
+    })
+    EmailAlreadySent = {
+        conditions: {
+            options: {
+                caseSensitive: true,
+                leftValue: '',
+                typeValidation: 'strict',
+                version: 3,
+            },
+            conditions: [
+                {
+                    id: '0e60b10e-8183-40e1-8114-634d44edb6e4',
+                    leftValue: '={{ Boolean($json.id) }}',
+                    rightValue: '',
+                    operator: {
+                        type: 'boolean',
+                        operation: 'true',
+                        singleValue: true,
+                    },
+                },
+            ],
+            combinator: 'and',
+        },
+        options: {},
+    };
+
+    @node({
+        id: '4e251f36-c6e1-4f0d-b1b7-9434f0f91d43',
+        name: 'claim notification',
+        type: 'n8n-nodes-base.redis',
+        version: 1,
+        position: [4784, 6880],
+        credentials: { redis: { id: 'zMk8tatRFuFo6wmp', name: 'beautyflow prod' } },
+        onError: 'continueErrorOutput',
+    })
+    ClaimNotification = {
+        operation: 'incr',
+        key: "={{ $('prepare email notification').item.json.claimKey }}",
+        expire: true,
+        ttl: 300,
+    };
+
+    @node({
+        id: '89d30c8f-e85e-4d4c-bfa4-a69d517e76c7',
+        name: 'notification claimed?',
+        type: 'n8n-nodes-base.if',
+        version: 2.3,
+        position: [5008, 6880],
+    })
+    NotificationClaimed = {
+        conditions: {
+            options: {
+                caseSensitive: true,
+                leftValue: '',
+                typeValidation: 'strict',
+                version: 3,
+            },
+            conditions: [
+                {
+                    id: '6933e3d4-27ab-4309-88f6-f813856792dc',
+                    leftValue: '={{ Number(Object.values($json || {})[0]) }}',
+                    rightValue: 1,
+                    operator: {
+                        type: 'number',
+                        operation: 'equals',
+                    },
+                },
+            ],
+            combinator: 'and',
+        },
+        options: {},
+    };
+
+    @node({
+        id: '110dc9bc-b9b9-49ba-8e6b-1a24a27aea7e',
+        name: 'notification action',
+        type: 'n8n-nodes-base.switch',
+        version: 3.4,
+        position: [4784, 6752],
+    })
+    NotificationAction = {
+        rules: {
+            values: [
+                {
+                    conditions: {
+                        options: {
+                            caseSensitive: true,
+                            leftValue: '',
+                            typeValidation: 'loose',
+                            version: 3,
+                        },
+                        conditions: [
+                            {
+                                id: 'b2e00698-b528-4b48-9373-04d5ffec53de',
+                                leftValue: "={{ $('prepare email notification').item.json.action }}",
+                                rightValue: 'post',
+                                operator: {
+                                    type: 'string',
+                                    operation: 'equals',
+                                    name: 'filter.operator.equals',
+                                },
+                            },
+                        ],
+                        combinator: 'and',
+                    },
+                    renameOutput: true,
+                    outputKey: 'POST',
+                },
+                {
+                    conditions: {
+                        options: {
+                            caseSensitive: true,
+                            leftValue: '',
+                            typeValidation: 'loose',
+                            version: 3,
+                        },
+                        conditions: [
+                            {
+                                id: '4692802e-49c3-4c71-9e86-6189dfcb431c',
+                                leftValue: "={{ $('prepare email notification').item.json.action }}",
+                                rightValue: 'update',
+                                operator: {
+                                    type: 'string',
+                                    operation: 'equals',
+                                    name: 'filter.operator.equals',
+                                },
+                            },
+                        ],
+                        combinator: 'and',
+                    },
+                    renameOutput: true,
+                    outputKey: 'UPDATE',
+                },
+                {
+                    conditions: {
+                        options: {
+                            caseSensitive: true,
+                            leftValue: '',
+                            typeValidation: 'loose',
+                            version: 3,
+                        },
+                        conditions: [
+                            {
+                                id: 'a4f9c78a-0dc7-40d1-908f-bdd34a2dd354',
+                                leftValue: "={{ $('prepare email notification').item.json.action }}",
+                                rightValue: 'cancel',
+                                operator: {
+                                    type: 'string',
+                                    operation: 'equals',
+                                    name: 'filter.operator.equals',
+                                },
+                            },
+                        ],
+                        combinator: 'and',
+                    },
+                    renameOutput: true,
+                    outputKey: 'CANCEL',
+                },
+            ],
+        },
+        looseTypeValidation: true,
+        options: {
+            fallbackOutput: 'extra',
+            renameFallbackOutput: 'SKIP',
+        },
     };
 
     @node({
@@ -1691,6 +2070,7 @@ return {
         type: 'n8n-nodes-base.executeWorkflow',
         version: 1.3,
         position: [4432, 6656],
+        onError: 'continueRegularOutput',
     })
     ErrorReport24 = {
         workflowId: {
@@ -1887,6 +2267,7 @@ return {
         type: 'n8n-nodes-base.executeWorkflow',
         version: 1.3,
         position: [4592, 7104],
+        onError: 'continueRegularOutput',
     })
     ErrorReport26 = {
         workflowId: {
@@ -2083,6 +2464,7 @@ return {
         type: 'n8n-nodes-base.executeWorkflow',
         version: 1.3,
         position: [4784, 7504],
+        onError: 'continueRegularOutput',
     })
     ErrorReport = {
         workflowId: {
@@ -2333,6 +2715,7 @@ return {
             value: {
                 action: 'get',
                 professional_id: "={{ $('pre-context').first().json.appointment.professional_id }}",
+                fresh: true,
                 client: "={{ $('data handler').first().json.client }}",
                 business: "={{ $('data handler').first().json.business }}",
                 api: "={{ $('data handler').first().json.api }}",
@@ -2368,6 +2751,16 @@ return {
                     canBeUsedToMatch: true,
                     type: 'string',
                     removed: true,
+                },
+                {
+                    id: 'fresh',
+                    displayName: 'fresh',
+                    required: false,
+                    defaultMatch: false,
+                    display: true,
+                    canBeUsedToMatch: true,
+                    type: 'boolean',
+                    removed: false,
                 },
                 {
                     id: 'client',
@@ -2417,8 +2810,7 @@ return {
         rule: {
             interval: [
                 {
-                    field: 'minutes',
-                    minutesInterval: 10,
+                    field: 'hours',
                 },
             ],
         },
@@ -2464,7 +2856,7 @@ return {
         type: 'n8n-nodes-evolution-api.evolutionApi',
         version: 1,
         position: [3296, 7328],
-        credentials: { evolutionApi: { id: 'vlj9dRMZQEffBnHW', name: 'Evolution Credential - Kaiky' } },
+        credentials: { evolutionApi: { id: 'M0hiTrmWm6GuHKol', name: 'Evolution Credential - Global' } },
         onError: 'continueErrorOutput',
         retryOnFail: true,
         waitBetweenTries: 1000,
@@ -2589,12 +2981,33 @@ return {
         this.Post.out(1).to(this.ErrorReport20.in(0));
         this.Patch.out(0).to(this.PreContext.in(0));
         this.Patch.out(1).to(this.ErrorReport19.in(0));
-        this.Cancel.out(0).to(this.ReturnContext.in(0));
+        this.Cancel.out(0).to(this.PrepareEmailNotification.in(0));
         this.Cancel.out(1).to(this.ErrorReport21.in(0));
-        this.Action1.out(0).to(this.ReturnContext.in(0));
+        this.Action1.out(0).to(this.PrepareEmailNotification.in(0));
         this.Action1.out(1).to(this.ReturnContext.in(0));
-        this.Action1.out(2).to(this.ReturnContext.in(0));
+        this.Action1.out(2).to(this.PrepareEmailNotification.in(0));
         this.Action1.out(3).to(this.Cancel.in(0));
+        this.PrepareEmailNotification.out(0).to(this.CanSendEmail.in(0));
+        this.CanSendEmail.out(0).to(this.FindSentNotification.in(0));
+        this.CanSendEmail.out(1).to(this.ReturnContext.in(0));
+        this.FindSentNotification.out(0).to(this.EmailAlreadySent.in(0));
+        this.FindSentNotification.out(1).to(this.ClaimNotification.in(0));
+        this.EmailAlreadySent.out(0).to(this.ReturnContext.in(0));
+        this.EmailAlreadySent.out(1).to(this.ClaimNotification.in(0));
+        this.ClaimNotification.out(0).to(this.NotificationClaimed.in(0));
+        this.ClaimNotification.out(1).to(this.NotificationAction.in(0));
+        this.NotificationClaimed.out(0).to(this.NotificationAction.in(0));
+        this.NotificationClaimed.out(1).to(this.ReturnContext.in(0));
+        this.NotificationAction.out(0).to(this.ConfirmationEmail.in(0));
+        this.NotificationAction.out(1).to(this.UpdateEmail.in(0));
+        this.NotificationAction.out(2).to(this.DeleteEmail.in(0));
+        this.NotificationAction.out(3).to(this.ReturnContext.in(0));
+        this.ConfirmationEmail.out(0).to(this.ReturnContext.in(0));
+        this.ConfirmationEmail.out(1).to(this.ErrorReport24.in(0));
+        this.UpdateEmail.out(0).to(this.ReturnContext.in(0));
+        this.UpdateEmail.out(1).to(this.ErrorReport26.in(0));
+        this.DeleteEmail.out(0).to(this.ReturnContext.in(0));
+        this.DeleteEmail.out(1).to(this.ErrorReport.in(0));
         this.Aggregate.out(0).to(this.FinalReturn.in(0));
         this.GetByClient.out(0).to(this.PreContext.in(0));
         this.GetByClient.out(1).to(this.ErrorReport16.in(0));

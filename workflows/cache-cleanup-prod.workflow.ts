@@ -31,6 +31,7 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
     name: 'cache-cleanup-prod',
     active: true,
     isArchived: false,
+    projectId: 'UVYVLJNFC5m6HlJG',
     settings: {
         timezone: 'America/Sao_Paulo',
         executionOrder: 'v1',

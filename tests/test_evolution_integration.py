@@ -244,6 +244,47 @@ class FakeOpenEvolutionClient:
             }
         ]
 
+class FakeLogoutEvolutionClient:
+
+    configured = True
+
+    def __init__(self, remote_state="close", logout_status=400):
+        self.remote_state = remote_state
+        self.logout_status = logout_status
+        self.logout_calls = 0
+        self.state_calls = 0
+
+    async def logout_instance(self, instance_name):
+        self.logout_calls += 1
+        raise EvolutionAPIError(self.logout_status, "remote logout failed")
+
+    async def connection_state(self, instance_name):
+        self.state_calls += 1
+        return {"instance": {"instanceName": instance_name, "state": self.remote_state}}
+
+
+def build_existing_instance_service(client):
+    repository = FakeEvolutionInstanceRepository()
+    repository.instance = SimpleNamespace(
+        business_id=7,
+        integration_id=3,
+        instance_name="beautyflow-n8n-atendimento-teste-7",
+        phone="5511999999999",
+        state="open",
+        connected_at=object(),
+    )
+    service = EvolutionInstanceService(
+        FakeDatabase(),
+        FakeBusinessIntegrationRepository(),
+        repository,
+        client,
+        "beautyflow",
+        "https://n8n.example.com/webhook/beauty-api",
+        "X-Beautyflow-Webhook-Secret",
+        "webhook-secret",
+    )
+    return service, repository
+
 def test_evolution_provisioning_is_deterministic_and_persists_remote_state():
     repository = FakeEvolutionInstanceRepository()
     client = FakeEvolutionClient()
@@ -300,6 +341,45 @@ def test_evolution_refresh_status_persists_connected_phone_from_instance_details
     assert result.phone == "5511999999999"
     assert repository.instance.phone == "5511999999999"
     assert client.fetched_instance_name == "beautyflow-n8n-atendimento-teste-7"
+
+def test_evolution_logout_is_idempotent_when_remote_is_already_disconnected():
+    client = FakeLogoutEvolutionClient(remote_state="close")
+    service, repository = build_existing_instance_service(client)
+
+    result = asyncio.run(service.logout(7, 3))
+
+    assert result.state == "close"
+    assert repository.instance.state == "close"
+    assert repository.instance.connected_at is None
+    assert client.logout_calls == 1
+    assert client.state_calls == 1
+
+def test_evolution_logout_preserves_error_when_remote_is_still_connected():
+    client = FakeLogoutEvolutionClient(remote_state="open")
+    service, repository = build_existing_instance_service(client)
+
+    try:
+        asyncio.run(service.logout(7, 3))
+    except EvolutionAPIError as exc:
+        assert exc.status_code == 400
+    else:
+        raise AssertionError("EvolutionAPIError was not raised")
+
+    assert repository.instance.state == "open"
+    assert client.state_calls == 1
+
+def test_evolution_logout_preserves_error_for_indeterminate_remote_state():
+    client = FakeLogoutEvolutionClient(remote_state="connecting")
+    service, repository = build_existing_instance_service(client)
+
+    try:
+        asyncio.run(service.logout(7, 3))
+    except EvolutionAPIError as exc:
+        assert exc.status_code == 400
+    else:
+        raise AssertionError("EvolutionAPIError was not raised")
+
+    assert repository.instance.state == "open"
 
 def test_admin_and_workflow_use_instance_based_onboarding_contract():
     admin_template = open(

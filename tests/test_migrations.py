@@ -22,6 +22,7 @@ def test_single_clean_initial_migration_exists():
         "0009_structured_business_hours.py",
         "0010_add_business_attendance.py",
         "0011_add_business_pay_methods.py",
+        "0012_add_business_cep.py",
     ]
     assert all(len(Path(filename).stem) <= 32 for filename in migration_files)
 
@@ -110,3 +111,9 @@ def test_single_clean_initial_migration_exists():
     assert "WHERE payment_methods IS NULL" in source
     assert 'op.alter_column(' in source
     assert "server_default=None" in source
+
+    source = read_source("alembic/versions/0012_add_business_cep.py")
+    assert 'revision: str = "0012_add_business_cep"' in source
+    assert 'down_revision: Union[str, None] = "0011_add_business_pay_methods"' in source
+    assert 'sa.Column("cep", sa.String(length=8), nullable=True)' in source
+    assert 'op.drop_column("businesses", "cep")' in source

@@ -98,9 +98,9 @@ class ProfessionalServiceLinkService:
             self.db.rollback()
             raise ProfessionalServiceLinkAlreadyExistsError()
 
-        self.db.refresh(professional_service)
-        self.cache_invalidator.invalidate_professional_context()
+        self.cache_invalidator.invalidate_professional_context(data.professional_id)
         self.cache_invalidator.invalidate_service_context()
+        self.db.refresh(professional_service)
 
         return professional_service
 
@@ -118,7 +118,7 @@ class ProfessionalServiceLinkService:
 
         self.professional_service_repo.delete(self.db, professional_service)
         self.db.commit()
-        self.cache_invalidator.invalidate_professional_context()
+        self.cache_invalidator.invalidate_professional_context(professional_id)
         self.cache_invalidator.invalidate_service_context()
 
         return

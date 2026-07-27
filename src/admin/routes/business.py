@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from src.clients import CepLookupError, CepNotFoundError, CepServiceUnavailableError, lookup_cep_async
 from src.dependecies import BusinessServiceDep
 from src.models.business_model import BusinessAttendancePlan, BusinessPaymentMethod, BusinessType
-from src.utils import form_bool, form_int, form_value, join_address_number, split_address_number
+from src.utils import format_cep, form_bool, form_int, form_value, join_address_number, split_address_number
 from src.schemas import BusinessOpeningHourCreate, BusinessUpdate
 from src.services.business_service import BusinessAlreadyExistsError, BusinessNotFoundError
 
@@ -163,6 +163,7 @@ def business_settings_page(request: Request, service: BusinessServiceDep, sessio
         "admin/business/settings.html",
         {
             "business": business,
+            "business_cep": format_cep(business.cep) or "",
             "business_address_parts": address_parts,
             "business_attendance_plans": list(BusinessAttendancePlan),
             "business_payment_methods": list(BusinessPaymentMethod),

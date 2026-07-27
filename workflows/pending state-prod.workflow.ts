@@ -52,6 +52,7 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
     name: 'pending state-prod',
     active: true,
     isArchived: false,
+    projectId: 'UVYVLJNFC5m6HlJG',
     tags: ['Kaiky', 'beautyflow-api'],
     settings: {
         executionOrder: 'v1',
@@ -268,8 +269,7 @@ export class PendingStateProdWorkflow {
         rule: {
             interval: [
                 {
-                    field: 'minutes',
-                    minutesInterval: 5,
+                    field: 'hours',
                 },
             ],
         },
@@ -425,7 +425,7 @@ return [
         type: 'n8n-nodes-evolution-api.evolutionApi',
         version: 1,
         position: [1152, 224],
-        credentials: { evolutionApi: { id: 'vlj9dRMZQEffBnHW', name: 'Evolution Credential - Kaiky' } },
+        credentials: { evolutionApi: { id: 'M0hiTrmWm6GuHKol', name: 'Evolution Credential - Global' } },
         retryOnFail: true,
         waitBetweenTries: 500,
     })
@@ -444,7 +444,7 @@ return [
         name: 'delete outside hours context',
         type: 'n8n-nodes-base.redis',
         version: 1,
-        position: [1360, 304],
+        position: [1360, 320],
         credentials: { redis: { id: 'zMk8tatRFuFo6wmp', name: 'beautyflow prod' } },
         retryOnFail: true,
     })
@@ -458,7 +458,7 @@ return [
         name: 'should delete outside hours state?',
         type: 'n8n-nodes-base.if',
         version: 2.3,
-        position: [1568, 304],
+        position: [1568, 320],
     })
     ShouldDeleteOutsideHoursState = {
         conditions: {
@@ -489,7 +489,7 @@ return [
         name: 'delete outside hours state',
         type: 'n8n-nodes-base.redis',
         version: 1,
-        position: [1776, 224],
+        position: [1824, 304],
         credentials: { redis: { id: 'zMk8tatRFuFo6wmp', name: 'beautyflow prod' } },
         retryOnFail: true,
     })

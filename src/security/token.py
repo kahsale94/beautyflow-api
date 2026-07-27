@@ -1,4 +1,5 @@
-from jose import jwt, JWTError
+import jwt
+from jwt import InvalidTokenError
 from fastapi import HTTPException
 
 from src.core import ALGORITHM
@@ -30,7 +31,11 @@ class TokenManager:
     @staticmethod
     def decode(token: str) -> dict:
         try:
-            unverified_payload = jwt.get_unverified_claims(token)
+            unverified_payload = jwt.decode(
+                token,
+                options={"verify_signature": False},
+                algorithms=[ALGORITHM],
+            )
             unverified_header = jwt.get_unverified_header(token)
 
             token_type = unverified_payload.get("type")
@@ -45,10 +50,10 @@ class TokenManager:
             for key in key_set.validation_keys(str(kid) if kid else None):
                 try:
                     return jwt.decode(token, key.secret, algorithms=[ALGORITHM])
-                except JWTError:
+                except InvalidTokenError:
                     continue
 
             raise HTTPException(status_code=401, detail="Token inválido ou expirado!")
 
-        except JWTError:
+        except InvalidTokenError:
             raise HTTPException(status_code=401, detail="Token inválido ou expirado!")

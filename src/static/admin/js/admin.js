@@ -523,8 +523,12 @@ function initializeEvolutionIntegrations() {
         const qrContainer = card.querySelector('[data-evolution-qr]');
         const qrImage = card.querySelector('[data-evolution-qr-image]');
         const pairingCodeElement = card.querySelector('[data-evolution-pairing-code]');
+        const hasInitialInstance = Boolean(
+            instanceNameElement instanceof HTMLElement && instanceNameElement.textContent.trim()
+        );
         let pollTimer = null;
         let pollAttempts = 0;
+        let reconciliationTimer = null;
 
         if (!integrationId || !configured) return;
 
@@ -708,6 +712,10 @@ function initializeEvolutionIntegrations() {
                 const payload = await postAction(action);
                 if (action === 'remove') {
                     stopPolling();
+                    if (reconciliationTimer !== null) {
+                        window.clearInterval(reconciliationTimer);
+                        reconciliationTimer = null;
+                    }
                     hideQrCode();
                     updateState({ state: 'not_configured', instance_name: null, phone: null });
                     setMessage('Instância removida.', false);
@@ -733,12 +741,23 @@ function initializeEvolutionIntegrations() {
         });
 
         updateButtons(
-            Boolean(instanceNameElement instanceof HTMLElement && instanceNameElement.textContent.trim()),
+            hasInitialInstance,
             card.dataset.instanceState || 'not_configured'
         );
 
         if (['connecting', 'creating'].includes(card.dataset.instanceState || '')) {
             startPolling();
+        }
+
+        if (hasInitialInstance) {
+            refreshStatus().catch(function (error) {
+                setMessage(error instanceof Error ? error.message : 'Falha ao consultar a conexão.', true);
+            });
+            reconciliationTimer = window.setInterval(function () {
+                refreshStatus().catch(function (error) {
+                    setMessage(error instanceof Error ? error.message : 'Falha ao consultar a conexão.', true);
+                });
+            }, 30000);
         }
     });
 }

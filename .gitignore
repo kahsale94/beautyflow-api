@@ -6,6 +6,7 @@ docker-compose_dev.yml
 workflows/.n8n-sync-events.jsonl
 workflows/*-staging.workflow.ts
 alembic/versions_legacy_v1
+.codex-work/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

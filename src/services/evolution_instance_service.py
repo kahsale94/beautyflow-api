@@ -44,7 +44,6 @@ class EvolutionConnectionResult:
             "phone": self.phone,
         }
 
-
 class EvolutionInstanceService:
     MAX_INSTANCE_NAME_LENGTH = 100
 
@@ -70,12 +69,7 @@ class EvolutionInstanceService:
 
     @property
     def configured(self) -> bool:
-        return bool(
-            self.client.configured
-            and self.webhook_url
-            and self.webhook_header
-            and self.webhook_secret
-        )
+        return bool(self.client.configured and self.webhook_url and self.webhook_header and self.webhook_secret)
 
     @staticmethod
     def _normalize_prefix(prefix: str) -> str:
@@ -319,8 +313,50 @@ class EvolutionInstanceService:
     async def logout(self, business_id: int, integration_id: int) -> EvolutionConnectionResult:
         self._require_link(business_id, integration_id)
         instance = self._require_instance(business_id, integration_id)
-        await self.client.logout_instance(instance.instance_name)
+        previous_state = instance.state
+
+        try:
+            await self.client.logout_instance(instance.instance_name)
+        except EvolutionAPIError as logout_error:
+            try:
+                payload = await self.client.connection_state(instance.instance_name)
+                remote_state = self._extract_state(payload, previous_state)
+            except EvolutionAPIError as state_error:
+                if state_error.status_code == 404:
+                    remote_state = "missing"
+                else:
+                    logger.warning(
+                        "Evolution logout reconciliation failed instance=%s local_state=%s "
+                        "logout_status=%s state_status=%s result=indeterminate",
+                        instance.instance_name,
+                        previous_state,
+                        logout_error.status_code,
+                        state_error.status_code,
+                    )
+                    raise logout_error from state_error
+
+            if remote_state not in {"close", "closed", "disconnected", "missing"}:
+                logger.warning(
+                    "Evolution logout failed instance=%s local_state=%s remote_state=%s "
+                    "logout_status=%s result=not_confirmed_disconnected",
+                    instance.instance_name,
+                    previous_state,
+                    remote_state,
+                    logout_error.status_code,
+                )
+                raise logout_error
+
+            logger.info(
+                "Evolution logout reconciled instance=%s local_state=%s remote_state=%s "
+                "logout_status=%s result=already_disconnected",
+                instance.instance_name,
+                previous_state,
+                remote_state,
+                logout_error.status_code,
+            )
+
         instance.state = "close"
+        instance.connected_at = None
         self._save(instance)
 
         return EvolutionConnectionResult(

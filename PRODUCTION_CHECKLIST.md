@@ -4,9 +4,9 @@ Conclua todos os itens obrigatorios antes de liberar trafego real.
 
 ## Testes
 
-- [X] `.\venv\Scripts\python.exe -m pytest` executado com 96 testes aprovados.
+- [X] `.\venv\Scripts\python.exe -m pytest -q` executado sem falhas; o teste de integracao Redis condicional tambem foi executado separadamente contra Redis 7.2.
 - [X] `.\venv\Scripts\python.exe -m compileall -q src tests` executado sem erro.
-- [X] `.\venv\Scripts\python.exe -m alembic heads` retornou um unico head: `0010_add_business_attendance`.
+- [X] `.\venv\Scripts\python.exe -m alembic heads` retornou um unico head: `0012_add_business_cep`.
 - [X] `docker compose --env-file .env.production.example config --quiet` executado sem erro.
 - [X] `npx --yes n8nac list` reportou workflows Beautyflow sem conflitos.
 - [X] Todos os arquivos de workflow de producao versionados passaram em `npx --yes n8nac skills validate`.
@@ -16,7 +16,7 @@ Conclua todos os itens obrigatorios antes de liberar trafego real.
 - [ ] Alteracoes revisadas e aprovadas.
 - [ ] Commit final criado a partir do estado auditado.
 - [ ] Tag de versao criada para o deploy.
-- [X] Pipeline de CI concluido sem falhas no commit final.
+- [ ] Pipeline de CI concluido sem falhas no commit final.
 - [ ] Imagem Docker construida e publicada com tag imutavel.
 - [ ] Plano de rollback aponta para a imagem anterior e para a revisao anterior do banco.
 

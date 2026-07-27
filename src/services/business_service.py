@@ -161,6 +161,7 @@ class BusinessService:
             timezone = data.timezone,
             phone = phone,
             email = str(data.email) if data.email else None,
+            cep = data.cep,
             address = data.address,
             city = data.city,
             state = data.state,
@@ -202,7 +203,7 @@ class BusinessService:
 
         update_data = data.model_dump(exclude_unset=True)
         opening_hours = update_data.pop("opening_hours", None)
-        cep = update_data.pop("cep", None)
+        cep = update_data.get("cep")
         previous_cancel_limit_hours = getattr(business, "cancel_limit_hours", None)
 
         self._validate_cep_if_present(cep)

@@ -1,6 +1,6 @@
 {
   "version": 4,
-  "activeEnvironmentId": "mine",
+  "activeEnvironmentId": "beautyflow-2",
   "environmentTargets": [
     {
       "id": "beautyflow",
@@ -11,9 +11,9 @@
   ],
   "environments": [
     {
-      "id": "mine",
+      "id": "beautyflow-2",
       "name": "beautyflow",
-      "syncSlug": "mine",
+      "syncSlug": "beautyflow",
       "environmentTargetId": "beautyflow",
       "projectId": "personal",
       "projectName": "Personal",

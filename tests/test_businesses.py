@@ -5,13 +5,15 @@ from zoneinfo import ZoneInfo
 
 import pytest
 from pydantic import ValidationError
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
-from src.clients.viacep_client import CepNotFoundError, _parse_viacep_payload
+from src.clients.viacep_client import CepNotFoundError, CepServiceUnavailableError, _parse_viacep_payload
 from src.models import Business, BusinessOpeningHour
 from src.models.business_model import BusinessAttendancePlan, BusinessPaymentMethod, BusinessType, payment_method_labels
-from src.schemas import BusinessCreate, BusinessOpeningHourCreate, BusinessUpdate
+from src.schemas import BusinessCreate, BusinessOpeningHourCreate, BusinessResponse, BusinessUpdate
 from src.services.business_service import BusinessService
-from src.utils import join_address_number, normalize_cep, split_address_number
+from src.utils import format_cep, join_address_number, normalize_cep, split_address_number
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -169,11 +171,25 @@ def test_business_cep_admin_fields_and_helpers_are_available():
     assert "Localização" in template_source
     assert 'name="address_street"' in template_source
     assert 'name="address_number"' in template_source
+    assert 'value="{{ business_cep }}"' in template_source
+    assert 'data-valid-cep="{{ business.cep or \'\' }}"' in template_source
+    assert '"business_cep": format_cep(business.cep) or ""' in admin_route_source
     assert "initializeBusinessCepLookup" in script_source
+
+    assert "cep" in BusinessResponse.model_fields
+
+    lookup_source = script_source[
+        script_source.index("async function lookupCep"):
+        script_source.index("cepInput.addEventListener('input'")
+    ]
+    error_source = lookup_source[lookup_source.rindex("} catch (error) {"):]
+    assert "cepInput.value = payload.cep || formatCep(digits)" in lookup_source
+    assert "cepInput.value" not in error_source
 
 def test_cep_format_accepts_only_plain_or_masked_brazilian_cep():
     assert normalize_cep("01001000") == "01001000"
     assert normalize_cep("01001-000") == "01001000"
+    assert format_cep("01001000") == "01001-000"
     assert normalize_cep("") is None
 
     with pytest.raises(ValueError):
@@ -291,7 +307,7 @@ def test_business_creation_persists_opening_hours():
     assert business.opening_hours[0].start_time == time(9, 0)
     assert business.opening_hours[0].end_time == time(18, 0)
 
-def test_business_creation_validates_cep_without_persisting_it(monkeypatch):
+def test_business_creation_validates_and_persists_normalized_cep(monkeypatch):
     calls = []
 
     def fake_lookup_cep(cep):
@@ -316,9 +332,33 @@ def test_business_creation_validates_cep_without_persisting_it(monkeypatch):
 
     assert calls == ["01001000"]
     assert business.address == "Praça da Sé, 1"
-    assert not hasattr(business, "cep")
+    assert business.cep == "01001000"
 
-def test_business_update_validates_cep_without_writing_transient_field(monkeypatch):
+def test_business_cep_survives_database_reload():
+    engine = create_engine("sqlite:///:memory:")
+    Business.__table__.create(engine)
+    db = sessionmaker(bind=engine)()
+    business = Business(
+        name="Salão Bela Vida",
+        slug="bela-vida",
+        type=BusinessType.salon,
+        attendance_plan=BusinessAttendancePlan.business_hours,
+        timezone="America/Sao_Paulo",
+        phone="11922220001",
+        cep="01001000",
+    )
+    db.add(business)
+    db.commit()
+    business_id = business.id
+    db.expire_all()
+
+    reloaded = db.get(Business, business_id)
+
+    assert reloaded is not None
+    assert reloaded.cep == "01001000"
+    assert format_cep(reloaded.cep) == "01001-000"
+
+def test_business_update_validates_and_persists_normalized_cep(monkeypatch):
     calls = []
 
     def fake_lookup_cep(cep):
@@ -336,7 +376,47 @@ def test_business_update_validates_cep_without_writing_transient_field(monkeypat
 
     assert calls == ["01001000"]
     assert business.address == "Praça da Sé, 1"
-    assert not hasattr(business, "cep")
+    assert business.cep == "01001000"
+
+def test_business_update_without_cep_preserves_existing_value():
+    business = SimpleNamespace(
+        id=1,
+        is_active=True,
+        name="Salão Bela Vida",
+        slug="bela-vida",
+        cep="01001000",
+    )
+    service = BusinessService(
+        FakeDatabase(),
+        FakeBusinessRepository(business=business),
+    )
+
+    service.update(1, BusinessUpdate(description="Nova descrição"))
+
+    assert business.description == "Nova descrição"
+    assert business.cep == "01001000"
+
+def test_business_update_failed_cep_lookup_preserves_existing_value(monkeypatch):
+    def unavailable_lookup(cep):
+        raise CepServiceUnavailableError("Consulta indisponível.")
+
+    monkeypatch.setattr("src.services.business_service.lookup_cep", unavailable_lookup)
+    business = SimpleNamespace(
+        id=1,
+        is_active=True,
+        name="Salão Bela Vida",
+        slug="bela-vida",
+        cep="01001000",
+    )
+    service = BusinessService(
+        FakeDatabase(),
+        FakeBusinessRepository(business=business),
+    )
+
+    with pytest.raises(ValueError, match="Consulta indisponível"):
+        service.update(1, BusinessUpdate(cep="30140-110"))
+
+    assert business.cep == "01001000"
 
 def test_business_schema_rejects_invalid_cep_format():
     with pytest.raises(ValidationError):

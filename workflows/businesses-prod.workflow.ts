@@ -55,6 +55,7 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
     name: 'businesses-prod',
     active: true,
     isArchived: false,
+    projectId: 'UVYVLJNFC5m6HlJG',
     tags: ['Kaiky', 'beautyflow-api'],
     settings: {
         executionOrder: 'v1',

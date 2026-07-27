@@ -145,6 +145,7 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
     name: 'clients-prod',
     active: true,
     isArchived: false,
+    projectId: 'UVYVLJNFC5m6HlJG',
     tags: ['Kaiky', 'beautyflow-api'],
     settings: {
         executionOrder: 'v1',
@@ -579,7 +580,7 @@ export class ClientsProdWorkflow {
         type: 'n8n-nodes-evolution-api.evolutionApi',
         version: 1,
         position: [1968, 4448],
-        credentials: { evolutionApi: { id: 'vlj9dRMZQEffBnHW', name: 'Evolution Credential - Kaiky' } },
+        credentials: { evolutionApi: { id: 'M0hiTrmWm6GuHKol', name: 'Evolution Credential - Global' } },
         onError: 'continueErrorOutput',
         retryOnFail: true,
         waitBetweenTries: 500,
@@ -1093,7 +1094,7 @@ return [
         type: 'n8n-nodes-evolution-api.evolutionApi',
         version: 1,
         position: [1952, 3728],
-        credentials: { evolutionApi: { id: 'vlj9dRMZQEffBnHW', name: 'Evolution Credential - Kaiky' } },
+        credentials: { evolutionApi: { id: 'M0hiTrmWm6GuHKol', name: 'Evolution Credential - Global' } },
         onError: 'continueErrorOutput',
         retryOnFail: true,
         waitBetweenTries: 500,
@@ -1178,8 +1179,6 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
     response_metadata: {}
   }
 }) }}`,
-        expire: true,
-        ttl: 86400,
     };
 
     @node({
@@ -1204,8 +1203,6 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
     response_metadata: {}
   }
 }) }}`,
-        expire: true,
-        ttl: 86400,
     };
 
     @node({
@@ -1238,8 +1235,6 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
     }
   });
 })() }}`,
-        expire: true,
-        ttl: 86400,
     };
 
     @node({
@@ -1274,8 +1269,6 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
     }
   });
 })() }}`,
-        expire: true,
-        ttl: 86400,
     };
 
     @node({

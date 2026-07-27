@@ -22,6 +22,7 @@ the conversation flow to n8n workflows.
 - PostgreSQL-level protection against appointment and schedule block overlaps.
 - JWT authentication with access tokens and revocable refresh tokens.
 - WhatsApp onboarding with QR Code through Evolution API.
+- CEP lookup and persisted, normalized business addresses in the admin panel.
 - n8n automation for conversation handling and scheduling tools.
 - Redis-backed rate limiting with an in-memory fallback.
 - Liveness and readiness health checks.
@@ -74,6 +75,7 @@ API client ----> FastAPI ----> Services ----> Repositories ----> PostgreSQL
 - Alembic
 - Jinja2
 - Pydantic 2
+- PyJWT 2
 - Pytest
 - Docker and Docker Compose
 - n8n and n8n-as-code
@@ -141,7 +143,7 @@ The admin panel is available at `/admin/login` and includes:
 - monthly, weekly, daily, and list calendar views;
 - appointment and schedule block management;
 - client, professional, service, and user management;
-- business configuration and booking rules;
+- business configuration, persisted CEP/address data, and booking rules;
 - professional-service links;
 - weekly availability configuration;
 - integration management;
@@ -264,11 +266,16 @@ Workflow notes:
 
 - Local staging workflow files are manual test artifacts. Keep them ignored
   unless a staging workflow is intentionally promoted into the versioned set.
+- Professional changes invalidate only that professional's cached n8n context;
+  appointment notifications bypass stale professional cache entries, validate
+  the recipient, and use Gmail plus a short Redis claim to avoid duplicates.
+- The main workflow detects unsolicited commercial outreach, records an audit
+  event with an anonymized contact suffix, and stops the automated reply path.
 - Static validation warns for `n8n-nodes-evolution-api` community nodes because
   their schemas are not available to `n8nac`; those nodes still require runtime
   credential and execution testing in n8n.
 
-As of the production-readiness audit on 2026-06-26, `npx --yes n8nac list`
+As of the repository review on 2026-07-27, `npx --yes n8nac list`
 reported the Beautyflow workflow set with zero conflicts. Remote-only or local
 staging workflows in the same n8n project are outside the Git-tracked production
 set and should remain untouched unless they are intentionally adopted or removed.
@@ -517,6 +524,11 @@ The CI pipeline also:
 - applies and checks migrations;
 - builds the production image.
 
+GitHub Actions currently provides CI only. Pushes and pull requests, including
+pushes to `main`, run `.github/workflows/ci.yml`; this repository has no Actions
+workflow that deploys production automatically. Image publication and production
+deployment remain manual or external release operations.
+
 `pytest.ini` adds the project root to `PYTHONPATH`, so `python -m pytest -q`
 can import the local `src` package both locally and in GitHub Actions.
 
@@ -596,6 +608,10 @@ Review the generated file and apply:
 alembic upgrade head
 alembic check
 ```
+
+The current migration head is `0012_add_business_cep`. It adds the nullable,
+normalized eight-digit `businesses.cep` field; the admin UI formats it as
+`00000-000`, while API persistence and responses use digits only.
 
 Deployments run `alembic upgrade head` in a separate container before starting
 the backend. Back up PostgreSQL before production migrations.

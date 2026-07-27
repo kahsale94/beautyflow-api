@@ -180,4 +180,4 @@ def test_appointments_workflow_claims_and_sends_reminders():
     assert "/failed" in workflow_source
     assert "httpBearerAuth" in workflow_source
     assert "n8n beautyflow token - prod" in workflow_source
-    assert "Evolution Credential - Kaiky" in workflow_source
+    assert "Evolution Credential - Global" in workflow_source

@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 
@@ -117,3 +118,47 @@ def test_conversation_redis_keys_are_instance_scoped():
 def test_pending_state_workflows_scan_instance_scoped_outside_hours_context():
     for source in workflow_sources("pending state"):
         assert "keyPattern: 'beautyflow_bot.*.*.outside_hours_context'" in source
+
+
+def test_main_workflow_does_not_hardcode_an_individual_whatsapp_jid():
+    source = (ROOT / "workflows/main-prod.workflow.ts").read_text(encoding="utf-8")
+
+    assert re.search(r"\b\d{12,15}@s\.whatsapp\.net\b", source) is None
+
+
+def test_appointment_email_notifications_use_fresh_recipient_and_redis_claim():
+    for name, source in workflow_source_items("appointments"):
+        assert "fresh: true" in source
+        assert "operation: 'reply'" not in source
+        assert "threadId:" not in source
+        assert source.count("sendTo: \"={{ $('prepare email notification').item.json.recipient }}\"") == 3
+        assert "name: 'gmail beautyflow'" in source
+
+        assert "const workflowScope = clean($workflow.id)" in source
+        assert "businessId" in source
+        assert "recipient," in source
+        assert "sourceEventId," in source
+        assert "const claimKey = [" in source
+        assert "operation: 'incr'" in source
+        assert "ttl: 300" in source
+        assert "this.FindSentNotification.out(1).to(this.ClaimNotification.in(0))" in source
+        assert "this.EmailAlreadySent.out(1).to(this.ClaimNotification.in(0))" in source
+        assert "this.ClaimNotification.out(1).to(this.NotificationAction.in(0))" in source
+
+        expected_redis_credential = "beautyflow prod" if "-prod." in name else "beautyflow test"
+        assert f"name: '{expected_redis_credential}'" in source
+
+
+def test_professional_workflows_support_fresh_reads_and_redis_error_fallback():
+    for source in workflow_sources("professionals"):
+        assert "name: 'fresh'" in source
+        assert "FreshId" in source
+        assert "this.FreshId.out(0).to(this.GetById.in(0))" in source
+        assert "this.FreshId.out(1).to(this.GetContext1.in(0))" in source
+        assert "this.ErrorReport25.out(0).to(this.GetById.in(0))" in source
+        assert "this.ErrorReport23.out(0).to(this.GetByName.in(0))" in source
+        assert source.count("onError: 'continueRegularOutput'") >= 2
+
+        get_by_name_start = source.index("    GetByName = {")
+        get_by_id_start = source.index("    GetById = {")
+        assert "fullResponse: true" in source[get_by_name_start:get_by_id_start]

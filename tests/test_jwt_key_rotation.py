@@ -3,8 +3,8 @@ import hmac
 from datetime import datetime, timedelta, timezone
 
 import pytest
+import jwt
 from fastapi import HTTPException
-from jose import jwt
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 

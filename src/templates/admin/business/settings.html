@@ -80,6 +80,8 @@
                             autocomplete="postal-code"
                             placeholder="00000-000"
                             maxlength="9"
+                            value="{{ business_cep }}"
+                            data-valid-cep="{{ business.cep or '' }}"
                             data-business-cep />
                         <span class="field-help" data-business-cep-message role="status" aria-live="polite"></span>
                     </label>

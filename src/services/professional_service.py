@@ -82,8 +82,8 @@ class ProfessionalService:
             self.db.rollback()
             raise ProfessionalAlreadyExistsError()
 
+        self.cache_invalidator.invalidate_professional_context(professional.id)
         self.db.refresh(professional)
-        self.cache_invalidator.invalidate_professional_context()
 
         return professional
 
@@ -110,8 +110,8 @@ class ProfessionalService:
             self.db.rollback()
             raise ProfessionalAlreadyExistsError()
 
+        self.cache_invalidator.invalidate_professional_context(professional_id)
         self.db.refresh(professional)
-        self.cache_invalidator.invalidate_professional_context()
 
         return professional
 
@@ -121,7 +121,7 @@ class ProfessionalService:
         professional.is_active = False
 
         self.db.commit()
-        self.cache_invalidator.invalidate_professional_context()
+        self.cache_invalidator.invalidate_professional_context(professional_id)
 
         return
 
