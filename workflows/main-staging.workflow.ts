@@ -576,7 +576,7 @@ Real source appointment ID returned by action "get".
 
 Send this for "cancel_for_replacement". It is optional for "get".
 
-Do not invent this value. Retrieve it from the appointments tool using action "get" when needed.
+Do not invent this value. Retrieve it from the appointments tool using action "get" when needed. For recovery of an incomplete pending replacement, use pending_replacement.source_appointment_id.
 Never ask the client for this value. If multiple appointments are returned, ask which appointment using natural details such as service, professional, date and time.
   \`, 'string', '')
 }}`,
@@ -1158,7 +1158,8 @@ CONSULTA E CANCELAMENTO
 5. Após a escolha que resolve a ambiguidade, chame cancel_for_replacement com o appointment_id retornado por get.
 6. cancel_for_replacement confirma o cancelamento da ocorrência escolhida antes de consultar a reposição. Depois, mostre todos os candidates retornados, numerados pelo index.
 7. Se pending_replacement.status for canceling ou cancel_retryable, retome cancel_for_replacement para source_appointment_id; a ferramenta reconcilia o estado real antes de responder.
-8. Se não houver candidates, informe que a aula foi cancelada e que não apareceu reposição disponível; não ofereça horário inventado.
+8. Se status=no_candidates, informe que a aula foi cancelada e que não apareceu reposição disponível; não ofereça horário inventado.
+9. Se status=awaiting_slot_selection mas candidates estiver vazio, o estado está incompleto: chame cancel_for_replacement com source_appointment_id para recalcular e persistir as opções antes de responder.
 
 ESCOLHA E CONFIRMAÇÃO DA REPOSIÇÃO
 - Se status=awaiting_slot_selection, interprete somente um index ou horário presente em candidates e chame select_replacement com replacement_choice.

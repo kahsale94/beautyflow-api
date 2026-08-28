@@ -610,11 +610,14 @@ if (action === 'cancel_for_replacement') {
     result.reason = 'appointment_id_required';
   } else if (usable && String(state.source_appointment_id) === appointmentId) {
     const status = String(state.status || '');
-    const canRetryCancellation = ['canceling', 'cancel_retryable', 'cancel_failed', 'aborted', 'expired'].includes(status);
+    const missingPersistedCandidates = status === 'awaiting_slot_selection' &&
+      (!Array.isArray(state.candidates) || state.candidates.length === 0);
+    const canRetryCancellation = missingPersistedCandidates ||
+      ['canceling', 'cancel_retryable', 'cancel_failed', 'aborted', 'expired'].includes(status);
     result.success = true;
     result.decision = canRetryCancellation ? 'cancel_start' : 'return_state';
     result.reason = canRetryCancellation
-      ? 'resume_cancel_for_replacement'
+      ? (missingPersistedCandidates ? 'repair_missing_replacement_candidates' : 'resume_cancel_for_replacement')
       : (status === 'completed' ? 'replacement_already_completed' : 'replacement_already_pending');
   } else if (usable && !['completed', 'no_candidates', 'cancel_failed', 'aborted', 'expired'].includes(String(state.status || ''))) {
     result.reason = 'another_replacement_is_pending';
@@ -1274,7 +1277,13 @@ if (!sourceClientId || !runtimeClientId || sourceClientId !== runtimeClientId) {
 }
 const recoverableCanceled = Boolean(
   sourceStatus === 'canceled' &&
-  ['canceling', 'cancel_retryable', 'cancel_failed'].includes(String(pending?.status || '')) &&
+  (
+    ['canceling', 'cancel_retryable', 'cancel_failed'].includes(String(pending?.status || '')) ||
+    (
+      String(pending?.status || '') === 'awaiting_slot_selection' &&
+      (!Array.isArray(pending?.candidates) || pending.candidates.length === 0)
+    )
+  ) &&
   String(pending.source_appointment_id || '') === String(raw.id)
 );
 if (sourceStatus !== 'scheduled' && !recoverableCanceled) {
@@ -1636,7 +1645,12 @@ try {
 }
 
 const base = prepared?.pending_replacement || validated.pending_replacement;
-if (!base || !['canceling', 'cancel_retryable', 'cancel_failed'].includes(String(base.status || ''))) {
+const repairingMissingCandidates = Boolean(
+  base &&
+  String(base.status || '') === 'awaiting_slot_selection' &&
+  (!Array.isArray(base.candidates) || base.candidates.length === 0)
+);
+if (!base || (!repairingMissingCandidates && !['canceling', 'cancel_retryable', 'cancel_failed'].includes(String(base.status || '')))) {
   throw new Error('REPLACEMENT_CANCEL_STATE_MISSING');
 }
 
@@ -1653,6 +1667,7 @@ const now = new Date();
 const state = {
   ...base,
   status: candidates.length ? 'awaiting_slot_selection' : 'no_candidates',
+  candidates,
   updated_at: now.toISOString(),
   canceled_at: now.toISOString(),
   expires_at: new Date(now.getTime() + 60 * 60 * 1000).toISOString(),

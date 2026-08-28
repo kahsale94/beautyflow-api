@@ -174,10 +174,17 @@ def test_staging_pilates_flow_filters_future_occurrences_and_suggests_after_canc
     assert "REPLACEMENT_SOURCE_NOT_FUTURE" in appointments_source
     assert "suggest_alternatives_when_available: true" in appointments_source
     assert "max_suggestions: 10" in appointments_source
-    assert ".slice(0, 3)" not in appointments_source[
+    canceled_replacement_state = appointments_source[
         appointments_source.index("    BuildCanceledReplacementState = {"):
         appointments_source.index("    StoreCanceledReplacementState = {")
     ]
+    assert ".slice(0, 3)" not in canceled_replacement_state
+    assert "status: candidates.length ? 'awaiting_slot_selection' : 'no_candidates',\n  candidates," in canceled_replacement_state
+    assert "repair_missing_replacement_candidates" in appointments_source
+    assert "missingPersistedCandidates" in appointments_source
+    assert "repairingMissingCandidates" in appointments_source
+    assert "pending.candidates.length === 0" in appointments_source
+    assert "status=awaiting_slot_selection mas candidates estiver vazio" in main_source
 
     cancel_call = "this.CancelForReplacement1.out(0).to(this.CheckReplacementSuggestions.in(0))"
     suggestion_result = "this.CheckReplacementSuggestions.out(0).to(this.BuildCanceledReplacementState.in(0))"
