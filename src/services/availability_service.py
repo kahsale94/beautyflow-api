@@ -365,7 +365,9 @@ class AvailabilityService:
             exclude_appointment_id,
         )
 
-        if requested_start in requested_day_slots:
+        requested_slot_available = requested_start in requested_day_slots
+
+        if requested_slot_available and not data.suggest_alternatives_when_available:
             return AvailabilityCheckAndSuggestResponse(
                 requested_start=requested_start,
                 requested_end=requested_end,
@@ -424,8 +426,12 @@ class AvailabilityService:
         return AvailabilityCheckAndSuggestResponse(
             requested_start=requested_start,
             requested_end=requested_end,
-            available=False,
-            reason="requested_slot_unavailable" if suggestions else "no_available_slots_found",
+            available=requested_slot_available,
+            reason=(
+                "requested_slot_available"
+                if requested_slot_available
+                else "requested_slot_unavailable" if suggestions else "no_available_slots_found"
+            ),
             suggestions=suggestions,
         )
 

@@ -24,6 +24,7 @@ class AvailabilityCheckAndSuggestRequest(BaseModel):
     exclude_appointment_id: int | None = None
     max_suggestions: int = Field(default=3, ge=1, le=10)
     search_days_ahead: int | None = Field(default=None, ge=0, le=60)
+    suggest_alternatives_when_available: bool = False
 
 class AvailabilitySuggestionResponse(BaseModel):
     start_datetime: datetime

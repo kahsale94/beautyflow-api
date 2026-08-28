@@ -318,8 +318,8 @@ def test_cancel_suggest_and_replace_flow_preserves_conflict_rules():
 
     assert scenario.target.status == AppointmentStatus.canceled
 
-    # A busca precisa acontecer antes do cancelamento: depois dele o horario
-    # original reaparece livre e o contrato retorna suggestions vazio.
+    # O contrato padrao permanece retrocompativel: como o horario original
+    # reaparece livre, alternativas so sao retornadas com o novo opt-in.
     after_cancel = scenario.availability_service.check_and_suggest(
         BUSINESS_ID, request
     )
@@ -352,6 +352,40 @@ def test_cancel_suggest_and_replace_flow_preserves_conflict_rules():
         )
 
     assert scenario.db.rollbacks == 1
+
+
+def test_replacement_can_list_alternatives_only_after_cancellation():
+    scenario = _build_services()
+
+    scenario.appointment_service.cancel(
+        BUSINESS_ID,
+        scenario.target.id,
+        enforce_client_policy=True,
+    )
+
+    result = scenario.availability_service.check_and_suggest(
+        BUSINESS_ID,
+        AvailabilityCheckAndSuggestRequest(
+            professional_id=PROFESSIONAL_ID,
+            service_id=SERVICE_ID,
+            requested_start=scenario.target.start_datetime,
+            max_suggestions=10,
+            search_days_ahead=7,
+            suggest_alternatives_when_available=True,
+        ),
+    )
+
+    assert scenario.target.status == AppointmentStatus.canceled
+    assert result.available is True
+    assert [item.start_datetime for item in result.suggestions] == [
+        scenario.monday + timedelta(days=2, hours=14),
+        scenario.monday + timedelta(days=3, hours=9),
+        scenario.monday + timedelta(days=4, hours=11),
+        scenario.monday + timedelta(days=8, hours=10),
+    ]
+    assert scenario.target.start_datetime not in {
+        item.start_datetime for item in result.suggestions
+    }
 
 
 def test_client_cancellation_is_tenant_scoped_and_policy_gated():

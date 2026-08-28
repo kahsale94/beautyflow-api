@@ -152,6 +152,40 @@ def test_appointment_email_notifications_use_fresh_recipient_and_redis_claim():
         assert f"name: '{expected_redis_credential}'" in source
 
 
+def test_staging_pilates_flow_filters_future_occurrences_and_suggests_after_cancel():
+    main_source = (ROOT / "workflows/main-staging.workflow.ts").read_text(encoding="utf-8")
+    appointments_source = (ROOT / "workflows/appointments-staging.workflow.ts").read_text(encoding="utf-8")
+
+    assert "return status === 'scheduled' && Number.isFinite(start) && start > now" in main_source
+    assert "return status === 'scheduled' && Number.isFinite(start) && start > now" in appointments_source
+    appointment_context = appointments_source[
+        appointments_source.index("    AppointmentContext = {"):
+        appointments_source.index("    PrepareEmailNotification = {")
+    ]
+    assert "mode: 'runOnceForAllItems'" in appointment_context
+    assert "$('pre-context').all()" in appointment_context
+    assert "return appointments.map((source) =>" in appointment_context
+    assert "const source = action === 'get' ? $json" in appointments_source
+    assert "const checkExistingClasses =" in main_source
+    assert r"[\\s\\S]{0,60}" in main_source
+    assert "} else if (checkExistingClasses) {" in main_source
+    assert "várias aulas recorrentes no mesmo dia da semana" in main_source
+    assert "ocorrência scheduled futura mais próxima" not in main_source
+    assert "REPLACEMENT_SOURCE_NOT_FUTURE" in appointments_source
+    assert "suggest_alternatives_when_available: true" in appointments_source
+    assert "max_suggestions: 10" in appointments_source
+    assert ".slice(0, 3)" not in appointments_source[
+        appointments_source.index("    BuildCanceledReplacementState = {"):
+        appointments_source.index("    StoreCanceledReplacementState = {")
+    ]
+
+    cancel_call = "this.CancelForReplacement1.out(0).to(this.CheckReplacementSuggestions.in(0))"
+    suggestion_result = "this.CheckReplacementSuggestions.out(0).to(this.BuildCanceledReplacementState.in(0))"
+    assert cancel_call in appointments_source
+    assert suggestion_result in appointments_source
+    assert "this.CancelForReplacement1.out(0).to(this.BuildCanceledReplacementState.in(0))" not in appointments_source
+
+
 def test_professional_workflows_support_fresh_reads_and_redis_error_fallback():
     for source in workflow_sources("professionals"):
         assert "name: 'fresh'" in source

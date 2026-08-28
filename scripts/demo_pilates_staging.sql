@@ -31,14 +31,14 @@ BEGIN;
 DO $demo$
 DECLARE
     -- OBRIGATORIOS: confirme os dois ids com a query comentada no fim.
-    v_business_id    integer := 1;
-    v_integration_id integer := 1;
+    v_business_id    integer := NULL;
+    v_integration_id integer := NULL;
     -- Protecao contra aplicar a massa em um tenant compartilhado/acidental.
-    v_confirm_dedicated_tenant boolean := true;
+    v_confirm_dedicated_tenant boolean := false;
 
     -- Valores ajustaveis. Telefones devem ter no maximo 13 digitos.
     v_business_name  text := 'Studio Movimento Pilates Demo';
-    v_maria_phone    text := '5511991549118'; -- TROQUE pelo WhatsApp real da demo.
+    v_maria_phone    text := '5511999999999'; -- TROQUE pelo WhatsApp real da demo.
     v_timezone       text := 'America/Sao_Paulo';
 
     v_service_id integer;
