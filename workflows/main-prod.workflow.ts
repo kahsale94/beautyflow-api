@@ -285,7 +285,7 @@ export class MainProdWorkflow {
         type: 'n8n-nodes-base.webhook',
         version: 2,
         position: [-1472, 16864],
-        credentials: { httpHeaderAuth: { id: 'SgMhjuYgwqILwgel', name: 'Beautyflow Evolution Webhook Prod' } },
+        credentials: { httpHeaderAuth: { id: 'SgMhjuYgwqILwgel', name: 'Beautyflow Evolution Webhook - PROD' } },
     })
     Webhook = {
         httpMethod: 'POST',
@@ -369,7 +369,6 @@ export class MainProdWorkflow {
     })
     GetAudio = {
         operation: 'toBinary',
-        binaryPropertyName: 'data',
         sourceProperty: 'base64',
         options: {
             mimeType: '={{ $json.mime_type }}',
@@ -532,7 +531,7 @@ Critical rules:
             value: 'j71qqEVnWkAMmhB3',
             mode: 'list',
             cachedResultUrl: '/workflow/j71qqEVnWkAMmhB3',
-            cachedResultName: 'appointments',
+            cachedResultName: 'appointments-prod',
         },
         workflowInputs: {
             mappingMode: 'defineBelow',
@@ -5305,6 +5304,15 @@ return [
                     operator: {
                         type: 'string',
                         operation: 'notContains',
+                    },
+                },
+                {
+                    id: '2c2af790-c328-4252-86f2-2d07861e456f',
+                    leftValue: "={{ $('data handler').item.json.client.remote_jid }}",
+                    rightValue: '5511991549118@s.whatsapp.net',
+                    operator: {
+                        type: 'string',
+                        operation: 'notEquals',
                     },
                 },
             ],

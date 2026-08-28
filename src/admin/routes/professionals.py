@@ -47,12 +47,12 @@ async def create_professional_action(request: Request, professional_service: Pro
         professional_service.create(session.business_id, data)
 
     except ValidationError:
-        return redirect_with_flash("/admin/professionals", "Dados inválidos para o profissional.", "error", request=request)
+        return redirect_with_flash("/admin/professionals", "Dados inválidos para o professor.", "error", request=request)
     
     except ProfessionalAlreadyExistsError:
-        return redirect_with_flash("/admin/professionals", "Profissional já cadastrado.", "error", request=request)
+        return redirect_with_flash("/admin/professionals", "Professor já cadastrado.", "error", request=request)
 
-    return redirect_with_flash("/admin/professionals", "Profissional criado com sucesso.", request=request)
+    return redirect_with_flash("/admin/professionals", "Professor criado com sucesso.", request=request)
 
 @router.get("/{professional_id}")
 def professional_detail_page(professional_id: int, request: Request, professional_service: ProfessionalServiceDep, service_service: ServiceServiceDep,
@@ -103,12 +103,12 @@ async def update_professional_action(professional_id: int, request: Request, pro
         return redirect_with_flash(return_to, "Dados inválidos.", "error", request=request)
     
     except ProfessionalNotFoundError:
-        return redirect_with_flash("/admin/professionals", "Profissional não encontrado.", "error", request=request)
+        return redirect_with_flash("/admin/professionals", "Professor não encontrado.", "error", request=request)
     
     except ProfessionalAlreadyExistsError:
-        return redirect_with_flash(return_to, "Profissional já cadastrado.", "error", request=request)
+        return redirect_with_flash(return_to, "Professor já cadastrado.", "error", request=request)
 
-    return redirect_with_flash(return_to, "Profissional atualizado com sucesso.", request=request)
+    return redirect_with_flash(return_to, "Professor atualizado com sucesso.", request=request)
 
 @router.post("/{professional_id}/deactivate")
 async def deactivate_professional_action(professional_id: int, request: Request, professional_service: ProfessionalServiceDep, session: AdminSessionDep):
@@ -118,9 +118,9 @@ async def deactivate_professional_action(professional_id: int, request: Request,
         professional_service.deactivate(session.business_id, professional_id)
 
     except ProfessionalNotFoundError:
-        return redirect_with_flash("/admin/professionals", "Profissional não encontrado.", "error", request=request)
-    
-    return redirect_with_flash("/admin/professionals", "Profissional desativado com sucesso.", request=request)
+        return redirect_with_flash("/admin/professionals", "Professor não encontrado.", "error", request=request)
+
+    return redirect_with_flash("/admin/professionals", "Professor desativado com sucesso.", request=request)
 
 @router.post("/{professional_id}/services")
 async def update_professional_services_action(professional_id: int, request: Request, service_service: ServiceServiceDep, link_service: ProfessionalServiceLinkServiceDep, session: AdminSessionDep):
@@ -150,7 +150,7 @@ async def update_professional_services_action(professional_id: int, request: Req
         except ProfessionalServiceLinkNotFoundError:
             pass
 
-    return redirect_with_flash(f"/admin/professionals/{professional_id}", "Serviços do profissional atualizados.", request=request)
+    return redirect_with_flash(f"/admin/professionals/{professional_id}", "Modalidades do professor atualizadas.", request=request)
 
 @router.post("/{professional_id}/availability")
 async def update_professional_availability_action(professional_id: int, request: Request, availability_service: AvailabilityServiceDep, session: AdminSessionDep):

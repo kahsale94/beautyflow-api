@@ -130,6 +130,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const eventsUrl = calendarEl.dataset.eventsUrl || '/admin/appointments/events';
     const professionalFilter = document.getElementById('calendar-professional-filter');
+    const refreshButton = document.getElementById('calendar-refresh-button');
     const monthStrip = document.getElementById('calendar-month-strip');
     const mobileCalendarQuery = window.matchMedia('(max-width: 760px)');
     const scheduleBlockEventColor = '#cbd5e1';
@@ -326,18 +327,34 @@ document.addEventListener('DOMContentLoaded', function () {
         const activeButton = monthStrip.querySelector('[aria-current="date"]');
         if (activeButton) {
             window.requestAnimationFrame(function () {
-                activeButton.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                const buttonLeftInStrip = activeButton.getBoundingClientRect().left
+                    - monthStrip.getBoundingClientRect().left
+                    + monthStrip.scrollLeft;
+                const centeredScrollLeft = buttonLeftInStrip
+                    - (monthStrip.clientWidth - activeButton.offsetWidth) / 2;
+
+                monthStrip.scrollTo({
+                    left: Math.max(0, centeredScrollLeft),
+                    behavior: 'smooth'
+                });
             });
         }
     }
 
     let calendar;
     calendar = new FullCalendar.Calendar(calendarEl, {
-        initialView: 'dayGridMonth',
+        initialView: 'timeGridWeek',
+        firstDay: 1,
         locale: 'pt-br',
         timeZone: calendarEl.dataset.timezone || 'America/Sao_Paulo',
         slotDuration: calendarEl.dataset.slotDuration || '00:15:00',
-        height: 'auto',
+        slotMinTime: '07:00:00',
+        slotMaxTime: '20:00:00',
+        scrollTime: '08:00:00',
+        allDaySlot: true,
+        allDayText: 'Dia inteiro',
+        slotEventOverlap: false,
+        contentHeight: 920,
         expandRows: true,
         nowIndicator: true,
         selectable: false,
@@ -345,6 +362,11 @@ document.addEventListener('DOMContentLoaded', function () {
         dayMaxEventRows: 3,
         eventDisplay: 'block',
         displayEventEnd: true,
+        loading: function (isLoading) {
+            if (!(refreshButton instanceof HTMLButtonElement)) return;
+            refreshButton.disabled = isLoading;
+            refreshButton.textContent = isLoading ? 'Atualizando…' : 'Atualizar agenda';
+        },
         dayHeaderFormat: { weekday: 'short', day: 'numeric' },
         views: {
             dayGridMonth: {
@@ -462,8 +484,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 return { domNodes: [wrapper] };
             }
 
-            const client = props.client || info.event.title || 'Cliente';
-            const service = props.service || 'Serviço';
+            const client = props.client || info.event.title || 'Aluno';
+            const service = props.service || 'Aula';
             const professional = props.professional || '';
 
             appendText('bf-calendar-event-time', startTime);
@@ -573,6 +595,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (professionalFilter) {
         professionalFilter.addEventListener('change', function () {
+            calendar.refetchEvents();
+        });
+    }
+
+    if (refreshButton) {
+        refreshButton.addEventListener('click', function () {
             calendar.refetchEvents();
         });
     }

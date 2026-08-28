@@ -1,11 +1,11 @@
 {% extends "admin/base.html" %}
 
-{% block title %}Acesso - Beautyflow{%endblock %}
+{% block title %}Acesso - Beautyflow Pilates{%endblock %}
 
 {% block content %}
 <section class="auth-card">
     <h1>Entrar no painel</h1>
-    <p class="muted">Acesse com um usuário administrador ou superadministrador.</p>
+    <p class="muted">Acesse a rotina administrativa do studio de Pilates.</p>
     <form method="post" action="/admin/login" class="stack">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
         <label>Email

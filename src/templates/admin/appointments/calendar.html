@@ -1,6 +1,6 @@
 {% extends "admin/base.html" %}
 
-{% block title %}Calendário - Beautyflow{% endblock %}
+{% block title %}Agenda semanal - Beautyflow Pilates{% endblock %}
 
 {% block head %}
 <link rel="stylesheet"
@@ -16,128 +16,29 @@
 {% block content %}
 <header class="page-header">
     <div>
-        <h1>Calendário</h1>
-        <p class="muted">Visualize, crie e atualize agendamentos.</p>
+        <h1>Agenda semanal</h1>
+        <p class="muted">Acompanhe as aulas, cancelamentos e reposições do studio.</p>
     </div>
 </header>
 
-<section class="grid two-columns appointment-management-grid">
-    <form method="post" action="/admin/appointments" class="card stack appointment-create-card"
-        data-appointment-service-filter>
-        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
-        <h2>Novo agendamento</h2>
-        <div class="form-grid compact-grid appointment-create-form-grid">
-            <label>Cliente
-                <select name="client_id" required>
-                    {% for client in clients %}
-                    <option value="{{ client.id }}">
-                        {{ client.name or client.phone }} — {{ client.phone }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </label>
-            <label>Profissional
-                <select name="professional_id" required data-appointment-professional>
-                    {% for professional in professionals %}
-                    <option value="{{ professional.id }}">{{ professional.name }}</option>
-                    {% endfor %}
-                </select>
-            </label>
-            <label>Serviço
-                <select name="service_id" required data-appointment-service>
-                    {% for service in services %}
-                    <option value="{{ service.id }}"
-                        data-professional-ids="{{ service_professional_ids.get(service.id, [])|join(',') }}">
-                        {{ service.name }} — {{ service.duration_minutes }} min
-                    </option>
-                    {% endfor %}
-                </select>
-            </label>
-            <label>Data e hora
-                <input
-                    name="start_datetime"
-                    required
-                    type="text"
-                    data-datetime-picker
-                    data-timezone="{{ business_timezone }}"
-                    data-minute-increment="{{ business.slot_interval_minutes }}"
-                    value="{{ default_start_datetime }}"
-                    min="{{ min_start_datetime }}"
-                    max="{{ max_start_datetime }}" />
-            </label>
-        </div>
-        <div class="appointment-create-actions">
-            <button class="button primary appointment-create-button" type="submit"
-                data-appointment-submit>Criar</button>
-        </div>
-    </form>
-
-    <form method="post" action="/admin/appointments/blocks" class="card stack schedule-block-form" id="schedule-block-form">
-        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
-        <h2>Fechar agenda</h2>
-        <div class="form-grid compact-grid schedule-block-form-grid">
-            <label>Profissional
-                <select name="block_professional_id" required>
-                    {% for professional in professionals %}
-                    <option value="{{ professional.id }}">{{ professional.name }}</option>
-                    {% endfor %}
-                </select>
-            </label>
-            <label>Motivo
-                <select name="reason" required>
-                    {% for reason, label in schedule_block_reasons.items() %}
-                    <option value="{{ reason }}">{{ label }}</option>
-                    {% endfor %}
-                </select>
-            </label>
-            <label>Data e hora inicial
-                <input
-                    name="block_start_datetime"
-                    required
-                    type="text"
-                    data-datetime-picker
-                    data-timezone="{{ business_timezone }}"
-                    data-minute-increment="{{ business.slot_interval_minutes }}"
-                    value="{{ default_start_datetime }}"
-                    min="{{ min_start_datetime }}"
-                    max="{{ max_start_datetime }}" />
-            </label>
-            <label data-schedule-block-duration-field>Quantidade de horas
-                <input
-                    name="duration_hours"
-                    type="number"
-                    inputmode="decimal"
-                    min="0.25"
-                    max="24"
-                    step="0.25"
-                    value="1"
-                    required
-                    data-schedule-block-duration />
-            </label>
-            <label class="schedule-block-toggle grid-span-2">
-                <input type="checkbox" name="all_day" value="true" data-schedule-block-all-day />
-                <span>
-                    Fechar o dia inteiro
-                    <small>Quando ligado, a quantidade de horas será ignorada.</small>
-                </span>
-            </label>
-        </div>
-        <button class="button primary schedule-block-submit" type="submit">Fechar agenda</button>
-    </form>
-</section>
-
 <section class="card calendar-card">
     <div class="card-header calendar-card-header">
-        <h2>Agenda</h2>
-        <label class="inline-label calendar-filter-label">
-            <span class="calendar-filter-label-text">Filtrar profissional</span>
-            <select id="calendar-professional-filter">
-                <option value="">Todos</option>
-                {% for professional in professionals %}
-                <option value="{{ professional.id }}">{{ professional.name }}</option>
-                {% endfor %}
-            </select>
-        </label>
+        <div>
+            <h2>Agenda de aulas</h2>
+            <p class="muted">Semana atual, de segunda a domingo.</p>
+        </div>
+        <div class="calendar-card-actions">
+            <label class="inline-label calendar-filter-label">
+                <span class="calendar-filter-label-text">Filtrar professor</span>
+                <select id="calendar-professional-filter">
+                    <option value="">Todos</option>
+                    {% for professional in professionals %}
+                    <option value="{{ professional.id }}">{{ professional.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <button class="button secondary" id="calendar-refresh-button" type="button">Atualizar agenda</button>
+        </div>
     </div>
     <div id="calendar-month-strip" class="calendar-month-strip" aria-label="Navegar por mês"></div>
     <div id="calendar"
@@ -146,6 +47,129 @@
         data-slot-duration="{{ slot_duration }}">
     </div>
 </section>
+
+<details class="card calendar-admin-panel">
+    <summary>
+        <span>
+            <strong>Ações administrativas</strong>
+            <small>Cadastrar uma aula ou fechar um período da agenda.</small>
+        </span>
+    </summary>
+    <div class="calendar-admin-panel-content">
+        <section class="grid two-columns appointment-management-grid">
+            <form method="post" action="/admin/appointments" class="card stack appointment-create-card"
+                data-appointment-service-filter>
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
+                <h2>Nova aula</h2>
+                <div class="form-grid compact-grid appointment-create-form-grid">
+                    <label>Aluno
+                        <select name="client_id" required>
+                            {% for client in clients %}
+                            <option value="{{ client.id }}">
+                                {{ client.name or client.phone }} — {{ client.phone }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label>Professor
+                        <select name="professional_id" required data-appointment-professional>
+                            {% for professional in professionals %}
+                            <option value="{{ professional.id }}">{{ professional.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    {% if services|length == 1 %}
+                    <input type="hidden" name="service_id" value="{{ services[0].id }}" data-appointment-service />
+                    <div class="appointment-fixed-kind">
+                        <span>Tipo de aula</span>
+                        <strong>{{ services[0].name }} · {{ services[0].duration_minutes }} min</strong>
+                    </div>
+                    {% else %}
+                    <label>Tipo de aula
+                        <select name="service_id" required data-appointment-service>
+                            {% for service in services %}
+                            <option value="{{ service.id }}"
+                                data-professional-ids="{{ service_professional_ids.get(service.id, [])|join(',') }}">
+                                {{ service.name }} — {{ service.duration_minutes }} min
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    {% endif %}
+                    <label>Data e hora
+                        <input
+                            name="start_datetime"
+                            required
+                            type="text"
+                            data-datetime-picker
+                            data-timezone="{{ business_timezone }}"
+                            data-minute-increment="{{ business.slot_interval_minutes }}"
+                            value="{{ default_start_datetime }}"
+                            min="{{ min_start_datetime }}"
+                            max="{{ max_start_datetime }}" />
+                    </label>
+                </div>
+                <div class="appointment-create-actions">
+                    <button class="button primary appointment-create-button" type="submit"
+                        data-appointment-submit>Cadastrar aula</button>
+                </div>
+            </form>
+
+            <form method="post" action="/admin/appointments/blocks" class="card stack schedule-block-form" id="schedule-block-form">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
+                <h2>Fechar agenda</h2>
+                <div class="form-grid compact-grid schedule-block-form-grid">
+                    <label>Professor
+                        <select name="block_professional_id" required>
+                            {% for professional in professionals %}
+                            <option value="{{ professional.id }}">{{ professional.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label>Motivo
+                        <select name="reason" required>
+                            {% for reason, label in schedule_block_reasons.items() %}
+                            <option value="{{ reason }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label>Data e hora inicial
+                        <input
+                            name="block_start_datetime"
+                            required
+                            type="text"
+                            data-datetime-picker
+                            data-timezone="{{ business_timezone }}"
+                            data-minute-increment="{{ business.slot_interval_minutes }}"
+                            value="{{ default_start_datetime }}"
+                            min="{{ min_start_datetime }}"
+                            max="{{ max_start_datetime }}" />
+                    </label>
+                    <label data-schedule-block-duration-field>Quantidade de horas
+                        <input
+                            name="duration_hours"
+                            type="number"
+                            inputmode="decimal"
+                            min="0.25"
+                            max="24"
+                            step="0.25"
+                            value="1"
+                            required
+                            data-schedule-block-duration />
+                    </label>
+                    <label class="schedule-block-toggle grid-span-2">
+                        <input type="checkbox" name="all_day" value="true" data-schedule-block-all-day />
+                        <span>
+                            Fechar o dia inteiro
+                            <small>Quando ligado, a quantidade de horas será ignorada.</small>
+                        </span>
+                    </label>
+                </div>
+                <button class="button primary schedule-block-submit" type="submit">Fechar agenda</button>
+            </form>
+        </section>
+    </div>
+</details>
 {% endblock %}
 
 {% block scripts %}

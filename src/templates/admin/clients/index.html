@@ -1,19 +1,19 @@
 {% extends "admin/base.html" %}
 
-{% block title %}Clientes - Beautyflow{%endblock %}
+{% block title %}Alunos - Beautyflow Pilates{%endblock %}
 
 {% block content %}
 <header class="page-header">
     <div>
-        <h1>Clientes</h1>
-        <p class="muted">Visualize e edite clientes da empresa.</p>
+        <h1>Alunos</h1>
+        <p class="muted">Visualize alunos, contatos e a rotina semanal de Pilates.</p>
     </div>
 </header>
 
 <section class="grid two-columns">
     <form method="post" action="/admin/clients" class="card stack">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
-        <h2>Novo cliente</h2>
+        <h2>Novo aluno</h2>
         <label>Nome <input name="name" minlength="3" maxlength="50" placeholder="Carlos Silva" /></label>
         <label>Telefone
             <input name="phone" required minlength="9" maxlength="13" placeholder="5511999999999" /></label>
@@ -29,7 +29,7 @@
 
 <section class="card">
     <div class="card-header">
-        <h2>Clientes cadastrados</h2>
+        <h2>Alunos cadastrados</h2>
     </div>
     {% if clients %} {% for client in clients %}
     <form id="client-form-{{ client.id }}" method="post" action="/admin/clients/{{ client.id }}">
@@ -43,6 +43,7 @@
                 <th>ID</th>
                 <th>Nome</th>
                 <th>Telefone</th>
+                <th>Horários fixos</th>
                 <th>Ações</th>
             </tr>
         </thead>
@@ -63,6 +64,37 @@
                     </span>
                     <input form="client-form-{{ client.id }}" name="phone" value="{{ client.phone }}" required
                         minlength="9" maxlength="13" readonly data-editable />
+                </td>
+                {% set student_schedule = schedule_overview.get(client.id, {}) %}
+                {% set fixed_slots = student_schedule.get('fixed_slots', []) %}
+                {% set isolated_appointments = student_schedule.get('isolated_appointments', []) %}
+                <td data-label="Horários fixos" class="student-schedule-cell">
+                    {% if fixed_slots %}
+                    <div class="student-schedule-list" aria-label="Horários fixos de {{ client.name or client.phone }}">
+                        {% for slot in fixed_slots %}
+                        <span class="student-schedule-item">
+                            <strong>{{ slot.weekday }} · {{ slot.time }}</strong>
+                            <small>Prof. {{ slot.professional }}</small>
+                        </span>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <span class="muted">Sem padrão recorrente identificado</span>
+                    {% endif %}
+
+                    {% if isolated_appointments %}
+                    <details class="student-schedule-extra">
+                        <summary>Reposições / aulas fora do padrão ({{ isolated_appointments|length }})</summary>
+                        <div class="student-schedule-list">
+                            {% for item in isolated_appointments %}
+                            <span class="student-schedule-item is-extra">
+                                <strong>{{ item.weekday }} · {{ item.date }} · {{ item.time }}</strong>
+                                <small>Prof. {{ item.professional }}</small>
+                            </span>
+                            {% endfor %}
+                        </div>
+                    </details>
+                    {% endif %}
                 </td>
                 <td class="actions" data-label="Ações">
 
@@ -86,7 +118,7 @@
         </table>
     </div>
     {% else %}
-    <p class="empty">Nenhum cliente encontrado.</p>
+    <p class="empty">Nenhum aluno encontrado.</p>
     {% endif %}
 </section>
 {% endblock %}

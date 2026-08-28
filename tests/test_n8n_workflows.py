@@ -83,7 +83,10 @@ def test_main_workflows_have_conversation_act_guard_and_meta():
         assert "conversation_meta" in source
         assert "last_response_type" in source
         assert "last_interaction_act" in source
-        assert "preserve_conversation_meta" in source
+        assert (
+            "preserve_conversation_meta" in source
+            or "...previousMeta" in source
+        )
         assert "name: 'check appointments response'" in source
         assert "$('conversation act guard').item.json.route" in source
 

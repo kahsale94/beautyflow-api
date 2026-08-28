@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{% block title %}Beautyflow - Painel administrativo{% endblock %}</title>
+    <title>{% block title %}Beautyflow Pilates - Painel administrativo{% endblock %}</title>
     <link rel="stylesheet"
         href="{{ url_for('static', path='admin/css/admin.css') }}?v={{ static_version('admin/css/admin.css') }}" />
     {% block head %}{% endblock %}
@@ -22,22 +22,21 @@
             <span class="sidebar-toggle-icon" aria-hidden="true"></span>
             <span>Menu</span>
         </button>
-        <a class="brand mobile-brand" href="/admin/">Beautyflow</a>
+        <a class="brand mobile-brand" href="/admin/">Beautyflow Pilates</a>
     </header>
 
     <div class="sidebar-backdrop" data-sidebar-close hidden></div>
 
     <aside id="admin-sidebar" class="sidebar" aria-label="Menu do administrador">
-        <a class="brand" href="/admin/">Beautyflow</a>
+        <a class="brand" href="/admin/">Beautyflow Pilates</a>
         <nav class="nav">
             <a class="nav-link {{ 'active' if active == 'dashboard' else '' }}" href="/admin/">Visão geral</a>
             <a class="nav-link {{ 'active' if active == 'appointments' else '' }}"
-                href="/admin/appointments">Calendário</a>
-            <a class="nav-link {{ 'active' if active == 'clients' else '' }}" href="/admin/clients">Clientes</a>
-            <a class="nav-link {{ 'active' if active == 'services' else '' }}" href="/admin/services">Serviços</a>
+                href="/admin/appointments">Agenda semanal</a>
+            <a class="nav-link {{ 'active' if active == 'clients' else '' }}" href="/admin/clients">Alunos</a>
             <a class="nav-link {{ 'active' if active == 'professionals' else '' }}"
-                href="/admin/professionals">Profissionais</a>
-            <a class="nav-link {{ 'active' if active == 'business' else '' }}" href="/admin/business">Empresa</a>
+                href="/admin/professionals">Professores</a>
+            <a class="nav-link {{ 'active' if active == 'business' else '' }}" href="/admin/business">Studio</a>
             <a class="nav-link {{ 'active' if active == 'users' else '' }}" href="/admin/users">Usuários</a>
             <a class="nav-link {{ 'active' if active == 'integrations' else '' }}"
                 href="/admin/integrations">Integrações</a>

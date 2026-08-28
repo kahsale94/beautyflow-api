@@ -2,7 +2,7 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 
 // <workflow-map>
 // Workflow : appointments-prod
-// Nodes   : 51  |  Connections: 58
+// Nodes   : 52  |  Connections: 60
 //
 // NODE INDEX
 // ──────────────────────────────────────────────────────────────────
@@ -55,9 +55,10 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 // ClaimReminders                     httpRequest                [onError→out(1)] [creds] [retry]
 // SplitReminderClaims                splitOut
 // SendReminder                       evolutionApi               [onError→out(1)] [creds] [retry]
-// MarkReminderSent                   httpRequest                [creds] [retry]
-// MarkReminderFailed                 httpRequest                [creds] [retry]
+// MarkReminderSent                   httpRequest                [onError→out(1)] [creds] [retry]
+// MarkReminderFailed                 httpRequest                [onError→out(1)] [creds] [retry]
 // ErrorReport17                      stopAndError
+// ErrorReport22                      stopAndError
 //
 // ROUTING MAP
 // ──────────────────────────────────────────────────────────────────
@@ -119,7 +120,9 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 //      → SplitReminderClaims
 //        → SendReminder
 //          → MarkReminderSent
+//           .out(1) → ErrorReport22
 //         .out(1) → MarkReminderFailed
+//           .out(1) → ErrorReport22 (↩ loop)
 //     .out(1) → ErrorReport17
 // </workflow-map>
 
@@ -132,6 +135,7 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
     name: 'appointments-prod',
     active: true,
     isArchived: false,
+    projectId: 'UVYVLJNFC5m6HlJG',
     tags: ['Kaiky', 'beautyflow-api'],
     settings: {
         executionOrder: 'v1',
@@ -2878,12 +2882,13 @@ return {
         version: 4.4,
         position: [3520, 7248],
         credentials: { httpBearerAuth: { id: 'tHC4wEA5iAoOqLkj', name: 'n8n beautyflow token - prod' } },
+        onError: 'continueErrorOutput',
         retryOnFail: true,
         waitBetweenTries: 1000,
     })
     MarkReminderSent = {
         method: 'POST',
-        url: "=http://beautyflow_backend:8000/v1/appointment-reminders/{{ $('split reminder claims').item.json.id }}/sent",
+        url: "=http://beautyflow_backend:8000/v1/appointment-reminders/{{ $('split reminder claims').first().json.id }}/sent",
         authentication: 'genericCredentialType',
         genericAuthType: 'httpBearerAuth',
         sendBody: true,
@@ -2900,7 +2905,14 @@ return {
       ''
   };
 })() }}`,
-        options: {},
+        options: {
+            response: {
+                response: {
+                    fullResponse: true,
+                    responseFormat: 'text',
+                },
+            },
+        },
     };
 
     @node({
@@ -2910,6 +2922,7 @@ return {
         version: 4.4,
         position: [3520, 7408],
         credentials: { httpBearerAuth: { id: 'tHC4wEA5iAoOqLkj', name: 'n8n beautyflow token - prod' } },
+        onError: 'continueErrorOutput',
         retryOnFail: true,
         waitBetweenTries: 1000,
     })
@@ -2932,7 +2945,14 @@ return {
     error: String(message).slice(0, 2000)
   };
 })() }}`,
-        options: {},
+        options: {
+            response: {
+                response: {
+                    fullResponse: true,
+                    responseFormat: 'text',
+                },
+            },
+        },
     };
 
     @node({
@@ -2943,6 +2963,36 @@ return {
         position: [2848, 7488],
     })
     ErrorReport17 = {
+        errorType: 'errorObject',
+        errorObject: `={
+  "error": {
+    "workflow": "{{ $workflow.id }}",
+    "execution": "{{ $execution.id }}",
+    "type": "internal.api.reminders",
+    "node": "{{ $prevNode.name }}",
+    "code": "{{ $json.error.status || '' }}",
+    "description": "{{
+(() => {
+  try {
+    const part = $json.error.message.split(' - ')[1];
+    return JSON.parse(JSON.parse(part)).detail;
+  } catch (e) {
+    return $json.error.message;
+  }
+})()
+}}"
+  }
+}`,
+    };
+
+    @node({
+        id: 'a81f3a7f-5f7f-45cc-ad28-5992981e0845',
+        name: 'error report 22',
+        type: 'n8n-nodes-base.stopAndError',
+        version: 1,
+        position: [3728, 7312],
+    })
+    ErrorReport22 = {
         errorType: 'errorObject',
         errorObject: `={
   "error": {
@@ -3029,5 +3079,7 @@ return {
         this.ErrorReport.out(0).to(this.ReturnContext.in(0));
         this.ServiceContext.out(0).to(this.AppointmentContext.in(0));
         this.ProfessionalContext.out(0).to(this.ServiceContext.in(0));
+        this.MarkReminderFailed.out(1).to(this.ErrorReport22.in(0));
+        this.MarkReminderSent.out(1).to(this.ErrorReport22.in(0));
     }
 }

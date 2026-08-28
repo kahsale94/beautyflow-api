@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Request
 
-from src.dependecies import AppointmentServiceDep, BusinessServiceDep, ClientServiceDep, ProfessionalServiceDep, ServiceServiceDep
+from src.dependecies import AppointmentServiceDep, BusinessServiceDep, ClientServiceDep, ProfessionalServiceDep
 
 from ..dependencies import AdminSessionDep
 from ..templating import render, safe_timezone
@@ -12,7 +12,7 @@ router = APIRouter(tags=["Admin ➔ Dashboard"])
 
 @router.get("/")
 def dashboard_page(request: Request, appointment_service: AppointmentServiceDep, client_service: ClientServiceDep, professional_service: ProfessionalServiceDep,
-    service_service: ServiceServiceDep, business_service: BusinessServiceDep, session: AdminSessionDep):
+    business_service: BusinessServiceDep, session: AdminSessionDep):
     business = business_service.get_by_id(session.business_id)
     tz = safe_timezone(business.timezone)
     today_start = datetime.now(tz).replace(hour=0, minute=0, second=0, microsecond=0)
@@ -20,11 +20,15 @@ def dashboard_page(request: Request, appointment_service: AppointmentServiceDep,
 
     clients = client_service.get_all(session.business_id)
     professionals = professional_service.get_all(session.business_id)
-    services = service_service.get_all(session.business_id)
     today_appointments = appointment_service.get_by_period(session.business_id, today_start, today_end)
     clients_by_id = {item.id: item for item in clients}
     professionals_by_id = {item.id: item for item in professionals}
-    services_by_id = {item.id: item for item in services}
+    today_scheduled_count = sum(
+        1 for item in today_appointments if getattr(item.status, "value", item.status) == "scheduled"
+    )
+    today_canceled_count = sum(
+        1 for item in today_appointments if getattr(item.status, "value", item.status) == "canceled"
+    )
 
     return render(
         request,
@@ -33,11 +37,11 @@ def dashboard_page(request: Request, appointment_service: AppointmentServiceDep,
             "business": business,
             "clients_count": len(clients),
             "professionals_count": len(professionals),
-            "services_count": len(services),
+            "today_scheduled_count": today_scheduled_count,
+            "today_canceled_count": today_canceled_count,
             "today_appointments": today_appointments,
             "clients_by_id": clients_by_id,
             "professionals_by_id": professionals_by_id,
-            "services_by_id": services_by_id,
         },
         session=session,
         active="dashboard",

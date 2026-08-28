@@ -1,4 +1,5 @@
-<h2>Agendamento #{{ appointment.id }}</h2>
+{% set appointment_is_editable = appointment.status.value == 'scheduled' %}
+<h2>Aula #{{ appointment.id }}</h2>
 <div class="details-list">
     <p>
         <strong>Status:</strong>
@@ -8,13 +9,13 @@
         {% endif %}
     </p>
     <p>
-        <strong>Cliente:</strong> {{ client.name if client and client.name else client.phone if client else '-' }}
+        <strong>Aluno:</strong> {{ client.name if client and client.name else client.phone if client else '-' }}
     </p>
     <p>
-        <strong>Profissional:</strong> {{ professional.name if professional else '-'}}
+        <strong>Professor:</strong> {{ professional.name if professional else '-'}}
     </p>
     <p>
-        <strong>Serviço:</strong> {{ service.name if service else '-' }}
+        <strong>Tipo de aula:</strong> {{ service.name if service else '-' }}
     </p>
     <p>
         <strong>Horário:</strong> {{ appointment.start_datetime|datetime_br(business_timezone) }} - {{ appointment.end_datetime|datetime_time(business_timezone) }}
@@ -79,6 +80,7 @@
     </div>
     {% endif %}
 
+    {% if appointment_is_editable %}
     <div class="reminder-actions">
         <form method="post" action="/admin/appointments/{{ appointment.id }}/reminders/manual"
             {% if not manual_reminder_disabled_reason %}data-confirm="{{ manual_reminder_confirm_message }}"{% endif %}>
@@ -92,12 +94,14 @@
         <small class="muted">{{ manual_reminder_disabled_reason }}</small>
         {% endif %}
     </div>
+    {% endif %}
 </div>
 
+{% if appointment_is_editable %}
 <form id="appointment-update-form-{{ appointment.id }}" method="post" action="/admin/appointments/{{ appointment.id }}"
     class="stack compact-form" data-appointment-service-filter>
     <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
-    <label>Cliente
+    <label>Aluno
         <select name="client_id" required>
             {% for item in clients %}
             <option value="{{ item.id }}" {%if item.id == appointment.client_id %}selected{%endif%}>
@@ -106,7 +110,7 @@
             {% endfor %}
         </select>
     </label>
-    <label>Profissional
+    <label>Professor
         <select name="professional_id" required data-appointment-professional>
             {% for item in professionals %}
             <option value="{{ item.id }}" {%if item.id == appointment.professional_id %}selected{%endif%}>
@@ -115,7 +119,14 @@
             {% endfor %}
         </select>
     </label>
-    <label>Serviço
+    {% if services|length == 1 %}
+    <input type="hidden" name="service_id" value="{{ services[0].id }}" data-appointment-service />
+    <div class="appointment-fixed-kind">
+        <span>Tipo de aula</span>
+        <strong>{{ services[0].name }}</strong>
+    </div>
+    {% else %}
+    <label>Tipo de aula
         <select name="service_id" required data-appointment-service>
             {% for item in services %}
             <option value="{{ item.id }}"
@@ -126,6 +137,7 @@
             {% endfor %}
         </select>
     </label>
+    {% endif %}
     <label>Data e hora
         <input
             name="start_datetime"
@@ -142,18 +154,18 @@
     {% if appointment.confirmation_pending and appointment.status.value == 'scheduled' %}
     <form method="post" action="/admin/appointments/{{ appointment.id }}/confirm">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
-        <button class="button primary" type="submit">Confirmar Agendamento</button>
+        <button class="button primary" type="submit">Confirmar aula</button>
     </form>
     {% endif %}
     <form method="post" action="/admin/appointments/{{ appointment.id }}/cancel"
-        data-confirm="Cancelar este agendamento?">
+        data-confirm="Cancelar esta aula?">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
-        <button class="button danger" type="submit">Cancelar Agendamento</button>
+        <button class="button danger" type="submit">Cancelar aula</button>
     </form>
     <form method="post" action="/admin/appointments/{{ appointment.id }}/complete">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
         <button class="button success" type="submit" {% if appointment.confirmation_pending %}disabled{% endif %}>
-            Concluir Agendamento
+            Concluir aula
         </button>
     </form>
 </div>
@@ -161,3 +173,12 @@
     data-appointment-submit>
     Salvar alterações
 </button>
+{% else %}
+<p class="appointment-readonly-notice" role="status">
+    {% if appointment.status.value == 'canceled' %}
+    Esta aula foi cancelada e está disponível somente para consulta.
+    {% else %}
+    Esta aula foi concluída e está disponível somente para consulta.
+    {% endif %}
+</p>
+{% endif %}

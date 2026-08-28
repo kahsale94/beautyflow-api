@@ -1,23 +1,23 @@
 {% extends "admin/base.html" %}
 
-{% block title %}Profissionais - Beautyflow{% endblock %}
+{% block title %}Professores - Beautyflow Pilates{% endblock %}
 
 {% block content %}
 <header class="page-header">
     <div>
-        <h1>Profissionais</h1>
-        <p class="muted">Cadastre profissionais e configure serviços/horários.</p>
+        <h1>Professores</h1>
+        <p class="muted">Cadastre professores e configure a disponibilidade semanal.</p>
     </div>
 </header>
 
 <section class="grid two-columns">
     <form method="post" action="/admin/professionals" class="card stack">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
-        <h2>Novo profissional</h2>
+        <h2>Novo professor</h2>
         <label>Nome <input name="name" required minlength="3" maxlength="50" placeholder="Carlos da Silva" /></label>
         <label>Email <input name="email" required type="email" placeholder="exemplo@exemplo.com" /></label>
         <label>Telefone <input name="phone" type="tel" maxlength="20" placeholder="5511999999999" /></label>
-        <button class="button primary" type="submit">Criar profissional</button>
+        <button class="button primary" type="submit">Criar professor</button>
     </form>
 
     <form method="get" action="/admin/professionals" class="card stack admin-search-card">
@@ -29,7 +29,7 @@
 
 <section class="card">
     <div class="card-header">
-        <h2>Profissionais ativos</h2>
+        <h2>Professores ativos</h2>
     </div>
     {% if professionals %}
     {% for professional in professionals %}
@@ -88,7 +88,7 @@
                         </button>
                         <a class="button config small" href="/admin/professionals/{{ professional.id }}">Configurar</a>
                         <form method="post" action="/admin/professionals/{{ professional.id }}/deactivate"
-                            data-confirm="Desativar este profissional?">
+                            data-confirm="Desativar este professor?">
                             <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
                             <button class="button danger small" type="submit">Desativar</button>
                         </form>
@@ -102,7 +102,7 @@
         </table>
     </div>
     {% else %}
-    <p class="empty">Nenhum profissional ativo.</p>
+    <p class="empty">Nenhum professor ativo.</p>
     {% endif %}
 </section>
 {% endblock %}

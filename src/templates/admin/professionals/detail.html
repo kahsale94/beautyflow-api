@@ -6,13 +6,13 @@
 <header class="page-header">
     <div>
         <h1>{{ professional.name }}</h1>
-        <p class="muted">Dados, serviços e disponibilidade do profissional.</p>
+        <p class="muted">Dados e disponibilidade semanal do professor.</p>
     </div>
     <a class="button" href="/admin/professionals">Voltar</a>
 </header>
 
 <section class="card">
-    <h2>Dados do profissional</h2>
+    <h2>Dados do professor</h2>
     <form method="post" action="/admin/professionals/{{ professional.id }}" class="form-grid">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
         <label>Nome
@@ -26,7 +26,7 @@
 </section>
 
 <section class="card">
-    <h2>Serviços atendidos</h2>
+    <h2>Modalidades atendidas</h2>
     <form method="post" action="/admin/professionals/{{ professional.id }}/services" class="checkbox-grid">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
         {% for service in services %}
@@ -37,7 +37,7 @@
                     }}</small></span>
         </label>
         {% endfor %}
-        <button class="button primary" type="submit">Salvar serviços</button>
+        <button class="button primary" type="submit">Salvar modalidades</button>
     </form>
 </section>
 

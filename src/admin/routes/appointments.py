@@ -106,31 +106,31 @@ def _appointment_error_message(exc: Exception) -> str:
     if isinstance(exc, AppointmentTimeConflictError):
         return "Horário já ocupado."
     if isinstance(exc, ProfessionalNotAvailableError):
-        return "Profissional indisponível nesse horário."
+        return "Professor indisponível nesse horário."
     if isinstance(exc, ServiceNotAvailableError):
-        return "Serviço não disponível."
+        return "Tipo de aula não disponível."
     if isinstance(exc, ClientNotFoundError):
-        return "Cliente não encontrado."
+        return "Aluno não encontrado."
     if isinstance(exc, ProfessionalServiceMismatchError):
-        return "Esse profissional não executa o serviço selecionado."
+        return "Esse professor não atende o tipo de aula selecionado."
     if isinstance(exc, DatetimeFormatError):
         return "Data inválida."
     if isinstance(exc, AppointmentAlreadyCanceledError):
-        return "Agendamento já cancelado."
+        return "Aula já cancelada."
     if isinstance(exc, AppointmentAlreadyCompletedError):
-        return "Agendamento já concluído."
+        return "Aula já concluída."
     if isinstance(exc, AppointmentConfirmationPendingError):
-        return "Confirme o agendamento antes de concluí-lo."
+        return "Confirme a aula antes de concluí-la."
 
-    return "Não foi possível salvar o agendamento."
+    return "Não foi possível salvar a aula."
 
 def _schedule_block_error_message(exc: Exception) -> str:
     if isinstance(exc, ScheduleBlockAppointmentConflictError):
-        return "Já existe agendamento nesse período."
+        return "Já existe uma aula nesse período."
     if isinstance(exc, ScheduleBlockTimeConflictError):
         return "Agenda já fechada nesse período."
     if isinstance(exc, ScheduleBlockProfessionalNotFoundError):
-        return "Profissional não encontrado."
+        return "Professor não encontrado."
     if isinstance(exc, ScheduleBlockInvalidDatetimeError):
         return "Data inválida."
     if isinstance(exc, ScheduleBlockInvalidDurationError):
@@ -146,7 +146,7 @@ def _schedule_block_error_message(exc: Exception) -> str:
 
 def _appointment_error_redirect(request: Request, exc: Exception):
     message = _appointment_error_message(exc)
-    if message == "Não foi possível salvar o agendamento.":
+    if message == "Não foi possível salvar a aula.":
         logger.exception("Unexpected appointment admin error", exc_info=exc)
     return redirect_with_flash("/admin/appointments", message, "error", request=request)
 
@@ -227,7 +227,7 @@ def calendar_events(start: str, end: str, request: Request, appointment_service:
         service = services.get(appointment.service_id)
         status = _enum_value(appointment.status)
 
-        title = f"{client.name if client and client.name else client.phone if client else 'Cliente'} - {service.name if service else 'Serviço'}"
+        title = f"{client.name if client and client.name else client.phone if client else 'Aluno'} - {service.name if service else 'Aula'}"
 
         events.append(
             {
@@ -399,9 +399,9 @@ def appointment_details_fragment(appointment_id: int, request: Request, appointm
                 else "Enviar lembrete agora"
             ),
             "manual_reminder_confirm_message": (
-                "Reenviar lembrete para este cliente?"
+                "Reenviar lembrete para este aluno?"
                 if has_sent_reminder
-                else "Enviar lembrete para este cliente agora?"
+                else "Enviar lembrete para este aluno agora?"
             ),
             "service_professional_ids": _service_professional_ids(
                 session.business_id,
@@ -438,7 +438,7 @@ async def create_appointment_action(request: Request, appointment_service: Appoi
     except Exception as exc:
         return _appointment_error_redirect(request, exc)
 
-    return redirect_with_flash("/admin/appointments", "Agendamento criado com sucesso.", request = request)
+    return redirect_with_flash("/admin/appointments", "Aula criada com sucesso.", request = request)
 
 @router.post("/{appointment_id}")
 async def update_appointment_action(appointment_id: int, request: Request, appointment_service: AppointmentServiceDep, business_service: BusinessServiceDep, session: AdminSessionDep):
@@ -457,7 +457,7 @@ async def update_appointment_action(appointment_id: int, request: Request, appoi
         appointment_service.update(session.business_id, appointment_id, data)
 
     except AppointmentNotFoundError:
-        return redirect_with_flash("/admin/appointments", "Agendamento não encontrado.", "error", request = request)
+        return redirect_with_flash("/admin/appointments", "Aula não encontrada.", "error", request = request)
 
     except (ValidationError, ValueError) as exc:
         return _appointment_error_redirect(request, exc)
@@ -465,7 +465,7 @@ async def update_appointment_action(appointment_id: int, request: Request, appoi
     except Exception as exc:
         return _appointment_error_redirect(request, exc)
 
-    return redirect_with_flash("/admin/appointments", "Agendamento atualizado com sucesso.", request = request)
+    return redirect_with_flash("/admin/appointments", "Aula atualizada com sucesso.", request = request)
 
 @router.post("/{appointment_id}/cancel")
 async def cancel_appointment_action(appointment_id: int, request: Request, appointment_service: AppointmentServiceDep, session: AdminSessionDep):
@@ -477,7 +477,7 @@ async def cancel_appointment_action(appointment_id: int, request: Request, appoi
     except Exception as exc:
         return _appointment_error_redirect(request, exc)
 
-    return redirect_with_flash("/admin/appointments", "Agendamento cancelado.", request = request)
+    return redirect_with_flash("/admin/appointments", "Aula cancelada.", request = request)
 
 @router.post("/{appointment_id}/complete")
 async def complete_appointment_action(appointment_id: int, request: Request, appointment_service: AppointmentServiceDep, session: AdminSessionDep):
@@ -489,7 +489,7 @@ async def complete_appointment_action(appointment_id: int, request: Request, app
     except Exception as exc:
         return _appointment_error_redirect(request, exc)
 
-    return redirect_with_flash("/admin/appointments", "Agendamento concluído.", request=request)
+    return redirect_with_flash("/admin/appointments", "Aula concluída.", request=request)
 
 @router.post("/{appointment_id}/reminders/manual")
 async def send_manual_reminder_action(appointment_id: int, request: Request, appointment_service: AppointmentServiceDep,
@@ -503,7 +503,7 @@ async def send_manual_reminder_action(appointment_id: int, request: Request, app
         appointment_reminder_service.schedule_manual_for_appointment(appointment, business)
 
     except AppointmentNotFoundError:
-        return redirect_with_flash("/admin/appointments", "Agendamento não encontrado.", "error", request=request)
+        return redirect_with_flash("/admin/appointments", "Aula não encontrada.", "error", request=request)
 
     except AppointmentReminderInvalidStateError as exc:
         return redirect_with_flash(
@@ -534,4 +534,4 @@ async def confirm_appointment_action(appointment_id: int, request: Request, appo
     except Exception as exc:
         return _appointment_error_redirect(request, exc)
 
-    return redirect_with_flash("/admin/appointments", "Agendamento confirmado.", request=request)
+    return redirect_with_flash("/admin/appointments", "Aula confirmada.", request=request)

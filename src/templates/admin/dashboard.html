@@ -1,42 +1,42 @@
 {% extends "admin/base.html" %}
 
-{% block title %}Visão geral - Beautyflow{%endblock %}
+{% block title %}Visão geral - Beautyflow Pilates{%endblock %}
 
 {% block content %}
 <header class="page-header">
     <div>
         <h1>Visão geral</h1>
-        <p class="muted">Visão geral de {{ business.name }}.</p>
+        <p class="muted">Rotina de aulas e alunos de {{ business.name }}.</p>
     </div>
 </header>
 
 <section class="stats-grid">
     <article class="stat-card">
-        <span class="stat-card-label">Clientes</span>
+        <span class="stat-card-label">Alunos</span>
         <strong>{{ clients_count }}</strong>
         <small>Total cadastrado</small>
     </article>
     <article class="stat-card">
-        <span class="stat-card-label">Serviços</span>
-        <strong>{{ services_count }}</strong>
-        <small>Ativos no catálogo</small>
-    </article>
-    <article class="stat-card">
-        <span class="stat-card-label">Profissionais</span>
+        <span class="stat-card-label">Professores</span>
         <strong>{{ professionals_count }}</strong>
         <small>Equipe ativa</small>
     </article>
     <article class="stat-card">
-        <span class="stat-card-label">Agendamentos hoje</span>
-        <strong>{{ today_appointments|length }}</strong>
-        <small>Marcados para hoje</small>
+        <span class="stat-card-label">Aulas agendadas hoje</span>
+        <strong>{{ today_scheduled_count }}</strong>
+        <small>Ativas na agenda</small>
+    </article>
+    <article class="stat-card">
+        <span class="stat-card-label">Canceladas hoje</span>
+        <strong>{{ today_canceled_count }}</strong>
+        <small>Ocorrências canceladas</small>
     </article>
 </section>
 
 <section class="card">
     <div class="card-header">
-        <h2>Agendamentos de hoje</h2>
-        <a class="button small" href="/admin/appointments">Abrir calendário</a>
+        <h2>Aulas de hoje</h2>
+        <a class="button small" href="/admin/appointments">Abrir agenda semanal</a>
     </div>
     {% if today_appointments %}
     <div class="table-shell">
@@ -45,32 +45,27 @@
             <tr>
                 <th>Horário</th>
                 <th>Status</th>
-                <th>Cliente</th>
-                <th>Profissional</th>
-                <th>Serviço</th>
+                <th>Aluno</th>
+                <th>Professor</th>
             </tr>
         </thead>
         <tbody>
             {% for appointment in today_appointments %}
             {% set client = clients_by_id.get(appointment.client_id) %}
             {% set professional = professionals_by_id.get(appointment.professional_id) %}
-            {% set service = services_by_id.get(appointment.service_id) %}
             <tr>
                 <td data-label="Horário">
-                    {{ appointment.start_datetime.strftime('%H:%M') }} - {{
-                    appointment.end_datetime.strftime('%H:%M') }}
+                    {{ appointment.start_datetime|datetime_time(business.timezone) }} -
+                    {{ appointment.end_datetime|datetime_time(business.timezone) }}
                 </td>
                 <td data-label="Status">
                     <span class="badge {{ appointment.status.value }}">{{ appointment.status|admin_label }}</span>
                 </td>
-                <td data-label="Cliente">
+                <td data-label="Aluno">
                     {{ client.name if client and client.name else client.phone if client else '#' ~ appointment.client_id }}
                 </td>
-                <td data-label="Profissional">
+                <td data-label="Professor">
                     {{ professional.name if professional else '#' ~ appointment.professional_id }}
-                </td>
-                <td data-label="Serviço">
-                    {{ service.name if service else '#' ~ appointment.service_id }}
                 </td>
             </tr>
             {% endfor %}
@@ -78,7 +73,7 @@
         </table>
     </div>
     {% else %}
-    <p class="empty">Nenhum agendamento para hoje.</p>
+    <p class="empty">Nenhuma aula para hoje.</p>
     {% endif %}
 </section>
 {% endblock %}

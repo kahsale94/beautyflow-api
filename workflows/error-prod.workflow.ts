@@ -323,7 +323,7 @@ const policies = {
     notifyDev: true,
     customerMessage: 'Tive uma instabilidade no sistema agora e não consegui continuar o atendimento. A equipe já vai verificar.'
   },
-
+  
   'internal.api.reminders': {
     severity: 'high',
     notifyCustomer: false,

@@ -124,6 +124,7 @@ textarea {
 }
 
 .with-sidebar {
+    width: calc(100% - var(--sidebar-width));
     min-height: 100vh;
     margin-left: var(--sidebar-width);
 }
@@ -517,6 +518,14 @@ label {
     flex: 0 0 160px;
 }
 
+.calendar-card-actions {
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+    gap: var(--space-sm);
+    flex-wrap: wrap;
+}
+
 .inline-form {
     width: 100%;
 }
@@ -556,6 +565,26 @@ label {
 
 .schedule-block-submit {
     justify-self: end;
+}
+
+.appointment-fixed-kind {
+    display: grid;
+    gap: 6px;
+    align-content: start;
+}
+
+.appointment-fixed-kind > span {
+    font-size: .86rem;
+    font-weight: 700;
+}
+
+.appointment-fixed-kind > strong {
+    min-height: 44px;
+    padding: 11px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+    font-size: .9rem;
 }
 
 .schedule-block-toggle {
@@ -1020,7 +1049,61 @@ tr.is-editing input[data-editable] {
 
 .clients-table th:nth-child(4),
 .clients-table td:nth-child(4) {
+    width: 320px;
+}
+
+.clients-table th:nth-child(5),
+.clients-table td:nth-child(5) {
     width: 220px;
+}
+
+.student-schedule-cell {
+    vertical-align: top;
+}
+
+.student-schedule-list {
+    display: grid;
+    gap: 6px;
+}
+
+.student-schedule-item {
+    display: grid;
+    gap: 1px;
+    padding: 7px 9px;
+    border: 1px solid #bae6fd;
+    border-radius: var(--radius-sm);
+    background: #f0f9ff;
+    color: #0c4a6e;
+    line-height: 1.25;
+}
+
+.student-schedule-item small {
+    color: #0369a1;
+}
+
+.student-schedule-item.is-extra {
+    border-color: #fde68a;
+    background: #fffbeb;
+    color: #78350f;
+}
+
+.student-schedule-item.is-extra small {
+    color: #92400e;
+}
+
+.student-schedule-extra {
+    margin-top: 8px;
+}
+
+.student-schedule-extra > summary {
+    color: #92400e;
+    cursor: pointer;
+    font-size: .78rem;
+    font-weight: 750;
+}
+
+.student-schedule-extra[open] > summary {
+    margin-bottom: 6px;
 }
 
 .professionals-table th:nth-child(1),
@@ -1320,6 +1403,16 @@ tr.is-editing input[data-editable] {
     margin: 0;
 }
 
+.appointment-readonly-notice {
+    margin: var(--space-md) 0 0;
+    padding: 12px 14px;
+    border: 1px solid #cbd5e1;
+    border-radius: var(--radius-md);
+    background: #f8fafc;
+    color: #475569;
+    font-weight: 700;
+}
+
 .reminder-history {
     display: grid;
     gap: 6px;
@@ -1353,6 +1446,64 @@ tr.is-editing input[data-editable] {
 /* 12. Calendário */
 .calendar-card {
     overflow: hidden;
+}
+
+.calendar-admin-panel {
+    padding: 0;
+    overflow: hidden;
+}
+
+.calendar-admin-panel > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-md);
+    padding: 18px var(--space-lg);
+    cursor: pointer;
+    list-style: none;
+}
+
+.calendar-admin-panel > summary::-webkit-details-marker {
+    display: none;
+}
+
+.calendar-admin-panel > summary span {
+    display: grid;
+    gap: 2px;
+}
+
+.calendar-admin-panel > summary small {
+    color: var(--muted);
+    font-weight: 500;
+}
+
+.calendar-admin-panel > summary::after {
+    display: grid;
+    width: 28px;
+    height: 28px;
+    flex: 0 0 28px;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--surface-2);
+    color: var(--muted);
+    content: "+";
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
+.calendar-admin-panel[open] > summary::after {
+    content: "−";
+}
+
+.calendar-admin-panel-content {
+    padding: var(--space-lg);
+    border-top: 1px solid var(--border);
+    background: var(--surface-2);
+}
+
+.calendar-admin-panel-content .appointment-management-grid > .card {
+    margin-bottom: 0;
+    box-shadow: var(--shadow-soft);
 }
 
 .calendar-month-strip {
@@ -1397,6 +1548,7 @@ tr.is-editing input[data-editable] {
 }
 
 .fc {
+    --bf-calendar-event-gap: var(--space-xs);
     --fc-border-color: var(--border);
     --fc-button-bg-color: #1f2937;
     --fc-button-border-color: #1f2937;
@@ -1541,6 +1693,10 @@ tr.is-editing input[data-editable] {
     background: var(--bf-calendar-event-bg, #2dd4bf) !important;
     color: #0f172a;
     white-space: nowrap;
+}
+
+.fc .fc-timegrid-event-harness > .fc-timegrid-event {
+    inset-inline: calc(var(--bf-calendar-event-gap) / 2);
 }
 
 .fc .fc-daygrid-event {
@@ -2125,6 +2281,7 @@ pre {
     }
 
     .with-sidebar {
+        width: 100%;
         margin-left: 0;
     }
 
@@ -2358,6 +2515,24 @@ pre {
 
     .calendar-card-header {
         align-items: stretch;
+    }
+
+    .calendar-card-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .calendar-card-actions .inline-label {
+        align-items: stretch;
+    }
+
+    .calendar-admin-panel {
+        padding: 0;
+    }
+
+    .calendar-admin-panel > summary,
+    .calendar-admin-panel-content {
+        padding: 16px;
     }
 
     .calendar-month-strip {

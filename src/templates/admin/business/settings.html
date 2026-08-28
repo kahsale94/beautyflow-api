@@ -1,12 +1,12 @@
 {% extends "admin/base.html" %}
 
-{% block title %}Empresa - Beautyflow{%endblock %}
+{% block title %}Studio - Beautyflow Pilates{%endblock %}
 
 {% block content %}
 <header class="page-header">
     <div>
-        <h1>Dados da empresa</h1>
-        <p class="muted">Informações públicas e regras de agendamento.</p>
+        <h1>Dados do studio</h1>
+        <p class="muted">Informações públicas e regras das aulas de Pilates.</p>
     </div>
 </header>
 
@@ -122,7 +122,7 @@
     </section>
 
     <section class="card settings-card stack">
-        <h2 class="section-title">Configurações de agendamento</h2>
+        <h2 class="section-title">Configurações da agenda de aulas</h2>
         <div class="form-grid compact-grid">
             <label>Intervalo dos slots em minutos
                 <input name="slot_interval_minutes" type="number" min="1" max="240"
@@ -137,12 +137,12 @@
             <label>Dias máximos para agendar
                 <input name="maximum_schedule_days" type="number" min="1" max="365"
                     value="{{ business.maximum_schedule_days }}" />
-                <span class="field-help">Até quantos dias no futuro o cliente pode escolher.</span>
+                <span class="field-help">Até quantos dias no futuro o aluno pode escolher.</span>
             </label>
             <label>Limite de cancelamento em horas
                 <input name="cancel_limit_hours" type="number" min="0"
                     value="{{ business.cancel_limit_hours }}" />
-                <span class="field-help">Até quantas horas antes o cliente pode cancelar.</span>
+                <span class="field-help">Até quantas horas antes o aluno pode cancelar.</span>
             </label>
         </div>
 
@@ -151,21 +151,21 @@
                 <input type="checkbox" name="booking_enabled" {% if business.booking_enabled %}checked{% endif %} />
                 <span>
                     Agenda pública ativa
-                    <small>Permite que clientes criem agendamentos pelo fluxo público.</small>
+                    <small>Permite que alunos agendem aulas pelo fluxo público.</small>
                 </span>
             </label>
             <label class="check-card">
                 <input type="checkbox" name="allow_client_cancel" {% if business.allow_client_cancel %}checked{% endif %} />
                 <span>
-                    Permitir cancelamento pelo cliente
-                    <small>Cliente pode cancelar dentro do limite configurado.</small>
+                    Permitir cancelamento pelo aluno
+                    <small>Aluno pode cancelar dentro do limite configurado.</small>
                 </span>
             </label>
             <label class="check-card">
                 <input type="checkbox" name="appointment_confirmation_required" {% if business.appointment_confirmation_required %}checked{% endif %} />
                 <span>
                     Exigir confirmação manual
-                    <small>Novos agendamentos exigem revisão antes da confirmação.</small>
+                    <small>Novas aulas exigem revisão antes da confirmação.</small>
                 </span>
             </label>
         </div>
