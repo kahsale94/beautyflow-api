@@ -77,13 +77,26 @@ def logout_user(request: Request, response: Response, service: AuthServiceDep):
     return {"detail": "Logout realizado com sucesso."}
 
 @router.post("/integration")
-def login_integration(integration: IntegrationDep, service: AuthServiceDep, x_evolution_instance: str | None = Header(default=None, alias="X-Evolution-Instance"),
+def login_integration(
+    integration: IntegrationDep,
+    service: AuthServiceDep,
+    x_evolution_instance: str | None = Header(default=None, alias="X-Evolution-Instance"),
+    x_whatsapp_connection: str | None = Header(default=None, alias="X-WhatsApp-Connection"),
     x_business_phone: str | None = Header(default=None, alias="X-Business-Phone"),
 ):
     try:
-        if x_evolution_instance:
+        if isinstance(x_whatsapp_connection, str) and x_whatsapp_connection:
+            access_token = service.get_business_integration_token_by_connection_key(
+                x_whatsapp_connection,
+                integration.id,
+            )
+
+        elif x_evolution_instance:
             try:
-                access_token = service.get_business_integration_token_by_instance(x_evolution_instance, integration.id)
+                access_token = service.get_business_integration_token_by_instance(
+                    x_evolution_instance,
+                    integration.id,
+                )
 
             except BusinessNotFoundError:
                 if not x_business_phone:
@@ -94,7 +107,10 @@ def login_integration(integration: IntegrationDep, service: AuthServiceDep, x_ev
             access_token = service.get_business_integration_token(x_business_phone, integration.id)
 
         else:
-            raise HTTPException(status_code=400, detail="X-Evolution-Instance obrigatório.")
+            raise HTTPException(
+                status_code=400,
+                detail="X-WhatsApp-Connection ou X-Business-Phone obrigatório.",
+            )
 
         return {
             "access_token": access_token,

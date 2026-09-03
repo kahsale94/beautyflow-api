@@ -25,6 +25,25 @@ class AppointmentReminderEvolutionPayload(BaseModel):
     instance_name: str
 
 
+class AppointmentReminderConnectionPayload(BaseModel):
+    provider: str
+    connection_key: str
+    status: str
+
+
+class AppointmentReminderTemplatePayload(BaseModel):
+    name: str
+    language: str
+    body_parameters: list[str]
+
+
+class AppointmentReminderOutboundPayload(BaseModel):
+    type: str
+    to: str
+    text: str | None = None
+    template: AppointmentReminderTemplatePayload | None = None
+
+
 class AppointmentReminderServicePayload(BaseModel):
     id: int
     name: str
@@ -54,7 +73,9 @@ class AppointmentReminderClaimItem(BaseModel):
     appointment: AppointmentReminderAppointmentPayload
     business: AppointmentReminderBusinessPayload
     client: AppointmentReminderClientPayload
-    evolution: AppointmentReminderEvolutionPayload
+    connection: AppointmentReminderConnectionPayload
+    outbound: AppointmentReminderOutboundPayload
+    evolution: AppointmentReminderEvolutionPayload | None = None
     message: str
 
 

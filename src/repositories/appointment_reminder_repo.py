@@ -101,7 +101,14 @@ class AppointmentReminderRepository:
 
         return db.scalars(stmt).one_or_none()
 
-    def get_by_id_for_integration(self, db: Session, reminder_id: int, integration_id: int):
+    def get_by_id_for_integration(
+        self,
+        db: Session,
+        reminder_id: int,
+        integration_id: int,
+        *,
+        for_update: bool = False,
+    ):
         stmt = (
             select(AppointmentReminder)
             .join(
@@ -114,6 +121,8 @@ class AppointmentReminderRepository:
             )
             .where(AppointmentReminder.id == reminder_id)
         )
+        if for_update:
+            stmt = stmt.with_for_update(of=AppointmentReminder)
         return db.scalars(stmt).one_or_none()
 
     def get_pending_for_appointment(self, db: Session, appointment_id: int):
@@ -223,6 +232,7 @@ class AppointmentReminderRepository:
             )
             .options(
                 joinedload(AppointmentReminder.business).joinedload(Business.evolution_instance),
+                joinedload(AppointmentReminder.business).joinedload(Business.whatsapp_connection),
                 joinedload(AppointmentReminder.appointment).joinedload(Appointment.client),
                 joinedload(AppointmentReminder.appointment).joinedload(Appointment.professional),
                 joinedload(AppointmentReminder.appointment).joinedload(Appointment.service),

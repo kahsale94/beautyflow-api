@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from src.utils import normalize_phone
 from src.core import DataBaseDep
-from src.models import EvolutionInstance, User, BusinessIntegration, UserRefreshToken
+from src.models import EvolutionInstance, User, BusinessIntegration, UserRefreshToken, WhatsAppConnection
 from src.repositories import BusinessRepository, IntegrationRepository
 from src.security import RefreshRequest, TokenManager, verify_hash, create_user_access_token, create_user_refresh_token, create_business_integration_token
 from src.security.key_rotation import current_hmac_digest, hmac_digest_candidates
@@ -188,11 +188,24 @@ class AuthService:
         return create_business_integration_token(business_integration.business_id, business_integration.integration_id)
 
     def get_business_integration_token_by_instance(self, instance_name: str, integration_id: int):
+        normalized_instance_name = instance_name.strip()
+        generic_connection = self.db.scalars(
+            select(WhatsAppConnection).where(
+                WhatsAppConnection.provider == "evolution",
+                WhatsAppConnection.provider_connection_id == normalized_instance_name,
+                WhatsAppConnection.integration_id == integration_id,
+            )
+        ).one_or_none()
+        if generic_connection:
+            return self.get_business_integration_token_by_connection_key(
+                generic_connection.connection_key,
+                integration_id,
+            )
+
         integration = self.integration_repo.get_by_id(self.db, integration_id)
         if not integration or not integration.is_active:
             raise IntegrationNotFoundError()
 
-        normalized_instance_name = instance_name.strip()
         if not normalized_instance_name or len(normalized_instance_name) > 100:
             raise BusinessNotFoundError()
 
@@ -223,6 +236,46 @@ class AuthService:
             business_integration.business_id,
             business_integration.integration_id,
         )
+
+    def get_business_integration_token_by_connection_key(self, connection_key: str, integration_id: int):
+        integration = self.integration_repo.get_by_id(self.db, integration_id)
+        if not integration or not integration.is_active:
+            raise IntegrationNotFoundError()
+
+        provider, separator, provider_connection_id = connection_key.strip().partition(":")
+        if (
+            not separator
+            or provider not in {"evolution", "covercut"}
+            or not provider_connection_id
+            or len(provider_connection_id) > 191
+        ):
+            raise BusinessNotFoundError()
+
+        connection = self.db.scalars(
+            select(WhatsAppConnection).where(
+                WhatsAppConnection.provider == provider,
+                WhatsAppConnection.provider_connection_id == provider_connection_id,
+                WhatsAppConnection.integration_id == integration.id,
+            )
+        ).one_or_none()
+        if not connection:
+            raise BusinessNotFoundError()
+
+        business = self.business_repo.get_by_id(self.db, connection.business_id)
+        if not business or not business.is_active:
+            raise BusinessNotFoundError()
+
+        business_integration = self.db.scalars(
+            select(BusinessIntegration).where(
+                BusinessIntegration.integration_id == integration.id,
+                BusinessIntegration.business_id == business.id,
+                BusinessIntegration.is_active == True,
+            )
+        ).one_or_none()
+        if not business_integration:
+            raise DeactivatedLinkError()
+
+        return create_business_integration_token(business.id, integration.id)
 
 def get_auth_service(db: DataBaseDep):
     return AuthService(

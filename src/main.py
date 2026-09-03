@@ -57,6 +57,7 @@ app.add_middleware(
         "X-Business-ID",
         "X-Business-Phone",
         "X-Evolution-Instance",
+        "X-WhatsApp-Connection",
         "X-CSRF-Token",
     ],
 )

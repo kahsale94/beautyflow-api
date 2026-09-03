@@ -16,6 +16,9 @@ from src.services.professional_service import ProfessionalService, get_professio
 from src.services.professional_service_link_service import ProfessionalServiceLinkService, get_professional_service_link_service
 from src.services.business_integration_service import BusinessIntegrationService, get_business_integration_service
 from src.services.evolution_instance_service import EvolutionInstanceService, get_evolution_instance_service
+from src.services.whatsapp_connection_service import WhatsAppConnectionService, get_whatsapp_connection_service
+from src.services.messaging_service import MessagingService, get_messaging_service
+from src.services.covercut_webhook_service import CovercutWebhookService, get_covercut_webhook_service
 from src.security import (require_user, require_super_admin, UserContext, get_business_scope, require_admin, IntegrationContext, 
 require_integration, get_business_phone, require_business_integration, BusinessIntegrationContext, require_user_or_business_integration)
 
@@ -45,3 +48,6 @@ ProfessionalServiceDep = Annotated[ProfessionalService, Depends(get_professional
 ProfessionalServiceLinkServiceDep = Annotated[ProfessionalServiceLinkService, Depends(get_professional_service_link_service)]
 BusinessIntegrationServiceDep = Annotated[BusinessIntegrationService, Depends(get_business_integration_service)]
 EvolutionInstanceServiceDep = Annotated[EvolutionInstanceService, Depends(get_evolution_instance_service)]
+WhatsAppConnectionServiceDep = Annotated[WhatsAppConnectionService, Depends(get_whatsapp_connection_service)]
+MessagingServiceDep = Annotated[MessagingService, Depends(get_messaging_service)]
+CovercutWebhookServiceDep = Annotated[CovercutWebhookService, Depends(get_covercut_webhook_service)]

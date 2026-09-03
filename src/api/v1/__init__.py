@@ -13,6 +13,8 @@ from .availability_routes import router as availability_router
 from .professional_routes import router as professional_router
 from .professional_service_routes import router as professional_service_router
 from .business_integration_routes import router as business_integration_router
+from .whatsapp_routes import router as whatsapp_router
+from .covercut_webhook_routes import router as covercut_webhook_router
 
 router = APIRouter(prefix="/v1")
 
@@ -29,3 +31,5 @@ router.include_router(availability_router)
 router.include_router(professional_router)
 router.include_router(professional_service_router)
 router.include_router(business_integration_router)
+router.include_router(whatsapp_router)
+router.include_router(covercut_webhook_router)
