@@ -41,7 +41,7 @@ def test_admin_integration_layout_does_not_reserve_empty_message_space():
     script = (STATIC_ROOT / "admin/js/admin.js").read_text(encoding="utf-8")
     stylesheet = (STATIC_ROOT / "admin/css/admin.css").read_text(encoding="utf-8")
 
-    assert "{% if evolution_configured %}hidden{% endif %}" in template
+    assert "{% if provider_configured %}hidden{% endif %}" in template
     assert "messageElement.hidden = !message" in script
     assert ".integration-message[hidden]" in stylesheet
 

@@ -1,7 +1,13 @@
+import asyncio
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+from fastapi import HTTPException
+
+from src.api.v1.appointment_reminder_routes import dispatch_appointment_reminder
+from src.clients import CovercutAmbiguousSendError
 from src.models.appointment_model import AppointmentStatus
 from src.services.appointment_reminder_service import AppointmentReminderService
 
@@ -93,6 +99,141 @@ def test_manual_reminder_is_queued_for_immediate_claim():
     assert db.commits == 1
 
 
+def test_covercut_reminder_uses_approved_utility_template_contract():
+    service = AppointmentReminderService(SimpleNamespace(), SimpleNamespace())
+    start = datetime(2026, 9, 8, 15, 30, tzinfo=timezone.utc)
+    business = SimpleNamespace(
+        id=7,
+        name="Salão da Ana",
+        phone="5511333333333",
+        timezone="America/Sao_Paulo",
+        whatsapp_connection=SimpleNamespace(
+            provider="covercut",
+            connection_key="covercut:pnid-7",
+            status="connected",
+        ),
+        evolution_instance=None,
+    )
+    appointment = SimpleNamespace(
+        id=11,
+        start_datetime=start,
+        client=SimpleNamespace(id=4, name="Joana", phone="5511999999999"),
+        service=SimpleNamespace(id=5, name="Corte"),
+        professional=SimpleNamespace(id=6, name="Ana"),
+    )
+    reminder = SimpleNamespace(
+        id=12,
+        appointment_id=11,
+        reminder_type="appointment_upcoming",
+        scheduled_for=start - timedelta(hours=30),
+        appointment_start_datetime=start,
+        appointment=appointment,
+        business=business,
+    )
+
+    payload = service._to_claim_payload(reminder)
+
+    assert payload["connection"] == {
+        "provider": "covercut",
+        "connection_key": "covercut:pnid-7",
+        "status": "connected",
+    }
+    assert payload["outbound"]["type"] == "template"
+    assert payload["outbound"]["template"]["name"] == "appointment_reminder"
+    assert payload["outbound"]["template"]["language"] == "pt_BR"
+    assert payload["outbound"]["template"]["body_parameters"] == [
+        "Joana",
+        "Salão da Ana",
+        "Corte",
+        "Ana",
+        "terça-feira",
+        "08/09/2026",
+        "12:30",
+    ]
+    assert "evolution" not in payload
+
+
+def test_backend_dispatches_covercut_template_and_marks_external_message_id():
+    class ReminderServiceStub:
+        sent = None
+
+        def get_processing_payload(self, reminder_id, integration_id):
+            assert (reminder_id, integration_id) == (12, 3)
+            return {
+                "business": {"id": 7},
+                "outbound": {
+                    "type": "template",
+                    "to": "5511999999999",
+                    "template": {
+                        "name": "appointment_reminder",
+                        "language": "pt_BR",
+                        "body_parameters": ["Joana", "Salão"],
+                    },
+                },
+            }
+
+        def mark_sent(self, reminder_id, integration_id, external_message_id):
+            self.sent = (reminder_id, integration_id, external_message_id)
+
+    class MessagingServiceStub:
+        async def send_template(self, business_id, integration_id, **kwargs):
+            assert (business_id, integration_id) == (7, 3)
+            assert kwargs["name"] == "appointment_reminder"
+            return SimpleNamespace(
+                external_message_id="wamid.reminder",
+                as_dict=lambda: {
+                    "provider": "covercut",
+                    "external_message_id": "wamid.reminder",
+                    "status": "accepted",
+                },
+            )
+
+    reminder_service = ReminderServiceStub()
+    result = asyncio.run(
+        dispatch_appointment_reminder(
+            12,
+            SimpleNamespace(id=3),
+            reminder_service,
+            MessagingServiceStub(),
+        )
+    )
+
+    assert result["external_message_id"] == "wamid.reminder"
+    assert reminder_service.sent == (12, 3, "wamid.reminder")
+
+
+def test_ambiguous_reminder_send_is_terminal_for_manual_reconciliation():
+    class ReminderServiceStub:
+        indeterminate = None
+
+        def get_processing_payload(self, reminder_id, integration_id):
+            return {
+                "business": {"id": 7},
+                "outbound": {"type": "text", "to": "5511999999999", "text": "Lembrete"},
+            }
+
+        def mark_indeterminate(self, reminder_id, integration_id):
+            self.indeterminate = (reminder_id, integration_id)
+
+    class MessagingServiceStub:
+        async def send_text(self, *args, **kwargs):
+            raise CovercutAmbiguousSendError(503, "indeterminate")
+
+    reminder_service = ReminderServiceStub()
+    with pytest.raises(HTTPException) as exc_info:
+        asyncio.run(
+            dispatch_appointment_reminder(
+                12,
+                SimpleNamespace(id=3),
+                reminder_service,
+                MessagingServiceStub(),
+            )
+        )
+
+    assert exc_info.value.status_code == 503
+    assert reminder_service.indeterminate == (12, 3)
+
+
 def test_appointment_service_controls_reminder_lifecycle():
     source = read_source("src/services/appointment_service.py")
 
@@ -113,6 +254,7 @@ def test_appointment_reminder_internal_api_uses_integration_scope():
     assert '"/claim"' in route_source
     assert '"/{reminder_id}/sent"' in route_source
     assert '"/{reminder_id}/failed"' in route_source
+    assert '"/{reminder_id}/dispatch"' in route_source
     assert "IntegrationDep" in route_source
     assert "AppointmentReminderServiceDep" in dependency_source
     assert "appointment_reminder_router" in api_source

@@ -4,7 +4,11 @@ import pytest
 from fastapi import HTTPException
 
 from src.api.v1.auth_routes import login_integration
-from src.services.auth_service import BusinessNotFoundError, IntegrationNotFoundError
+from src.services.auth_service import (
+    BusinessNotFoundError,
+    DeactivatedLinkError,
+    IntegrationNotFoundError,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -70,6 +74,47 @@ def test_integration_login_prefers_evolution_instance():
     )
 
     assert result["access_token"] == "instance-token"
+
+
+def test_integration_login_prefers_generic_whatsapp_connection():
+    class ServiceStub:
+        def get_business_integration_token_by_connection_key(self, connection_key, integration_id):
+            assert connection_key == "covercut:phone-number-id"
+            assert integration_id == 3
+            return "connection-token"
+
+    integration = type("Integration", (), {"id": 3})()
+    result = login_integration(
+        integration,
+        ServiceStub(),
+        x_evolution_instance=None,
+        x_whatsapp_connection="covercut:phone-number-id",
+        x_business_phone=None,
+    )
+
+    assert result["access_token"] == "connection-token"
+
+
+@pytest.mark.parametrize(
+    "service_error",
+    [BusinessNotFoundError(), IntegrationNotFoundError(), DeactivatedLinkError()],
+)
+def test_generic_connection_hides_unknown_cross_integration_or_inactive_link(service_error):
+    class ServiceStub:
+        def get_business_integration_token_by_connection_key(self, connection_key, integration_id):
+            raise service_error
+
+    with pytest.raises(HTTPException) as exc_info:
+        login_integration(
+            type("Integration", (), {"id": 3})(),
+            ServiceStub(),
+            x_evolution_instance=None,
+            x_whatsapp_connection="covercut:other-tenant-number",
+            x_business_phone=None,
+        )
+
+    assert exc_info.value.status_code == 401
+    assert exc_info.value.detail == "Credenciais de integração inválidas!"
 
 def test_integration_login_falls_back_to_phone_for_legacy_instance():
     class ServiceStub:

@@ -98,21 +98,50 @@ def test_conversation_redis_keys_are_instance_scoped():
         "sessionKey: '=beautyflow_bot.{{ $json.client.remote_jid }}",
     ]
 
-    for source in workflow_sources("main"):
-        assert "evo.instance || 'default'" in source
-        assert "$json.api.evo_instance || \"default\"" in source
+    for name, source in workflow_source_items("main"):
+        if "-staging." in name:
+            assert "whatsapp.connection_key || 'default'" in source
+            assert "$json.api.connection_key || \"default\"" in source
+        else:
+            assert "evo.instance || 'default'" in source
+            assert "$json.api.evo_instance || \"default\"" in source
         assert ".conversation_meta" in source
         assert ".outside_hours_context" in source
         for old_fragment in old_key_fragments:
             assert old_fragment not in source
 
-    for source in workflow_sources("clients"):
-        assert "api.evo_instance || 'default'" in source
+    for name, source in workflow_source_items("clients"):
+        expected_scope = "api.connection_key || 'default'" if "-staging." in name else "api.evo_instance || 'default'"
+        assert expected_scope in source
         assert ".state" in source
         assert ".chat_memory" in source
         assert ".chat_buffer" in source
         for old_fragment in old_key_fragments:
             assert old_fragment not in source
+
+
+def test_staging_workflows_use_the_provider_neutral_messaging_gateway():
+    staging_sources = [
+        path.read_text(encoding="utf-8")
+        for path in sorted((ROOT / "workflows").glob("*-staging.workflow.ts"))
+    ]
+
+    if not staging_sources:
+        return
+    for source in staging_sources:
+        assert "n8n-nodes-evolution-api" not in source
+        assert "X-Evolution-Instance" not in source
+
+    combined = "\n".join(staging_sources)
+    assert "/whatsapp/messages" in combined
+    assert "X-WhatsApp-Connection" in combined
+
+
+def test_production_workflows_remain_on_the_legacy_evolution_path():
+    production = (ROOT / "workflows/main-prod.workflow.ts").read_text(encoding="utf-8")
+
+    assert "n8n-nodes-evolution-api.evolutionApi" in production
+    assert "X-Evolution-Instance" in production
 
 
 def test_pending_state_workflows_scan_instance_scoped_outside_hours_context():

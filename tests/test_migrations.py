@@ -23,6 +23,7 @@ def test_single_clean_initial_migration_exists():
         "0010_add_business_attendance.py",
         "0011_add_business_pay_methods.py",
         "0012_add_business_cep.py",
+        "0013_whatsapp_connections.py",
     ]
     assert all(len(Path(filename).stem) <= 32 for filename in migration_files)
 
@@ -117,3 +118,12 @@ def test_single_clean_initial_migration_exists():
     assert 'down_revision: Union[str, None] = "0011_add_business_pay_methods"' in source
     assert 'sa.Column("cep", sa.String(length=8), nullable=True)' in source
     assert 'op.drop_column("businesses", "cep")' in source
+
+    source = read_source("alembic/versions/0013_whatsapp_connections.py")
+    assert 'revision: str = "0013_whatsapp_connections"' in source
+    assert 'down_revision: Union[str, None] = "0012_add_business_cep"' in source
+    assert "whatsapp_connections" in source
+    assert "whatsapp_webhook_events" in source
+    assert "FROM evolution_instances" in source
+    assert "uq_whatsapp_connection_provider_identifier" in source
+    assert "uq_whatsapp_connection_provider_reference" in source

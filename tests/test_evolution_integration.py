@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import httpx
 
-from src.clients import EvolutionAPIError, EvolutionClient
+from src.clients import EvolutionAPIError, EvolutionAmbiguousSendError, EvolutionClient
 from src.services.evolution_instance_service import EvolutionInstanceService
 
 
@@ -122,13 +122,15 @@ def test_evolution_client_fetches_instance_details_by_name():
     assert captured["params"] == {"instanceName": "beautyflow-n8n-atendimento-teste-7"}
     assert payload[0]["ownerJid"] == "5511999999999@s.whatsapp.net"
 
-def test_production_requires_evolution_configuration():
+def test_production_validates_only_enabled_whatsapp_providers():
     config_source = (ROOT / "src/core/config.py").read_text(encoding="utf-8")
 
     assert '"EVOLUTION_API_URL": EVOLUTION_API_URL' in config_source
     assert '"EVOLUTION_API_KEY": EVOLUTION_API_KEY' in config_source
     assert '"EVOLUTION_WEBHOOK_URL": EVOLUTION_WEBHOOK_URL' in config_source
-    assert "Evolution API obrigatória em produção" in config_source
+    assert '"covercut": {' in config_source
+    assert "for provider in sorted(WHATSAPP_ENABLED_PROVIDERS)" in config_source
+    assert "Configuração obrigatória do provider WhatsApp" in config_source
 
 def test_evolution_client_raises_typed_error_without_exposing_key():
     async def handler(request: httpx.Request):
@@ -368,6 +370,30 @@ def test_evolution_logout_preserves_error_when_remote_is_still_connected():
     assert repository.instance.state == "open"
     assert client.state_calls == 1
 
+
+def test_evolution_text_timeout_is_classified_as_ambiguous_without_retry():
+    calls = 0
+
+    async def handler(request: httpx.Request):
+        nonlocal calls
+        calls += 1
+        raise httpx.ReadTimeout("timeout", request=request)
+
+    client = EvolutionClient(
+        "https://evolution.example.com",
+        "secret-key",
+        transport=httpx.MockTransport(handler),
+    )
+
+    try:
+        asyncio.run(client.send_text("tenant-7", "5511999999999", "Olá"))
+    except EvolutionAmbiguousSendError:
+        pass
+    else:
+        raise AssertionError("EvolutionAmbiguousSendError was not raised")
+
+    assert calls == 1
+
 def test_evolution_logout_preserves_error_for_indeterminate_remote_state():
     client = FakeLogoutEvolutionClient(remote_state="connecting")
     service, repository = build_existing_instance_service(client)
@@ -381,7 +407,7 @@ def test_evolution_logout_preserves_error_for_indeterminate_remote_state():
 
     assert repository.instance.state == "open"
 
-def test_admin_and_workflow_use_instance_based_onboarding_contract():
+def test_admin_uses_generic_contract_and_prod_keeps_legacy_evolution_auth():
     admin_template = open(
         "src/templates/admin/integrations/index.html",
         encoding="utf-8",
@@ -391,7 +417,8 @@ def test_admin_and_workflow_use_instance_based_onboarding_contract():
         encoding="utf-8",
     ).read()
 
-    assert 'data-evolution-action="connect"' in admin_template
-    assert "data-evolution-qr-image" in admin_template
+    assert 'data-whatsapp-action="connect"' in admin_template
+    assert "data-whatsapp-qr-image" in admin_template
+    assert "data-evolution-action" not in admin_template
     assert "X-Evolution-Instance" in workflow
     assert "data handler').item.json.evo.instance" in workflow
