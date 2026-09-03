@@ -506,41 +506,41 @@ function initializeBusinessCepLookup() {
     });
 }
 
-function initializeEvolutionIntegrations() {
-    const cards = document.querySelectorAll('[data-evolution-card]');
+function initializeWhatsAppIntegrations() {
+    const cards = document.querySelectorAll('[data-whatsapp-card]');
 
     cards.forEach(function (card) {
         if (!(card instanceof HTMLElement)) return;
 
         const integrationId = card.dataset.integrationId;
         const csrfToken = card.dataset.csrfToken || '';
-        const configured = card.dataset.evolutionConfigured === 'true';
-        const statusElement = card.querySelector('[data-evolution-status]');
-        const messageElement = card.querySelector('[data-evolution-message]');
-        const detailsElement = card.querySelector('[data-evolution-details]');
-        const instanceNameElement = card.querySelector('[data-evolution-instance-name]');
-        const phoneElement = card.querySelector('[data-evolution-phone]');
-        const qrContainer = card.querySelector('[data-evolution-qr]');
-        const qrImage = card.querySelector('[data-evolution-qr-image]');
-        const pairingCodeElement = card.querySelector('[data-evolution-pairing-code]');
-        const hasInitialInstance = Boolean(
-            instanceNameElement instanceof HTMLElement && instanceNameElement.textContent.trim()
+        const configured = card.dataset.whatsappConfigured === 'true';
+        const statusElement = card.querySelector('[data-whatsapp-status]');
+        const messageElement = card.querySelector('[data-whatsapp-message]');
+        const detailsElement = card.querySelector('[data-whatsapp-details]');
+        const connectionKeyElement = card.querySelector('[data-whatsapp-connection-key]');
+        const providerLabelElement = card.querySelector('[data-whatsapp-provider-label]');
+        const phoneElement = card.querySelector('[data-whatsapp-phone]');
+        const qrContainer = card.querySelector('[data-whatsapp-qr]');
+        const qrImage = card.querySelector('[data-whatsapp-qr-image]');
+        const pairingCodeElement = card.querySelector('[data-whatsapp-pairing-code]');
+        const removeWarning = card.querySelector('[data-whatsapp-remove-warning]');
+        const hasInitialConnection = Boolean(
+            connectionKeyElement instanceof HTMLElement && connectionKeyElement.textContent.trim()
         );
         let pollTimer = null;
         let pollAttempts = 0;
         let reconciliationTimer = null;
+        let onboardingWindow = null;
+        let onboardingOrigin = null;
 
         if (!integrationId || !configured) return;
 
         function statusLabel(state) {
             const labels = {
-                open: 'conectado',
                 connected: 'conectado',
                 connecting: 'aguardando conexão',
-                creating: 'criando instância',
-                close: 'desconectado',
                 disconnected: 'desconectado',
-                missing: 'ausente',
                 error: 'erro',
                 not_configured: 'não configurado',
             };
@@ -554,53 +554,75 @@ function initializeEvolutionIntegrations() {
             messageElement.classList.toggle('error', Boolean(isError));
         }
 
-        function updateButtons(hasInstance, state) {
-            card.querySelectorAll('[data-evolution-action]').forEach(function (button) {
+        function updateButtons(hasConnection, state) {
+            card.querySelectorAll('[data-whatsapp-action]').forEach(function (button) {
                 if (!(button instanceof HTMLButtonElement)) return;
-                const action = button.dataset.evolutionAction;
+                const action = button.dataset.whatsappAction;
                 if (action === 'connect') {
-                    button.textContent = hasInstance ? 'Reconectar WhatsApp' : 'Conectar WhatsApp';
-                    button.hidden = state === 'open';
+                    button.textContent = hasConnection ? 'Reconectar WhatsApp' : 'Conectar WhatsApp';
+                    button.hidden = state === 'connected';
                 } else if (action === 'qrcode') {
-                    button.hidden = !hasInstance || state === 'open';
+                    button.hidden = !hasConnection || state === 'connected';
                 } else if (action === 'logout') {
-                    button.hidden = !hasInstance || state !== 'open';
+                    button.hidden = !hasConnection || state !== 'connected';
                 } else {
-                    button.hidden = !hasInstance;
+                    button.hidden = !hasConnection;
                 }
             });
         }
 
         function updateState(payload) {
-            const state = payload.state || 'not_configured';
-            const hasInstance = Boolean(payload.instance_name);
-            card.dataset.instanceState = state;
+            const state = payload.state || payload.status || 'not_configured';
+            const provider = payload.provider || card.dataset.whatsappProvider || '';
+            const hasConnection = Boolean(payload.connection_key);
+            card.dataset.connectionState = state;
+            card.dataset.whatsappProvider = provider;
 
             if (statusElement instanceof HTMLElement) {
                 statusElement.textContent = statusLabel(state);
-                statusElement.className = `badge evolution-status evolution-status-${state}`;
+                statusElement.className = `badge whatsapp-status whatsapp-status-${state}`;
             }
-            if (detailsElement instanceof HTMLElement) detailsElement.hidden = !hasInstance;
-            if (instanceNameElement instanceof HTMLElement) {
-                instanceNameElement.textContent = payload.instance_name || '';
+            if (detailsElement instanceof HTMLElement) detailsElement.hidden = !hasConnection;
+            if (connectionKeyElement instanceof HTMLElement) {
+                connectionKeyElement.textContent = payload.connection_key || '';
+            }
+            if (providerLabelElement instanceof HTMLElement) {
+                providerLabelElement.textContent = provider || '';
             }
             if (phoneElement instanceof HTMLElement) {
                 phoneElement.textContent = payload.phone || 'Será identificado após a conexão';
             }
+            if (removeWarning instanceof HTMLElement) {
+                removeWarning.hidden = provider !== 'covercut';
+            }
 
-            updateButtons(hasInstance, state);
-
-            if (state === 'open') {
+            updateButtons(hasConnection, state);
+            if (state === 'connected') {
                 hideQrCode();
                 stopPolling();
                 setMessage('WhatsApp conectado com sucesso.', false);
             }
         }
 
-        function showQrCode(payload) {
+        function showConnectionInstructions(payload) {
+            if (payload.onboarding_url && payload.onboarding_origin) {
+                onboardingOrigin = payload.onboarding_origin;
+                if (!onboardingWindow || onboardingWindow.closed) {
+                    onboardingWindow = window.open('about:blank', 'ConnectWhatsApp', 'width=550,height=700');
+                }
+                if (!onboardingWindow) {
+                    throw new Error('Permita pop-ups para abrir a conexão do WhatsApp.');
+                }
+                onboardingWindow.location.replace(payload.onboarding_url);
+                setMessage('Conclua a conexão na janela segura do provider.', false);
+                return;
+            }
+
+            if (onboardingWindow && !onboardingWindow.closed) onboardingWindow.close();
+            onboardingWindow = null;
+            onboardingOrigin = null;
             const qrCode = payload.qr_code;
             const pairingCode = payload.pairing_code;
-
             if (qrCode && qrImage instanceof HTMLImageElement && qrContainer instanceof HTMLElement) {
                 qrImage.src = qrCode;
                 qrContainer.hidden = false;
@@ -618,7 +640,7 @@ function initializeEvolutionIntegrations() {
         }
 
         function setBusy(busy) {
-            card.querySelectorAll('[data-evolution-action]').forEach(function (button) {
+            card.querySelectorAll('[data-whatsapp-action]').forEach(function (button) {
                 if (button instanceof HTMLButtonElement) button.disabled = busy;
             });
             card.classList.toggle('is-loading', busy);
@@ -631,9 +653,7 @@ function initializeEvolutionIntegrations() {
             } catch (error) {
                 payload = {};
             }
-            if (!response.ok) {
-                throw new Error(payload.detail || 'Não foi possível concluir a operação.');
-            }
+            if (!response.ok) throw new Error(payload.detail || 'Não foi possível concluir a operação.');
             return payload;
         }
 
@@ -655,10 +675,7 @@ function initializeEvolutionIntegrations() {
         async function refreshStatus() {
             const response = await window.fetch(
                 `/admin/integrations/${encodeURIComponent(integrationId)}/whatsapp/status`,
-                {
-                    credentials: 'same-origin',
-                    headers: { 'Accept': 'application/json' },
-                }
+                { credentials: 'same-origin', headers: { 'Accept': 'application/json' } }
             );
             const payload = await parseResponse(response);
             updateState(payload);
@@ -677,9 +694,9 @@ function initializeEvolutionIntegrations() {
             pollAttempts = 0;
             pollTimer = window.setInterval(async function () {
                 pollAttempts += 1;
-                if (pollAttempts > 40) {
+                if (pollAttempts > 60) {
                     stopPolling();
-                    setMessage('O QR expirou. Gere um novo código para continuar.', true);
+                    setMessage('A conexão não foi concluída. Tente continuar o onboarding.', true);
                     return;
                 }
                 try {
@@ -691,65 +708,72 @@ function initializeEvolutionIntegrations() {
             }, 3000);
         }
 
+        window.addEventListener('message', function (event) {
+            if (!onboardingWindow || event.source !== onboardingWindow || event.origin !== onboardingOrigin) return;
+            const eventType = event.data && event.data.type;
+            if (!['WA_CONNECT_SUCCESS', 'WA_CONNECT_CLOSED', 'WA_CONNECT_ERROR'].includes(eventType)) return;
+            if (eventType === 'WA_CONNECT_SUCCESS') {
+                setMessage('Conexão concluída. Confirmando o status no servidor…', false);
+                startPolling();
+            } else if (eventType === 'WA_CONNECT_CLOSED') {
+                setMessage('A janela foi fechada antes de concluir a conexão.', true);
+            } else {
+                setMessage('O provider não conseguiu concluir a conexão.', true);
+            }
+        }, false);
+
         card.addEventListener('click', async function (event) {
             const target = event.target;
             if (!(target instanceof HTMLElement)) return;
-            const button = target.closest('[data-evolution-action]');
+            const button = target.closest('[data-whatsapp-action]');
             if (!(button instanceof HTMLButtonElement)) return;
 
-            const action = button.dataset.evolutionAction;
+            const action = button.dataset.whatsappAction;
             if (!action) return;
-            if (action === 'remove' && !window.confirm('Remover definitivamente esta instância da Evolution API?')) {
-                return;
+            const provider = card.dataset.whatsappProvider;
+            if (action === 'remove') {
+                const warning = provider === 'covercut'
+                    ? 'Remover desconecta o número da API oficial e exige novo onboarding. Continuar?'
+                    : 'Remover definitivamente esta conexão WhatsApp?';
+                if (!window.confirm(warning)) return;
             }
-            if (action === 'logout' && !window.confirm('Desconectar o WhatsApp desta instância?')) {
-                return;
-            }
+            if (action === 'logout' && !window.confirm('Suspender/desconectar o WhatsApp desta empresa?')) return;
 
+            if ((action === 'connect' || action === 'qrcode') && provider === 'covercut') {
+                onboardingWindow = window.open('about:blank', 'ConnectWhatsApp', 'width=550,height=700');
+            }
             setBusy(true);
             setMessage('', false);
             try {
                 const payload = await postAction(action);
                 if (action === 'remove') {
                     stopPolling();
-                    if (reconciliationTimer !== null) {
-                        window.clearInterval(reconciliationTimer);
-                        reconciliationTimer = null;
-                    }
+                    if (reconciliationTimer !== null) window.clearInterval(reconciliationTimer);
                     hideQrCode();
-                    updateState({ state: 'not_configured', instance_name: null, phone: null });
-                    setMessage('Instância removida.', false);
+                    updateState({ state: 'not_configured', connection_key: null, phone: null, provider });
+                    setMessage('Conexão removida.', false);
                     return;
                 }
 
                 updateState(payload);
-                showQrCode(payload);
+                showConnectionInstructions(payload);
                 if (action === 'connect' || action === 'qrcode') {
-                    if (payload.state !== 'open') {
-                        setMessage('Escaneie o código QR para concluir a conexão.', false);
-                        startPolling();
-                    }
+                    if (payload.state !== 'connected') startPolling();
                 } else if (action === 'logout') {
                     hideQrCode();
                     setMessage('WhatsApp desconectado.', false);
                 }
             } catch (error) {
+                if (onboardingWindow && !onboardingWindow.closed) onboardingWindow.close();
                 setMessage(error instanceof Error ? error.message : 'Não foi possível concluir a operação.', true);
             } finally {
                 setBusy(false);
             }
         });
 
-        updateButtons(
-            hasInitialInstance,
-            card.dataset.instanceState || 'not_configured'
-        );
-
-        if (['connecting', 'creating'].includes(card.dataset.instanceState || '')) {
-            startPolling();
-        }
-
-        if (hasInitialInstance) {
+        updateButtons(hasInitialConnection, card.dataset.connectionState || 'not_configured');
+        if (card.dataset.connectionState === 'connecting') startPolling();
+        if (hasInitialConnection) {
             refreshStatus().catch(function (error) {
                 setMessage(error instanceof Error ? error.message : 'Falha ao consultar a conexão.', true);
             });
@@ -901,7 +925,7 @@ document.addEventListener('DOMContentLoaded', function () {
     initializeAdminSidebar();
     initializeBusinessExternalOptions();
     initializeBusinessCepLookup();
-    initializeEvolutionIntegrations();
+    initializeWhatsAppIntegrations();
     initializeWeeklySchedulePanels();
     document.querySelectorAll('.flash').forEach(function (flash) {
         window.setTimeout(function () {

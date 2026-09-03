@@ -1850,7 +1850,7 @@ pre {
     font-weight: 750;
 }
 
-.evolution-qr {
+.whatsapp-qr {
     width: min(100%, 360px);
     margin-inline: auto;
     padding: 18px;
@@ -1860,7 +1860,7 @@ pre {
     text-align: center;
 }
 
-.evolution-qr img {
+.whatsapp-qr img {
     display: block;
     width: min(100%, 280px);
     aspect-ratio: 1;
@@ -1923,22 +1923,18 @@ pre {
     opacity: .78;
 }
 
-.evolution-status-open,
-.evolution-status-connected {
+.whatsapp-status-connected {
     background: var(--success-bg);
     color: var(--success-text);
 }
 
-.evolution-status-connecting,
-.evolution-status-creating {
+.whatsapp-status-connecting {
     background: #fef3c7;
     color: #92400e;
 }
 
-.evolution-status-close,
-.evolution-status-disconnected,
-.evolution-status-missing,
-.evolution-status-error {
+.whatsapp-status-disconnected,
+.whatsapp-status-error {
     background: #fee2e2;
     color: #991b1b;
 }
