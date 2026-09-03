@@ -11,3 +11,4 @@ from .professional_repo import ProfessionalRepository
 from .professional_service_repo import ProfessionalServiceRepository
 from .business_integration_repo import BusinessIntegrationRepository
 from .evolution_instance_repo import EvolutionInstanceRepository
+from .whatsapp_connection_repo import WhatsAppConnectionRepository, WhatsAppWebhookEventRepository

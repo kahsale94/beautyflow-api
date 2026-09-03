@@ -10,3 +10,6 @@ from .integration_service import IntegrationService, get_integration_service
 from .availability_service import AvailabilityService, get_availability_service
 from .professional_service import ProfessionalService, get_professional_service
 from .evolution_instance_service import EvolutionInstanceService, get_evolution_instance_service
+from .whatsapp_connection_service import WhatsAppConnectionService, get_whatsapp_connection_service
+from .messaging_service import MessagingService, get_messaging_service
+from .covercut_webhook_service import CovercutWebhookService, get_covercut_webhook_service

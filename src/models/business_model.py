@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from .appointment_reminder_model import AppointmentReminder
     from .business_integration_model import BusinessIntegration
     from .evolution_instance_model import EvolutionInstance
+    from .whatsapp_connection_model import WhatsAppConnection
 
 
 class BusinessType(str, PyEnum):
@@ -149,6 +150,11 @@ class Business(Base):
     integrations: Mapped[list["Integration"]] = relationship(secondary="business_integrations", viewonly=True)
     business_integrations: Mapped[list["BusinessIntegration"]] = relationship(back_populates="business", cascade="all, delete-orphan")
     evolution_instance: Mapped[Optional["EvolutionInstance"]] = relationship(
+        back_populates="business",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
+    whatsapp_connection: Mapped[Optional["WhatsAppConnection"]] = relationship(
         back_populates="business",
         cascade="all, delete-orphan",
         uselist=False,

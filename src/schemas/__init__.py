@@ -30,3 +30,4 @@ from .availability_schema import (
     AvailabilityCheckAndSuggestResponse,
 )
 from .business_integration_schema import BusinessIntegrationResponse, BusinessIntegrationCreate, BusinessIntegrationUpdate
+from .whatsapp_schema import WhatsAppMessageRequest, WhatsAppMessageResponse, WhatsAppTemplateRequest

@@ -80,6 +80,29 @@ EVOLUTION_WEBHOOK_URL = os.getenv("EVOLUTION_WEBHOOK_URL")
 EVOLUTION_INSTANCE_PREFIX = os.getenv("EVOLUTION_INSTANCE_PREFIX", "beautyflow")
 EVOLUTION_REQUEST_TIMEOUT_SECONDS = get_optional_int_env("EVOLUTION_REQUEST_TIMEOUT_SECONDS", 15)
 
+WHATSAPP_ENABLED_PROVIDERS = {
+    provider.lower() for provider in get_env_list("WHATSAPP_ENABLED_PROVIDERS") or ["evolution"]
+}
+WHATSAPP_DEFAULT_PROVIDER = os.getenv("WHATSAPP_DEFAULT_PROVIDER", "evolution").strip().lower()
+
+COVERCUT_API_BASE_URL = os.getenv("COVERCUT_API_BASE_URL", "https://api.covercut.com.br/api/v1")
+COVERCUT_API_KEY = os.getenv("COVERCUT_API_KEY")
+COVERCUT_API_SECRET = os.getenv("COVERCUT_API_SECRET")
+COVERCUT_REQUEST_TIMEOUT_SECONDS = get_optional_int_env("COVERCUT_REQUEST_TIMEOUT_SECONDS", 15)
+COVERCUT_MESSAGE_WEBHOOK_SECRET = os.getenv("COVERCUT_MESSAGE_WEBHOOK_SECRET")
+COVERCUT_SAAS_WEBHOOK_SECRET = os.getenv("COVERCUT_SAAS_WEBHOOK_SECRET")
+COVERCUT_N8N_WEBHOOK_URL = os.getenv("COVERCUT_N8N_WEBHOOK_URL")
+COVERCUT_EXTERNAL_ID_PREFIX = os.getenv("COVERCUT_EXTERNAL_ID_PREFIX", "beautyflow")
+COVERCUT_MEDIA_MAX_BYTES = get_optional_int_env("COVERCUT_MEDIA_MAX_BYTES", 20 * 1024 * 1024)
+COVERCUT_REMINDER_TEMPLATE_NAME = os.getenv(
+    "COVERCUT_REMINDER_TEMPLATE_NAME",
+    "appointment_reminder",
+)
+COVERCUT_REMINDER_TEMPLATE_LANGUAGE = os.getenv(
+    "COVERCUT_REMINDER_TEMPLATE_LANGUAGE",
+    "pt_BR",
+)
+
 if ALGORITHM not in {"HS256", "HS384", "HS512"}:
     raise RuntimeError("ALGORITHM deve usar HS256, HS384 ou HS512")
 
@@ -94,6 +117,17 @@ if USER_REFRESH_COOKIE_SAMESITE == "none" and not USER_REFRESH_COOKIE_SECURE:
 
 if ADMIN_COOKIE_SAMESITE == "none" and not ADMIN_COOKIE_SECURE:
     raise RuntimeError("ADMIN_COOKIE_SAMESITE=none exige cookie Secure")
+
+supported_whatsapp_providers = {"evolution", "covercut"}
+unknown_whatsapp_providers = WHATSAPP_ENABLED_PROVIDERS - supported_whatsapp_providers
+if unknown_whatsapp_providers:
+    raise RuntimeError(
+        "WHATSAPP_ENABLED_PROVIDERS contém providers inválidos: "
+        + ", ".join(sorted(unknown_whatsapp_providers))
+    )
+
+if WHATSAPP_DEFAULT_PROVIDER not in WHATSAPP_ENABLED_PROVIDERS:
+    raise RuntimeError("WHATSAPP_DEFAULT_PROVIDER deve estar habilitado em WHATSAPP_ENABLED_PROVIDERS")
 
 if ENVIRONMENT == "production":
     secret_values = {
@@ -131,17 +165,27 @@ if ENVIRONMENT == "production":
             + ", ".join(missing_error_reporting)
         )
 
-    missing_evolution = [
-        name
-        for name, value in {
+    provider_requirements = {
+        "evolution": {
             "EVOLUTION_API_URL": EVOLUTION_API_URL,
             "EVOLUTION_API_KEY": EVOLUTION_API_KEY,
             "EVOLUTION_WEBHOOK_URL": EVOLUTION_WEBHOOK_URL,
-        }.items()
-        if not value
-    ]
-    if missing_evolution:
-        raise RuntimeError(
-            "Evolution API obrigatória em produção: "
-            + ", ".join(missing_evolution)
-        )
+        },
+        "covercut": {
+            "COVERCUT_API_BASE_URL": COVERCUT_API_BASE_URL,
+            "COVERCUT_API_KEY": COVERCUT_API_KEY,
+            "COVERCUT_API_SECRET": COVERCUT_API_SECRET,
+            "COVERCUT_MESSAGE_WEBHOOK_SECRET": COVERCUT_MESSAGE_WEBHOOK_SECRET,
+            "COVERCUT_SAAS_WEBHOOK_SECRET": COVERCUT_SAAS_WEBHOOK_SECRET,
+            "COVERCUT_N8N_WEBHOOK_URL": COVERCUT_N8N_WEBHOOK_URL,
+        },
+    }
+    for provider in sorted(WHATSAPP_ENABLED_PROVIDERS):
+        missing_provider_config = [
+            name for name, value in provider_requirements[provider].items() if not value
+        ]
+        if missing_provider_config:
+            raise RuntimeError(
+                f"Configuração obrigatória do provider WhatsApp {provider}: "
+                + ", ".join(missing_provider_config)
+            )

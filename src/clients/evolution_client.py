@@ -14,6 +14,11 @@ class EvolutionAPIError(Exception):
         self.status_code = status_code
         self.detail = detail
 
+
+class EvolutionAmbiguousSendError(EvolutionAPIError):
+    """The provider may have accepted a message before the connection failed."""
+
+
 class EvolutionClient:
 
     def __init__(
@@ -36,7 +41,15 @@ class EvolutionClient:
         if not self.configured:
             raise EvolutionConfigurationError("Evolution API não configurada.")
 
-    async def _request(self, method: str, path: str, json: dict[str, Any] | None = None, params: dict[str, str] | None = None) -> Any:
+    async def _request(
+        self,
+        method: str,
+        path: str,
+        json: dict[str, Any] | None = None,
+        params: dict[str, str] | None = None,
+        *,
+        ambiguous_on_network_error: bool = False,
+    ) -> Any:
         self._ensure_configured()
 
         async with httpx.AsyncClient(
@@ -48,7 +61,8 @@ class EvolutionClient:
             try:
                 response = await client.request(method, path, json=json, params=params)
             except httpx.HTTPError as exc:
-                raise EvolutionAPIError(503, "Falha de comunicação com a Evolution API.") from exc
+                error_type = EvolutionAmbiguousSendError if ambiguous_on_network_error else EvolutionAPIError
+                raise error_type(503, "Falha de comunicação com a Evolution API.") from exc
 
         if response.is_error:
             detail = ""
@@ -136,3 +150,11 @@ class EvolutionClient:
 
     async def delete_instance(self, instance_name: str) -> dict[str, Any]:
         return await self._request("DELETE", f"/instance/delete/{self._instance_path(instance_name)}")
+
+    async def send_text(self, instance_name: str, number: str, text: str) -> dict[str, Any]:
+        return await self._request(
+            "POST",
+            f"/message/sendText/{self._instance_path(instance_name)}",
+            json={"number": number, "text": text},
+            ambiguous_on_network_error=True,
+        )
