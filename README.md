@@ -6,8 +6,9 @@ automated WhatsApp service flows.
 Beautyflow manages businesses, users, clients, professionals, services,
 availability rules, schedule blocks, and appointments. When a business is
 created without a slug, the backend generates one automatically. The application
-also provisions one Evolution API WhatsApp instance per business and connects
-the conversation flow to n8n workflows.
+also provisions one provider-backed WhatsApp connection per business and
+connects the conversation flow to n8n workflows. Evolution remains compatible;
+CoverCut/Meta Cloud API is available for the staged migration.
 
 ## Main Features
 
@@ -21,7 +22,8 @@ the conversation flow to n8n workflows.
   cancellation rules.
 - PostgreSQL-level protection against appointment and schedule block overlaps.
 - JWT authentication with access tokens and revocable refresh tokens.
-- WhatsApp onboarding with QR Code through Evolution API.
+- Provider-agnostic WhatsApp onboarding through Evolution QR or CoverCut
+  embedded signup.
 - CEP lookup and persisted, normalized business addresses in the admin panel.
 - n8n automation for conversation handling and scheduling tools.
 - Redis-backed rate limiting with an in-memory fallback.
@@ -44,9 +46,9 @@ API client ----> FastAPI ----> Services ----> Repositories ----> PostgreSQL
                        |    - rate limiting
                        |    - workflow state support
                        |
-                       +--> Evolution API
-                       |    - one WhatsApp instance per business
-                       |    - QR Code, status, logout, and removal
+                       +--> WhatsApp Provider
+                       |    - Evolution compatibility / QR
+                       |    - CoverCut SaaS / Meta Cloud API
                        |
                        +--> n8n
                             - automated service flow
@@ -61,7 +63,7 @@ API client ----> FastAPI ----> Services ----> Repositories ----> PostgreSQL
 | FastAPI | API, admin panel, authentication, and business rules |
 | PostgreSQL | Transactional data, constraints, and concurrency protection |
 | Redis | Rate limiting and workflow state support |
-| Evolution API | WhatsApp connection for each business |
+| WhatsApp providers | Per-business Evolution or CoverCut connection |
 | n8n | Service automation and API orchestration |
 | Alembic | Database migration versioning |
 
@@ -79,7 +81,7 @@ API client ----> FastAPI ----> Services ----> Repositories ----> PostgreSQL
 - Pytest
 - Docker and Docker Compose
 - n8n and n8n-as-code
-- Evolution API with `WHATSAPP-BAILEYS`
+- Evolution API with `WHATSAPP-BAILEYS` and CoverCut/Meta Cloud API
 
 ## Project Structure
 
@@ -91,7 +93,8 @@ API client ----> FastAPI ----> Services ----> Repositories ----> PostgreSQL
 |   |-- api/
 |   |   |-- health_routes.py    # Liveness and readiness endpoints
 |   |   `-- v1/                 # Public API endpoints
-|   |-- clients/                # Evolution API HTTP client
+|   |-- clients/                # Provider HTTP clients
+|   |-- providers/              # WhatsApp provider adapters
 |   |-- core/                   # Config, database, logging, errors
 |   |-- middlewares/            # Logging, rate limit, security headers
 |   |-- models/                 # SQLAlchemy models
@@ -127,6 +130,8 @@ Business endpoints use the `/v1` prefix.
 | Appointments | `/v1/appointments` | List, create, update, confirm, complete, cancel |
 | Integrations | `/v1/integrations` | External integration credentials |
 | Business integrations | `/v1/business-integrations` | Per-business integration links and config |
+| WhatsApp messaging | `/v1/whatsapp` | Tenant-scoped outbound gateway |
+| CoverCut webhooks | `/v1/webhooks/covercut` | Signed message and SaaS events |
 
 Interactive docs are available in development:
 
@@ -171,8 +176,8 @@ To obtain a per-business integration token:
 
 1. authenticate the integration;
 2. call `POST /v1/auth/integration`;
-3. send `X-Evolution-Instance` with the Evolution instance name;
-4. use `X-Business-Phone` only as a legacy fallback.
+3. send `X-WhatsApp-Connection` with the persisted generic connection key;
+4. `X-Evolution-Instance` and `X-Business-Phone` remain legacy fallbacks.
 
 Business operations use the `business_id` from the token. A regular user cannot
 switch business scope through request parameters.
@@ -209,7 +214,19 @@ previous one ends.
 
 Current schedule block reasons are `lunch`, `day_off`, `vacation`, and `sick`.
 
-## WhatsApp and Evolution API
+## WhatsApp providers
+
+The application persists a generic WhatsApp connection and delegates lifecycle
+and messaging to the selected provider. Existing Evolution businesses keep QR,
+status, authentication and outbound compatibility. CoverCut uses server-side
+credentials, one SaaS subaccount per business, signed/deduplicated webhooks and
+an outbound backend gateway that always resolves the source number inside the
+authenticated tenant scope.
+
+The full CoverCut staging setup, template definition, migration behavior and E2E
+checklist are in [docs/WHATSAPP_PROVIDERS.md](docs/WHATSAPP_PROVIDERS.md).
+
+### Evolution compatibility
 
 Each business can have one persisted Evolution API instance. New instance names
 are deterministic:
@@ -283,9 +300,12 @@ set and should remain untouched unless they are intentionally adopted or removed
 ### n8n Prerequisites
 
 - n8n instance compatible with the versioned workflows;
-- API, AI, Redis, Gmail/Calendar, and Evolution credentials required by nodes;
-- community node `n8n-nodes-evolution-api` installed and tested;
-- main webhook matching `EVOLUTION_WEBHOOK_URL`;
+- API, AI, Redis, Gmail/Calendar, and provider credentials required by the
+  selected workflow generation;
+- production currently requires the Evolution community node and credential;
+- staging routes WhatsApp through the Beautyflow API and does not require a
+  CoverCut n8n credential;
+- environment-specific main webhook matching the backend configuration;
 - shared header and secret matching `N8N_WEBHOOK_HEADER` and
   `N8N_WEBHOOK_SECRET`.
 
@@ -317,8 +337,8 @@ npx --yes n8nac skills validate "workflows/<file>.workflow.ts"
 npx --yes n8nac push "workflows/<file>.workflow.ts" --verify
 ```
 
-Static validation can warn about Evolution community nodes. Those nodes also
-need runtime testing in the installed n8n instance.
+Production workflows can still warn about Evolution community nodes. Staging
+workflows use the backend messaging gateway and contain no provider credential.
 
 ## Local Development
 
@@ -386,6 +406,18 @@ EVOLUTION_API_KEY=replace-with-the-global-api-key
 EVOLUTION_WEBHOOK_URL=https://n8n.example.com/webhook/beauty-api
 EVOLUTION_INSTANCE_PREFIX=beautyflow-development
 EVOLUTION_REQUEST_TIMEOUT_SECONDS=15
+
+WHATSAPP_ENABLED_PROVIDERS=evolution,covercut
+WHATSAPP_DEFAULT_PROVIDER=covercut
+COVERCUT_API_BASE_URL=https://api.covercut.com.br/api/v1
+COVERCUT_API_KEY=replace-with-the-staging-api-key
+COVERCUT_API_SECRET=replace-with-the-staging-api-secret
+COVERCUT_MESSAGE_WEBHOOK_SECRET=replace-with-a-message-webhook-secret
+COVERCUT_SAAS_WEBHOOK_SECRET=replace-with-a-saas-webhook-secret
+COVERCUT_N8N_WEBHOOK_URL=https://n8n.example.com/webhook/beautyflow-staging
+COVERCUT_EXTERNAL_ID_PREFIX=beautyflow-staging
+COVERCUT_REMINDER_TEMPLATE_NAME=appointment_reminder
+COVERCUT_REMINDER_TEMPLATE_LANGUAGE=pt_BR
 ```
 
 Do not use development values in production.
@@ -476,7 +508,7 @@ user fallback window.
 Cookie names, paths, and `SameSite` values can also be customized through
 `USER_REFRESH_COOKIE_*` and `ADMIN_*_COOKIE` variables.
 
-### n8n and Evolution
+### n8n and WhatsApp providers
 
 | Variable | Required in production | Description |
 | --- | --- | --- |
@@ -488,6 +520,19 @@ Cookie names, paths, and `SameSite` values can also be customized through
 | `EVOLUTION_WEBHOOK_URL` | yes | n8n message webhook URL |
 | `EVOLUTION_INSTANCE_PREFIX` | no | Instance name prefix |
 | `EVOLUTION_REQUEST_TIMEOUT_SECONDS` | no | HTTP timeout, default `15` |
+| `WHATSAPP_ENABLED_PROVIDERS` | yes | Enabled providers (`evolution`, `covercut`, or both) |
+| `WHATSAPP_DEFAULT_PROVIDER` | yes | Provider only for the first connection provisioning |
+| `COVERCUT_API_BASE_URL` | CoverCut | CoverCut API v1 base URL |
+| `COVERCUT_API_KEY` | CoverCut | Server-side CoverCut API key |
+| `COVERCUT_API_SECRET` | CoverCut | Server-side CoverCut API secret |
+| `COVERCUT_REQUEST_TIMEOUT_SECONDS` | no | HTTP timeout, default `15` |
+| `COVERCUT_MESSAGE_WEBHOOK_SECRET` | CoverCut | Message webhook HMAC secret |
+| `COVERCUT_SAAS_WEBHOOK_SECRET` | CoverCut | SaaS webhook HMAC secret |
+| `COVERCUT_N8N_WEBHOOK_URL` | CoverCut | Environment-specific normalized inbound webhook |
+| `COVERCUT_EXTERNAL_ID_PREFIX` | no | Stable SaaS `external_id` namespace |
+| `COVERCUT_MEDIA_MAX_BYTES` | no | Inbound media limit, default 20 MiB |
+| `COVERCUT_REMINDER_TEMPLATE_NAME` | reminders | Approved utility template name |
+| `COVERCUT_REMINDER_TEMPLATE_LANGUAGE` | reminders | Approved language, default `pt_BR` |
 
 In production, the app fails at startup when:
 
@@ -495,7 +540,8 @@ In production, the app fails at startup when:
 - authentication cookies are not marked as `Secure`;
 - `CORS_ORIGINS` is empty or contains `*`;
 - n8n error reporting is not configured;
-- Evolution API or the WhatsApp webhook is not configured.
+- configuration for every provider listed in `WHATSAPP_ENABLED_PROVIDERS` is
+  incomplete.
 
 ## Tests and Quality
 
@@ -609,9 +655,9 @@ alembic upgrade head
 alembic check
 ```
 
-The current migration head is `0012_add_business_cep`. It adds the nullable,
-normalized eight-digit `businesses.cep` field; the admin UI formats it as
-`00000-000`, while API persistence and responses use digits only.
+The current migration head is `0013_whatsapp_connections`. It adds generic
+WhatsApp connections, webhook deduplication receipts and a lossless backfill of
+legacy Evolution records. See the provider guide for rollback details.
 
 Deployments run `alembic upgrade head` in a separate container before starting
 the backend. Back up PostgreSQL before production migrations.
