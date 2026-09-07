@@ -11,8 +11,8 @@
       "filename": "cache-cleanup-prod.workflow.ts"
     },
     "P8X2SfwMgUmKvh1v": {
-      "lastSyncedHash": "2ae52fd362f482386b69c06c3d4ee691c315b14e5288095eb8c07624efaf7662",
-      "lastSyncedAt": "2026-07-02T19:42:16.901Z",
+      "lastSyncedHash": "9b610012e8d4d2905bbbf806fa2c541129659caec71f8185a0266ffdb8eccc39",
+      "lastSyncedAt": "2026-09-07T18:22:15.387Z",
       "filename": "test-staging.workflow.ts"
     },
     "249kJRLhcloHLPCk": {
@@ -21,8 +21,8 @@
       "filename": "availabilities-staging.workflow.ts"
     },
     "el3GeDHzGRJaidKi": {
-      "lastSyncedHash": "c3880ceca2518115a6c8c187ea5dc88e202a623469e327d3160720baeb0925b2",
-      "lastSyncedAt": "2026-09-03T02:15:04.291Z",
+      "lastSyncedHash": "a9e0fccde13cc985471b4db83f8eddfb8634693beeae67054e11fe00ec741421",
+      "lastSyncedAt": "2026-09-07T18:21:52.695Z",
       "filename": "clients-staging.workflow.ts"
     },
     "VJhji9bH9TjYZy06": {
@@ -41,8 +41,8 @@
       "filename": "services-staging.workflow.ts"
     },
     "8Zv0enEr5Ktjbay1": {
-      "lastSyncedHash": "626dc52148b11d479cf762b80d0322ab7a45fd28d5e4d621afb413ab38383002",
-      "lastSyncedAt": "2026-09-03T02:15:23.123Z",
+      "lastSyncedHash": "644c1a5f811ddcd27d2d523f6055ca4d846bb52657510d20d39497212e61c034",
+      "lastSyncedAt": "2026-09-07T18:21:24.735Z",
       "filename": "appointments-staging.workflow.ts"
     },
     "dVtm2MJ8gTjXHIuE": {
@@ -51,13 +51,13 @@
       "filename": "businesses-staging.workflow.ts"
     },
     "BxyJLKjTEcfzV18k": {
-      "lastSyncedHash": "248704e5dcb50453621d66d662a03c193aec16bed96d64977066b3d71849f169",
-      "lastSyncedAt": "2026-09-03T02:29:16.895Z",
+      "lastSyncedHash": "981ec5edf3dce1965ca81725ac83a67a8450d5a477a8c5e865070373e39b73cc",
+      "lastSyncedAt": "2026-09-07T18:22:03.748Z",
       "filename": "error-staging.workflow.ts"
     },
     "4HdDMg12MHYD0pW0": {
-      "lastSyncedHash": "8a1ba9431626dfd1a00f754572db12eb038bf71c917c8eea7aa2efab6fd909d1",
-      "lastSyncedAt": "2026-09-03T02:15:31.052Z",
+      "lastSyncedHash": "d764c9f2e8dbaf7848e47f40015eac6711af9c7fd1c97ba8aa4fbce329d6d1d3",
+      "lastSyncedAt": "2026-09-07T18:21:40.309Z",
       "filename": "main-staging.workflow.ts"
     },
     "HH6KPg5oLoi1L6IG": {

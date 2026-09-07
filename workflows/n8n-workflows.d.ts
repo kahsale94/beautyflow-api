@@ -85,6 +85,8 @@ declare module '@n8n-as-code/transformer' {
         projectId?: string;
         /** Project name */
         projectName?: string;
+        /** Workflow tags emitted by n8n-as-code */
+        tags?: string[];
         /** Whether the workflow is archived */
         isArchived?: boolean;
     }

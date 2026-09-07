@@ -20,6 +20,11 @@ def workflow_sources(workflow_family: str) -> list[str]:
     return [source for _, source in workflow_source_items(workflow_family)]
 
 
+def workflow_body(source: str) -> str:
+    """Ignore the generated workflow map so assertions inspect executable nodes only."""
+    return source[source.index("export class ") :]
+
+
 def test_main_workflows_use_backend_attendance_decision():
     for source in workflow_sources("main"):
         assert "business.attendance_status" in source
@@ -131,10 +136,67 @@ def test_staging_workflows_use_the_provider_neutral_messaging_gateway():
     for source in staging_sources:
         assert "n8n-nodes-evolution-api" not in source
         assert "X-Evolution-Instance" not in source
+        assert "X-Business-Phone" not in source
+        assert "external.evo.send_message" not in source
 
     combined = "\n".join(staging_sources)
     assert "/whatsapp/messages" in combined
     assert "X-WhatsApp-Connection" in combined
+
+
+def test_staging_main_accepts_wrapped_normalized_webhook_contract():
+    source = workflow_body(
+        (ROOT / "workflows/main-staging.workflow.ts").read_text(encoding="utf-8")
+    )
+
+    assert "$json.body?.connection_key" in source
+    assert "$json.body?.contact?.phone" in source
+    assert "$json.body?.message?.text" in source
+    assert "$json.body?.message?.audio?.base64" in source
+    assert "$json.body?.message?.audio?.mime_type" in source
+    assert "name: 'X-WhatsApp-Connection'" in source
+    assert "/whatsapp/messages" in source
+
+
+def test_staging_demo_customizations_are_removed():
+    main = workflow_body(
+        (ROOT / "workflows/main-staging.workflow.ts").read_text(encoding="utf-8")
+    )
+    appointments = workflow_body(
+        (ROOT / "workflows/appointments-staging.workflow.ts").read_text(encoding="utf-8")
+    )
+    executable = main + appointments
+
+    for demo_marker in [
+        "Pilates",
+        "pilates_mode",
+        "pending_replacement",
+        "120363410124491446@g.us",
+        "ExistingStudentFound",
+        "GetPendingReplacementMain",
+        "existing_only",
+    ]:
+        assert demo_marker not in executable
+
+    assert 'Allowed actions:' in main
+    assert '- "get": retrieve customer appointments.' in main
+    assert '- "post": create a new appointment.' in main
+    assert "this.ValidateClassification.out(0).to(this.ConversationActGuard.in(0))" in main
+    assert "this.AiAgent.uses({" in main
+    for tool in ["Appointments", "Professionals", "Availabilities", "Services"]:
+        assert f"this.{tool}.output" in main
+
+
+def test_staging_test_harness_covers_both_inbound_provider_contracts():
+    source = workflow_body(
+        (ROOT / "workflows/test-staging.workflow.ts").read_text(encoding="utf-8")
+    )
+
+    assert "function evolutionBody(" in source
+    assert "function covercutBody(" in source
+    assert "provider: 'covercut'" in source
+    assert "connection_key: connectionKey" in source
+    assert "Connection key override" in source
 
 
 def test_production_workflows_remain_on_the_legacy_evolution_path():
