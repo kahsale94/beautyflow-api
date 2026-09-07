@@ -2,7 +2,7 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 
 // <workflow-map>
 // Workflow : main-staging
-// Nodes   : 108  |  Connections: 126
+// Nodes   : 108  |  Connections: 125
 //
 // NODE INDEX
 // ──────────────────────────────────────────────────────────────────
@@ -27,7 +27,8 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 // TimeoutExist                       if
 // ErrorReport3                       stopAndError
 // ErrorReport9                       stopAndError
-// PersonalBlockEnd                   noOp
+// OwnershipBlockedEnd                noOp
+// PersonalContextApplies             if
 // ServicesResponse                   code
 // ProfessionalsResponse              code
 // DeleteBuffer                       redis                      [onError→out(1)] [creds] [retry]
@@ -75,10 +76,9 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 // ErrorReport24                      executeWorkflow
 // ErrorReport10                      stopAndError
 // ErrorReport18                      executeWorkflow
-// GetPersonalBlock                   redis                      [onError→out(1)] [creds] [executeOnce]
-// PersonalBlockExists                if
-// SetPersonalBlock                   redis                      [onError→out(1)] [creds] [retry]
-// CommercialSpam                     if
+// ResolveContactOwnership            httpRequest                [onError→out(1)]
+// OwnershipAllowsBot                 if
+// ActivateHumanTakeover              httpRequest                [onError→out(1)] [alwaysOutput] [retry]
 // CommercialSpamAudit                code                       [executeOnce]
 // PersonalHandoffResponse            code
 // HumanHandoffAlert                  executeWorkflow            [onError→out(1)]
@@ -121,18 +121,17 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 // Webhook
 //    → DataHandler
 //      → FilterGroup
-//        → GetPersonalBlock
-//          → PersonalBlockExists
-//            → PersonalBlockEnd
-//           .out(1) → FromMe
-//              → SetTimeout
-//                → Wait
-//               .out(1) → ErrorReport3
-//             .out(1) → GetTimeout
-//                → TimeoutExist
-//                  → Wait (↩ loop)
-//                 .out(1) → GetToken
-//                    → ApiContext
+//        → FromMe
+//          → SetTimeout
+//            → Wait
+//           .out(1) → ErrorReport3
+//         .out(1) → GetTimeout
+//            → TimeoutExist
+//              → Wait (↩ loop)
+//             .out(1) → GetToken
+//                → ApiContext
+//                  → ResolveContactOwnership
+//                    → OwnershipAllowsBot
 //                      → BusinessContext
 //                        → BusinessHoursGuard
 //                          → IsOpen
@@ -181,24 +180,19 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 //                                                            → ValidateClassification
 //                                                              → ConversationActGuard
 //                                                                → MessageClassifier
-//                                                                  → SetPersonalBlock
-//                                                                    → CommercialSpam
-//                                                                      → CommercialSpamAudit
-//                                                                        → End (↩ loop)
-//                                                                     .out(1) → PersonalHandoffResponse
-//                                                                        → PushMemory
-//                                                                          → PushMemory1
-//                                                                            → FinalResponse (↩ loop)
-//                                                                           .out(1) → ErrorReport24
-//                                                                              → FinalResponse (↩ loop)
-//                                                                         .out(1) → ErrorReport23
-//                                                                            → PushMemory1 (↩ loop)
-//                                                                     .out(1) → HumanHandoffAlert
-//                                                                        → End (↩ loop)
-//                                                                       .out(1) → End (↩ loop)
+//                                                                  → ActivateHumanTakeover
+//                                                                    → HumanHandoffAlert
+//                                                                      → End (↩ loop)
+//                                                                     .out(1) → End (↩ loop)
 //                                                                   .out(1) → ErrorReport12
 //                                                                 .out(1) → TrashResponse
-//                                                                    → PushMemory (↩ loop)
+//                                                                    → PushMemory
+//                                                                      → PushMemory1
+//                                                                        → FinalResponse (↩ loop)
+//                                                                       .out(1) → ErrorReport24
+//                                                                          → FinalResponse (↩ loop)
+//                                                                     .out(1) → ErrorReport23
+//                                                                        → PushMemory1 (↩ loop)
 //                                                                 .out(2) → ServicesList
 //                                                                    → ServicesResponse
 //                                                                      → PushMemory (↩ loop)
@@ -227,8 +221,12 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 //                                                                     .out(1) → ErrorReport11
 //                                                                 .out(8) → FallbackQuestion
 //                                                                    → PushMemory (↩ loop)
-//                                                                 .out(9) → SetPersonalBlock (↩ loop)
-//                                                                 .out(10) → Client (↩ loop)
+//                                                                 .out(9) → CommercialSpamAudit
+//                                                                    → End (↩ loop)
+//                                                                 .out(10) → PersonalContextApplies
+//                                                                    → End (↩ loop)
+//                                                                   .out(1) → TrashResponse (↩ loop)
+//                                                                 .out(11) → Client (↩ loop)
 //                                                       .out(1) → ErrorReport21
 //                                                          → ClearMemory (↩ loop)
 //                                             .out(1) → ErrorReport6
@@ -241,9 +239,10 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 //                                        → InitialMessage (↩ loop)
 //                                       .out(1) → ErrorReport5
 //                             .out(1) → ErrorReport2 (↩ loop)
-//                   .out(1) → ErrorReport
-//               .out(1) → ErrorReport9
-//         .out(1) → ErrorReport4
+//                     .out(1) → OwnershipBlockedEnd
+//                   .out(1) → ErrorReport4
+//               .out(1) → ErrorReport
+//           .out(1) → ErrorReport9
 // ErrorReport22
 //    → Client (↩ loop)
 //
@@ -261,7 +260,6 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
     name: 'main-staging',
     active: true,
     isArchived: false,
-    projectId: 'UVYVLJNFC5m6HlJG',
     tags: ['Kaiky', 'beautyflow-api'],
     settings: {
         executionOrder: 'v1',
@@ -753,19 +751,19 @@ Never ask the client for this value. If multiple appointments are returned, ask 
                 {
                     id: '6040e770-3950-411e-b38f-849bec6c61ed',
                     name: 'client.remote_jid',
-                    value: "={{ ($json.body?.contact?.phone || $json.contact?.phone) ? String($json.body?.contact?.phone || $json.contact?.phone).split('@')[0] + '@s.whatsapp.net' : ($json.client?.phoneNumber || $json.body?.client?.phoneNumber || $json.body?.data?.key?.participant || $json.body?.data?.key?.remoteJid || '') }}",
+                    value: "={{ ($json.body?.contact?.id || $json.contact?.id) ? 'contact:' + ($json.body?.contact?.id || $json.contact?.id) : (($json.body?.contact?.user_id || $json.contact?.user_id) ? 'user:' + ($json.body?.contact?.user_id || $json.contact?.user_id) : (($json.body?.provider || $json.provider) === 'covercut' ? (($json.body?.contact?.phone || $json.contact?.phone) ? 'phone:' + ($json.body?.contact?.phone || $json.contact?.phone) : '') : ($json.client?.phoneNumber || $json.body?.client?.phoneNumber || $json.body?.data?.key?.participant || $json.body?.data?.key?.remoteJid || ''))) }}",
                     type: 'string',
                 },
                 {
                     id: '23d09917-9f2c-449b-981c-cda2da01d39a',
                     name: 'client.phone',
-                    value: "={{ String($json.body?.contact?.phone || $json.contact?.phone || $json.client?.phoneNumber || $json.body?.client?.phoneNumber || $json.body?.data?.key?.participant || $json.body?.data?.key?.remoteJid || '').split('@')[0] }}",
+                    value: "={{ $json.body?.contact?.phone || $json.contact?.phone || (($json.body?.provider || $json.provider) === 'covercut' ? '' : String($json.client?.phoneNumber || $json.body?.client?.phoneNumber || $json.body?.data?.key?.participant || $json.body?.data?.key?.remoteJid || '').split('@')[0]) }}",
                     type: 'string',
                 },
                 {
                     id: 'e5e10f50-4f74-4f6f-80de-a1f3e6acbf05',
                     name: 'message.chat_remote_jid',
-                    value: "={{ ($json.body?.contact?.phone || $json.contact?.phone) ? String($json.body?.contact?.phone || $json.contact?.phone).split('@')[0] + '@s.whatsapp.net' : ($json.body?.data?.key?.remoteJid || $json.client?.phoneNumber || $json.body?.client?.phoneNumber || '') }}",
+                    value: "={{ ($json.body?.provider || $json.provider) === 'covercut' ? '' : ($json.body?.data?.key?.remoteJid || $json.client?.phoneNumber || $json.body?.client?.phoneNumber || '') }}",
                     type: 'string',
                 },
                 {
@@ -846,6 +844,54 @@ Never ask the client for this value. If multiple appointments are returned, ask 
                     id: 'eff37370-cf96-4543-8d8f-ee05e719140d',
                     name: 'whatsapp.connection_key',
                     value: "={{ $json.body?.connection_key || $json.connection_key || ($json.body?.instance ? 'evolution:' + $json.body.instance : '') }}",
+                    type: 'string',
+                },
+                {
+                    id: 'contact-id-provider-neutral',
+                    name: 'contact.id',
+                    value: '={{ $json.body?.contact?.id || $json.contact?.id || null }}',
+                    type: 'number',
+                },
+                {
+                    id: 'contact-provider-user-id',
+                    name: 'contact.provider_user_id',
+                    value: "={{ $json.body?.contact?.user_id || $json.contact?.user_id || '' }}",
+                    type: 'string',
+                },
+                {
+                    id: 'contact-parent-provider-user-id',
+                    name: 'contact.parent_provider_user_id',
+                    value: "={{ $json.body?.contact?.parent_user_id || $json.contact?.parent_user_id || '' }}",
+                    type: 'string',
+                },
+                {
+                    id: 'contact-wa-id',
+                    name: 'contact.wa_id',
+                    value: "={{ $json.body?.contact?.wa_id || $json.contact?.wa_id || '' }}",
+                    type: 'string',
+                },
+                {
+                    id: 'contact-username',
+                    name: 'contact.username',
+                    value: "={{ $json.body?.contact?.username || $json.contact?.username || '' }}",
+                    type: 'string',
+                },
+                {
+                    id: 'contact-name',
+                    name: 'contact.name',
+                    value: "={{ $json.body?.contact?.name || $json.contact?.name || '' }}",
+                    type: 'string',
+                },
+                {
+                    id: 'contact-policy',
+                    name: 'contact.policy',
+                    value: "={{ $json.body?.contact?.policy || $json.contact?.policy || 'AUTO' }}",
+                    type: 'string',
+                },
+                {
+                    id: 'whatsapp-provider',
+                    name: 'whatsapp.provider',
+                    value: "={{ $json.body?.provider || $json.provider || ($json.body?.instance ? 'evolution' : '') }}",
                     type: 'string',
                 },
                 {
@@ -1182,6 +1228,9 @@ return [
   },
   "client": {
     "remote_jid": "{{ $('data handler').first().json.client?.remote_jid || '' }}",
+    "phone": "{{ $('data handler').first().json.client?.phone || '' }}",
+    "contact_id": "{{ $('data handler').first().json.contact?.id || '' }}",
+    "provider_user_id": "{{ $('data handler').first().json.contact?.provider_user_id || '' }}",
     "message_id": "{{ $('data handler').first().json.message?.id || '' }}",
     "message_text": "{{ $('data handler').first().json.message?.text || '' }}"
   },
@@ -1227,6 +1276,9 @@ return [
   },
   "client": {
     "remote_jid": "{{ $('data handler').first().json.client?.remote_jid || '' }}",
+    "phone": "{{ $('data handler').first().json.client?.phone || '' }}",
+    "contact_id": "{{ $('data handler').first().json.contact?.id || '' }}",
+    "provider_user_id": "{{ $('data handler').first().json.contact?.provider_user_id || '' }}",
     "message_id": "{{ $('data handler').first().json.message?.id || '' }}",
     "message_text": "{{ $('data handler').first().json.message?.text || '' }}"
   },
@@ -1240,12 +1292,43 @@ return [
 
     @node({
         id: '4982e4a2-5537-4f65-87ff-d14d5229c010',
-        name: 'personal block end',
+        name: 'ownership blocked end',
         type: 'n8n-nodes-base.noOp',
         version: 1,
         position: [-416, 16688],
     })
-    PersonalBlockEnd = {};
+    OwnershipBlockedEnd = {};
+
+    @node({
+        id: '67551128-f30a-480d-9548-c07ac750a070',
+        name: 'personal context applies?',
+        type: 'n8n-nodes-base.if',
+        version: 2.3,
+        position: [6848, 17888],
+    })
+    PersonalContextApplies = {
+        conditions: {
+            options: {
+                caseSensitive: true,
+                leftValue: '',
+                typeValidation: 'strict',
+                version: 3,
+            },
+            conditions: [
+                {
+                    id: '47bcb224-e3de-44ff-a776-c07ac750a070',
+                    leftValue: "={{ $('resolve contact ownership').first().json.contact.bot_policy }}",
+                    rightValue: 'AUTO',
+                    operator: {
+                        type: 'string',
+                        operation: 'equals',
+                    },
+                },
+            ],
+            combinator: 'and',
+        },
+        options: {},
+    };
 
     @node({
         id: 'c440a79d-32eb-465c-8b70-ddb732128913',
@@ -1585,7 +1668,10 @@ Output rules:
         specifyBody: 'json',
         jsonBody: `={{ {
   type: 'text',
-  to: $('data handler').first().json.client.phone,
+  ...($('data handler').first().json.client.phone
+    ? { to: $('data handler').first().json.client.phone }
+    : { recipient: $('resolve contact ownership').first().json.contact.provider_user_id }),
+  contact_id: $('resolve contact ownership').first().json.contact.id,
   text: $('typing delay').item.json.response
 } }}`,
         options: {},
@@ -2424,6 +2510,9 @@ return [
   },
   "client": {
     "remote_jid": "{{ $('data handler').first().json.client?.remote_jid || '' }}",
+    "phone": "{{ $('data handler').first().json.client?.phone || '' }}",
+    "contact_id": "{{ $('data handler').first().json.contact?.id || '' }}",
+    "provider_user_id": "{{ $('data handler').first().json.contact?.provider_user_id || '' }}",
     "message_id": "{{ $('data handler').first().json.message?.id || '' }}",
     "message_text": "{{ $('data handler').first().json.message?.text || '' }}"
   },
@@ -2469,6 +2558,9 @@ return [
   },
   "client": {
     "remote_jid": "{{ $('data handler').first().json.client?.remote_jid || '' }}",
+    "phone": "{{ $('data handler').first().json.client?.phone || '' }}",
+    "contact_id": "{{ $('data handler').first().json.contact?.id || '' }}",
+    "provider_user_id": "{{ $('data handler').first().json.contact?.provider_user_id || '' }}",
     "message_id": "{{ $('data handler').first().json.message?.id || '' }}",
     "message_text": "{{ $('data handler').first().json.message?.text || '' }}"
   },
@@ -2686,6 +2778,9 @@ return [
 } }}`,
                 client: `={{ {
   remote_jid: $('data handler').first().json.client.remote_jid,
+  phone: $('data handler').first().json.client.phone || null,
+  contact_id: $('resolve contact ownership').first().json.contact.id,
+  provider_user_id: $('resolve contact ownership').first().json.contact.provider_user_id || null,
   message: $('final client message').first().json.client.final_message
 } }}`,
             },
@@ -2771,6 +2866,9 @@ return [
 } }}`,
                 client: `={{ {
   remote_jid: $('data handler').first().json.client.remote_jid,
+  phone: $('data handler').first().json.client.phone || null,
+  contact_id: $('resolve contact ownership').first().json.contact.id,
+  provider_user_id: $('resolve contact ownership').first().json.contact.provider_user_id || null,
   message: $('final client message').first().json.client.final_message
 } }}`,
             },
@@ -3594,6 +3692,9 @@ return [
   },
   "client": {
     "remote_jid": "{{ $('data handler').first().json.client?.remote_jid || '' }}",
+    "phone": "{{ $('data handler').first().json.client?.phone || '' }}",
+    "contact_id": "{{ $('data handler').first().json.contact?.id || '' }}",
+    "provider_user_id": "{{ $('data handler').first().json.contact?.provider_user_id || '' }}",
     "message_id": "{{ $('data handler').first().json.message?.id || '' }}",
     "message_text": "{{ $('data handler').first().json.message?.text || '' }}"
   },
@@ -3639,6 +3740,9 @@ return [
   },
   "client": {
     "remote_jid": "{{ $('data handler').first().json.client?.remote_jid || '' }}",
+    "phone": "{{ $('data handler').first().json.client?.phone || '' }}",
+    "contact_id": "{{ $('data handler').first().json.contact?.id || '' }}",
+    "provider_user_id": "{{ $('data handler').first().json.contact?.provider_user_id || '' }}",
     "message_id": "{{ $('data handler').first().json.message?.id || '' }}",
     "message_text": "{{ $('data handler').first().json.message?.text || '' }}"
   },
@@ -3888,6 +3992,9 @@ return [
   },
   "client": {
     "remote_jid": "{{ $('data handler').first().json.client?.remote_jid || '' }}",
+    "phone": "{{ $('data handler').first().json.client?.phone || '' }}",
+    "contact_id": "{{ $('data handler').first().json.contact?.id || '' }}",
+    "provider_user_id": "{{ $('data handler').first().json.contact?.provider_user_id || '' }}",
     "message_id": "{{ $('data handler').first().json.message?.id || '' }}",
     "message_text": "{{ $('data handler').first().json.message?.text || '' }}"
   },
@@ -4003,33 +4110,47 @@ return [
 
     @node({
         id: 'b125976a-18ad-4d0e-89e2-776ae8afcb41',
-        name: 'get personal block',
-        type: 'n8n-nodes-base.redis',
-        version: 1,
-        position: [-256, 16912],
-        credentials: { redis: { id: 'yq1GIl0nbdK5QpYm', name: 'beautyflow test' } },
+        name: 'resolve contact ownership',
+        type: 'n8n-nodes-base.httpRequest',
+        version: 4.4,
+        position: [672, 16896],
         onError: 'continueErrorOutput',
-        alwaysOutputData: false,
-        executeOnce: true,
-        retryOnFail: false,
-        maxTries: 2,
-        waitBetweenTries: 1500,
     })
-    GetPersonalBlock = {
-        operation: 'get',
-        propertyName: 'is_personal_blocked',
-        key: "=beautyflow_bot.{{ $('data handler').item.json.whatsapp.connection_key || 'default' }}.{{ $('data handler').item.json.client.remote_jid }}.personal_block",
+    ResolveContactOwnership = {
+        method: 'POST',
+        url: "={{ $('api context').first().json.url }}/whatsapp/contacts/resolve",
+        sendHeaders: true,
+        headerParameters: {
+            parameters: [
+                {
+                    name: 'Authorization',
+                    value: "={{ $('api context').first().json.token }}",
+                },
+            ],
+        },
+        sendBody: true,
+        specifyBody: 'json',
+        jsonBody: `={{ {
+  connection_key: $('api context').first().json.connection_key,
+  provider_user_id: $('data handler').first().json.contact.provider_user_id || null,
+  parent_provider_user_id: $('data handler').first().json.contact.parent_provider_user_id || null,
+  wa_id: $('data handler').first().json.contact.wa_id || null,
+  phone: $('data handler').first().json.client.phone || null,
+  username: $('data handler').first().json.contact.username || null,
+  name: $('data handler').first().json.contact.name || null,
+  saved: false
+} }}`,
         options: {},
     };
 
     @node({
         id: '1cef7bf1-e48d-4d09-a63c-9c62da8fdde7',
-        name: 'personal block exists?',
+        name: 'ownership allows bot?',
         type: 'n8n-nodes-base.if',
         version: 2.2,
-        position: [-48, 16896],
+        position: [880, 16896],
     })
-    PersonalBlockExists = {
+    OwnershipAllowsBot = {
         conditions: {
             options: {
                 caseSensitive: true,
@@ -4040,7 +4161,7 @@ return [
             conditions: [
                 {
                     id: 'c32c9dbd-56a2-4d82-bcfc-aa1ed0785bed',
-                    leftValue: '={{ $json.is_personal_blocked }}',
+                    leftValue: '={{ $json.should_respond }}',
                     rightValue: '',
                     operator: {
                         type: 'boolean',
@@ -4057,51 +4178,30 @@ return [
 
     @node({
         id: '8a7b9896-daf1-4f68-821f-b5e64f849d9d',
-        name: 'set personal block',
-        type: 'n8n-nodes-base.redis',
-        version: 1,
+        name: 'activate human takeover',
+        type: 'n8n-nodes-base.httpRequest',
+        version: 4.4,
         position: [6640, 15984],
-        credentials: { redis: { id: 'yq1GIl0nbdK5QpYm', name: 'beautyflow test' } },
         onError: 'continueErrorOutput',
+        alwaysOutputData: true,
         retryOnFail: true,
     })
-    SetPersonalBlock = {
-        operation: 'set',
-        key: "=beautyflow_bot.{{ $('data handler').item.json.whatsapp.connection_key || 'default' }}.{{ $('data handler').item.json.client.remote_jid }}.personal_block",
-        value: 'true',
-        expire: true,
-        ttl: 86400,
-    };
-
-    @node({
-        id: 'a0d8c9f6-ae62-4635-bd3d-7c78780ae894',
-        name: 'commercial spam?',
-        type: 'n8n-nodes-base.if',
-        version: 2.2,
-        position: [6848, 15984],
-    })
-    CommercialSpam = {
-        conditions: {
-            options: {
-                caseSensitive: true,
-                leftValue: '',
-                typeValidation: 'loose',
-                version: 2,
-            },
-            conditions: [
+    ActivateHumanTakeover = {
+        method: 'POST',
+        url: "={{ $('api context').first().json.url }}/whatsapp/contacts/{{ $('resolve contact ownership').first().json.contact.id }}/takeover",
+        sendHeaders: true,
+        headerParameters: {
+            parameters: [
                 {
-                    id: '64650e6c-85dc-426a-bcc8-1157b3641e28',
-                    leftValue: "={{ $('conversation act guard').first().json.route }}",
-                    rightValue: 'COMMERCIAL_SPAM',
-                    operator: {
-                        type: 'string',
-                        operation: 'equals',
-                    },
+                    name: 'Authorization',
+                    value: "={{ $('api context').first().json.token }}",
                 },
             ],
-            combinator: 'and',
         },
-        looseTypeValidation: true,
+        sendBody: true,
+        specifyBody: 'json',
+        jsonBody:
+            "={{ { source: 'workflow_handoff', conversation_key: $('data handler').first().json.client.remote_jid } }}",
         options: {},
     };
 
@@ -4134,9 +4234,9 @@ return [
       final_intent: classification.classification || 'COMMERCIAL_SPAM',
       confidence: classification.confidence ?? null,
       block_reason: classification.block_reason || 'unsolicited_commercial_content',
-      selected_route: 'PERSONAL_BLOCK',
+      selected_route: 'COMMERCIAL_SPAM',
       agent_called: false,
-      personal_block_result: 'success'
+      spam_suppression_result: 'audited'
     }
   }
 ];`,
@@ -4187,7 +4287,7 @@ return [
   type: "business.human_handoff",
   node: $prevNode.name,
   code: "",
-  description: "Mensagem classificada como pessoal ou pedido de atendimento humano."
+  description: "Pedido explícito de atendimento humano."
 } }}`,
                 business: `={{ {
   id: $('business context').first().json.business?.id || '',
@@ -4269,7 +4369,7 @@ return [
   "error": {
     "workflow": "{{ $workflow.id }}",
     "execution": "{{ $execution.id }}",
-    "type": "internal.redis.personal_block",
+    "type": "internal.api.human_takeover",
     "node": "{{ $prevNode.name }}",
     "code": "{{ $json.error.status || '' }}",
     "description": "{{
@@ -4290,6 +4390,9 @@ return [
   },
   "client": {
     "remote_jid": "{{ $('data handler').first().json.client?.remote_jid || '' }}",
+    "phone": "{{ $('data handler').first().json.client?.phone || '' }}",
+    "contact_id": "{{ $('data handler').first().json.contact?.id || '' }}",
+    "provider_user_id": "{{ $('data handler').first().json.contact?.provider_user_id || '' }}",
     "message_id": "{{ $('data handler').first().json.message?.id || '' }}",
     "message_text": "{{ $('data handler').first().json.message?.text || '' }}"
   },
@@ -4418,7 +4521,7 @@ return [
   "error": {
     "workflow": "{{ $workflow.id }}",
     "execution": "{{ $execution.id }}",
-    "type": "internal.redis.personal_block",
+    "type": "internal.api.contact_ownership",
     "node": "{{ $prevNode.name }}",
     "code": "{{ $json.error.status || '' }}",
     "description": "{{
@@ -4439,6 +4542,9 @@ return [
   },
   "client": {
     "remote_jid": "{{ $('data handler').first().json.client?.remote_jid || '' }}",
+    "phone": "{{ $('data handler').first().json.client?.phone || '' }}",
+    "contact_id": "{{ $('data handler').first().json.contact?.id || '' }}",
+    "provider_user_id": "{{ $('data handler').first().json.contact?.provider_user_id || '' }}",
     "message_id": "{{ $('data handler').first().json.message?.id || '' }}",
     "message_text": "{{ $('data handler').first().json.message?.text || '' }}"
   },
@@ -4511,6 +4617,9 @@ return [
   },
   "client": {
     "remote_jid": "{{ $('data handler').first().json.client?.remote_jid || '' }}",
+    "phone": "{{ $('data handler').first().json.client?.phone || '' }}",
+    "contact_id": "{{ $('data handler').first().json.contact?.id || '' }}",
+    "provider_user_id": "{{ $('data handler').first().json.contact?.provider_user_id || '' }}",
     "message_id": "{{ $('data handler').first().json.message?.id || '' }}",
     "message_text": "{{ $('data handler').first().json.message?.text || '' }}"
   },
@@ -4642,6 +4751,9 @@ return [
   },
   "client": {
     "remote_jid": "{{ $('data handler').first().json.client?.remote_jid || '' }}",
+    "phone": "{{ $('data handler').first().json.client?.phone || '' }}",
+    "contact_id": "{{ $('data handler').first().json.contact?.id || '' }}",
+    "provider_user_id": "{{ $('data handler').first().json.contact?.provider_user_id || '' }}",
     "message_id": "{{ $('data handler').first().json.message?.id || '' }}",
     "message_text": "{{ $('data handler').first().json.message?.text || '' }}"
   },
@@ -5048,6 +5160,7 @@ return [
 const data = $('data handler').first().json || {};
 const business = $('business context').first().json.business || {};
 const api = $('api context').first().json || {};
+const contact = $('resolve contact ownership').first().json.contact || data.contact || {};
 const pendingState = String($('get outside hours pending').first().json.pending_state || '').trim();
 const rawContext = $('get outside hours context').first().json.outside_hours_context;
 const attendance = guardNode.attendance || {};
@@ -5124,6 +5237,8 @@ return [
         client: {
           remote_jid: remoteJid,
           phone: data.client?.phone,
+          contact_id: contact.id,
+          provider_user_id: contact.provider_user_id,
           message_id: data.message?.id,
           message_text: data.message?.text,
         },
@@ -5248,6 +5363,9 @@ return [
 } }}`,
                 client: `={{ {
   remote_jid: $('data handler').item.json.client.remote_jid,
+  phone: $('data handler').item.json.client.phone || null,
+  contact_id: $('resolve contact ownership').first().json.contact.id,
+  provider_user_id: $('resolve contact ownership').first().json.contact.provider_user_id || null,
   message: $('data handler').item.json.message.text
 } }}`,
                 state: "={{ $('get pending').item.json.pending_state }}",
@@ -5537,7 +5655,8 @@ SERVICES
 PROFESSIONALS
 FAQ
 GREETINGS
-PERSONAL_OR_HUMAN
+HUMAN_HANDOFF_REQUEST
+PERSONAL_CONTEXT
 COMMERCIAL_SPAM
 TRASH
 
@@ -5980,16 +6099,25 @@ Primary intent: SCHEDULE_APPOINTMENT
 Latest human: "Bom dia, quanto custa a barba?"
 Primary intent: SERVICES
 
-PERSONAL_OR_HUMAN:
+HUMAN_HANDOFF_REQUEST:
 
-Use only when the latest human message is clearly personal, private, or directed to a human/professional personally, and has no business, service, professional, FAQ, or appointment intent.
+Use only when the latest human message explicitly asks for a human, attendant, owner, or professional to take over the conversation.
+
+Examples:
+
+* "Quero falar com um atendente"
+* "Pode chamar a Ana para responder?"
+* "Prefiro atendimento humano"
+
+PERSONAL_CONTEXT:
+
+Use only when the latest human message is clearly personal or private, has no business intent, and does not explicitly request a human handoff. This category never changes the persistent ownership policy.
 
 Examples:
 
 * "Ana, me liga quando puder"
 * "Isso é pessoal"
 * "Não é sobre o salão"
-* "Quero falar direto com você"
 * "Me chama no seu número pessoal"
 * "Você viu aquilo que te mandei ontem?"
 * "Depois te conto melhor pessoalmente"
@@ -6058,14 +6186,15 @@ Priority rules:
 12. If the recent context is changing an existing appointment service, classify questions about combo, price or duration of that change as SCHEDULE_APPOINTMENT.
 13. Use PROFESSIONALS only for questions about professionals, not for choosing a professional during scheduling.
 14. Use SERVICES only for questions about services, not for choosing a service during scheduling.
-15. If the latest message is clearly personal/private/human-directed and has no business-related intent, set intent to PERSONAL_OR_HUMAN.
-16. If the message only asks for business information, set intent to FAQ.
+15. If the latest message explicitly asks for human assistance, set intent to HUMAN_HANDOFF_REQUEST.
+16. If it is personal/private without an explicit handoff request, set intent to PERSONAL_CONTEXT.
+17. If the message only asks for business information, set intent to FAQ.
 17. If the message only asks about services, set intent to SERVICES.
 18. If the message only asks about professionals, set intent to PROFESSIONALS.
 19. Use GREETINGS only for pure greetings.
 20. Use TRASH only when no other category applies.
-21. When in doubt between PERSONAL_OR_HUMAN and a business category, choose the business category.
-22. When in doubt between PERSONAL_OR_HUMAN and TRASH, choose TRASH unless the message is clearly directed to a human/professional.
+22. When in doubt between PERSONAL_CONTEXT and a business category, choose the business category.
+23. When in doubt between PERSONAL_CONTEXT and TRASH, choose TRASH unless the message is clearly private.
 23. When in doubt between SCHEDULE_APPOINTMENT and another business category, choose SCHEDULE_APPOINTMENT only if there is scheduling intent or the customer is providing/selecting/confirming an appointment detail.
 24. When in doubt between FAQ, SERVICES, and PROFESSIONALS, choose the category that best matches the main object of the question.
 25. When the latest human message is asking for available options, do not classify as SCHEDULE_APPOINTMENT unless the requested options are dates, times, or appointment slots.
@@ -6256,7 +6385,7 @@ Output:
                         conditions: [
                             {
                                 leftValue: "={{ $('conversation act guard').item.json.route }}",
-                                rightValue: 'PERSONAL_OR_HUMAN',
+                                rightValue: 'HUMAN_HANDOFF_REQUEST',
                                 operator: {
                                     type: 'string',
                                     operation: 'equals',
@@ -6267,7 +6396,7 @@ Output:
                         combinator: 'and',
                     },
                     renameOutput: true,
-                    outputKey: 'PERSONAL_OR_HUMAN',
+                    outputKey: 'HUMAN_HANDOFF_REQUEST',
                 },
                 {
                     conditions: {
@@ -6494,6 +6623,30 @@ Output:
                     renameOutput: true,
                     outputKey: 'COMMERCIAL_SPAM',
                 },
+                {
+                    conditions: {
+                        options: {
+                            caseSensitive: true,
+                            leftValue: '',
+                            typeValidation: 'loose',
+                            version: 3,
+                        },
+                        conditions: [
+                            {
+                                id: 'personal-context-route',
+                                leftValue: "={{ $('conversation act guard').item.json.route }}",
+                                rightValue: 'PERSONAL_CONTEXT',
+                                operator: {
+                                    type: 'string',
+                                    operation: 'equals',
+                                },
+                            },
+                        ],
+                        combinator: 'and',
+                    },
+                    renameOutput: true,
+                    outputKey: 'PERSONAL_CONTEXT',
+                },
             ],
         },
         looseTypeValidation: true,
@@ -6629,7 +6782,8 @@ Output:
   'PROFESSIONALS',
   'FAQ',
   'GREETINGS',
-  'PERSONAL_OR_HUMAN',
+  'HUMAN_HANDOFF_REQUEST',
+  'PERSONAL_CONTEXT',
   'COMMERCIAL_SPAM',
   'TRASH'
 ];
@@ -7292,23 +7446,19 @@ return [
         this.ErrorReport23.out(0).to(this.PushMemory1.in(0));
         this.ErrorReport24.out(0).to(this.FinalResponse.in(0));
         this.ErrorReport18.out(0).to(this.End.in(0));
-        this.GetPersonalBlock.out(0).to(this.PersonalBlockExists.in(0));
-        this.GetPersonalBlock.out(1).to(this.ErrorReport4.in(0));
-        this.PersonalBlockExists.out(0).to(this.PersonalBlockEnd.in(0));
-        this.PersonalBlockExists.out(1).to(this.FromMe.in(0));
-        this.SetPersonalBlock.out(0).to(this.CommercialSpam.in(0));
-        this.SetPersonalBlock.out(1).to(this.ErrorReport12.in(0));
-        this.CommercialSpam.out(0).to(this.CommercialSpamAudit.in(0));
-        this.CommercialSpam.out(1).to(this.PersonalHandoffResponse.in(0));
-        this.CommercialSpam.out(1).to(this.HumanHandoffAlert.in(0));
+        this.ResolveContactOwnership.out(0).to(this.OwnershipAllowsBot.in(0));
+        this.ResolveContactOwnership.out(1).to(this.ErrorReport4.in(0));
+        this.OwnershipAllowsBot.out(0).to(this.BusinessContext.in(0));
+        this.OwnershipAllowsBot.out(1).to(this.OwnershipBlockedEnd.in(0));
+        this.ActivateHumanTakeover.out(0).to(this.HumanHandoffAlert.in(0));
+        this.ActivateHumanTakeover.out(1).to(this.ErrorReport12.in(0));
         this.CommercialSpamAudit.out(0).to(this.End.in(0));
-        this.PersonalHandoffResponse.out(0).to(this.PushMemory.in(0));
         this.HumanHandoffAlert.out(0).to(this.End.in(0));
         this.HumanHandoffAlert.out(1).to(this.End.in(0));
         this.ServicesList.out(0).to(this.ServicesResponse.in(0));
         this.GetToken.out(0).to(this.ApiContext.in(0));
         this.GetToken.out(1).to(this.ErrorReport.in(0));
-        this.ApiContext.out(0).to(this.BusinessContext.in(0));
+        this.ApiContext.out(0).to(this.ResolveContactOwnership.in(0));
         this.GetPending.out(0).to(this.HasPending.in(0));
         this.GetPending.out(1).to(this.ErrorReport2.in(0));
         this.HasPending.out(0).to(this.CallState.in(0));
@@ -7327,10 +7477,10 @@ return [
         this.SetOutsideHoursPending.out(0).to(this.SetOutsideHoursContext.in(0));
         this.SetOutsideHoursContext.out(0).to(this.CompleteOutsideHoursPending.in(0));
         this.CompleteOutsideHoursPending.out(0).to(this.FinalResponse.in(0));
-        this.FilterGroup.out(0).to(this.GetPersonalBlock.in(0));
+        this.FilterGroup.out(0).to(this.FromMe.in(0));
         this.AudioContext.out(0).to(this.GetAudio.in(0));
         this.TextClassifier.out(0).to(this.ValidateClassification.in(0));
-        this.MessageClassifier.out(0).to(this.SetPersonalBlock.in(0));
+        this.MessageClassifier.out(0).to(this.ActivateHumanTakeover.in(0));
         this.MessageClassifier.out(1).to(this.TrashResponse.in(0));
         this.MessageClassifier.out(2).to(this.ServicesList.in(0));
         this.MessageClassifier.out(3).to(this.ProfessionalsList.in(0));
@@ -7339,8 +7489,11 @@ return [
         this.MessageClassifier.out(6).to(this.CheckAppointmentsClient.in(0));
         this.MessageClassifier.out(7).to(this.Client.in(0));
         this.MessageClassifier.out(8).to(this.FallbackQuestion.in(0));
-        this.MessageClassifier.out(9).to(this.SetPersonalBlock.in(0));
-        this.MessageClassifier.out(10).to(this.Client.in(0));
+        this.MessageClassifier.out(9).to(this.CommercialSpamAudit.in(0));
+        this.MessageClassifier.out(10).to(this.PersonalContextApplies.in(0));
+        this.MessageClassifier.out(11).to(this.Client.in(0));
+        this.PersonalContextApplies.out(0).to(this.End.in(0));
+        this.PersonalContextApplies.out(1).to(this.TrashResponse.in(0));
         this.AgentContext.out(0).to(this.AiAgent.in(0));
         this.Wait6Sec.out(0).to(this.GetBuffer2.in(0));
         this.ValidateClassification.out(0).to(this.ConversationActGuard.in(0));

@@ -64,7 +64,6 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
     name: 'error-staging',
     active: true,
     isArchived: false,
-    projectId: 'UVYVLJNFC5m6HlJG',
     tags: ['Kaiky', 'beautyflow-api'],
     settings: {
         executionOrder: 'v1',
@@ -203,7 +202,7 @@ export class ErrorStagingWorkflow {
                             },
                             {
                                 leftValue:
-                                    "={{ Boolean($('data handler').first().json.api.connection_key && $('data handler').first().json.api.token && ($('data handler').first().json.client.phone || $('data handler').first().json.client.remote_jid) && $('normalize error').item.json.normalized.customerMessage) }}",
+                                    "={{ Boolean($('data handler').first().json.api.connection_key && $('data handler').first().json.api.token && ($('data handler').first().json.client.phone || $('data handler').first().json.client.provider_user_id || String($('data handler').first().json.client.remote_jid || '').includes('@')) && $('normalize error').item.json.normalized.customerMessage) }}",
                                 rightValue: true,
                                 operator: {
                                     type: 'boolean',
@@ -476,7 +475,15 @@ const policies = {
     notifyDev: true
   },
 
-  'internal.redis.personal_block': {
+  'internal.api.contact_ownership': {
+    severity: 'high',
+    notifyCustomer: true,
+    notifyOwner: false,
+    notifyDev: true,
+    customerMessage: 'Tive uma instabilidade para continuar o atendimento. Poderia tentar novamente em instantes?'
+  },
+
+  'internal.api.human_takeover': {
     severity: 'high',
     notifyCustomer: true,
     notifyOwner: false,
@@ -674,7 +681,7 @@ function buildOwnerMessage({ type, error, business, client, policy }) {
       \`⚠️ Atenção, \${businessName}.\\n\\nUm cliente tentou cancelar um agendamento, mas o assistente não conseguiu confirmar o cancelamento com segurança.\\n\\nAntes de responder o cliente, verifique manualmente se o agendamento foi cancelado.\`,
 
     'business.human_handoff':
-      \`Atenção, \${businessName}.\\n\\nUm cliente pediu atendimento humano ou enviou um assunto pessoal. O assistente pausou a conversa por 24h para evitar respostas automáticas nesse assunto.\\n\\nÚltima mensagem: \${valueOrFallback(client.message_text || client.message || error.description)}\`,
+      \`Atenção, \${businessName}.\\n\\nUm cliente pediu explicitamente atendimento humano. O assistente pausou temporariamente a conversa para evitar respostas automáticas durante o atendimento.\\n\\nÚltima mensagem: \${valueOrFallback(client.message_text || client.message || error.description)}\`,
 
     'external.calendar':
       \`⚠️ Atenção, \${businessName}.\\n\\nUm agendamento pode ter sido salvo no sistema, mas houve falha ao sincronizar com o calendário. Verifique se a agenda externa precisa ser atualizada manualmente.\`
@@ -766,7 +773,14 @@ return [
         specifyBody: 'json',
         jsonBody: `={{ {
   type: 'text',
-  to: $('data handler').first().json.client.phone || String($('data handler').first().json.client.remote_jid || '').split('@')[0],
+  ...($('data handler').first().json.client.phone
+    ? { to: $('data handler').first().json.client.phone }
+    : $('data handler').first().json.client.provider_user_id
+      ? { recipient: $('data handler').first().json.client.provider_user_id }
+      : { to: String($('data handler').first().json.client.remote_jid || '').split('@')[0] }),
+  ...($('data handler').first().json.client.contact_id
+    ? { contact_id: $('data handler').first().json.client.contact_id }
+    : {}),
   text: $('client reponse').first().json.response
 } }}`,
         options: {},

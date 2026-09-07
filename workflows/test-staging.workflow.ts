@@ -15,7 +15,7 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 // ClearMainStagingChatMemory         redis                      [onError→regular] [creds]
 // ClearMainStagingState              redis                      [onError→regular] [creds]
 // ClearMainStagingOutsideHoursContext redis                      [onError→regular] [creds]
-// ClearMainStagingPersonalBlock      redis                      [onError→regular] [creds]
+// ClearMainStagingSpamSuppression    redis                      [onError→regular] [creds]
 // ClearMainStagingConversationMeta   redis                      [onError→regular] [creds]
 // CallMainStagingWebhook             httpRequest                [onError→regular] [creds]
 // ExecuteBusinessesStaging           executeWorkflow            [onError→regular]
@@ -42,7 +42,7 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 //            → ClearMainStagingChatMemory
 //              → ClearMainStagingState
 //                → ClearMainStagingOutsideHoursContext
-//                  → ClearMainStagingPersonalBlock
+//                  → ClearMainStagingSpamSuppression
 //                    → ClearMainStagingConversationMeta
 //                      → CallMainStagingWebhook
 //                        → BuildSummaryAndMiniReport
@@ -76,7 +76,6 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
     name: 'test-staging',
     active: true,
     isArchived: false,
-    projectId: 'UVYVLJNFC5m6HlJG',
     tags: ['Kaiky', 'beautyflow-api'],
     settings: {
         executionOrder: 'v1',
@@ -402,7 +401,9 @@ function covercutBody(messageText) {
     integration_id: 1,
     event_id: 'TEST-COVERCUT-' + now,
     contact: {
-      phone: String(remoteJid).split('@')[0],
+      id: 900001,
+      user_id: 'test-covercut-bsuid-900001',
+      policy: 'AUTO',
       name: 'Teste Staging',
     },
     message: {
@@ -422,19 +423,20 @@ const common = {
 function baseCase(config) {
   const mainWebhookBody = config.mainWebhook?.body || {};
   const mainWebhookKey = mainWebhookBody.data?.key || {};
-  const normalizedPhone = mainWebhookBody.contact?.phone;
-  const conversationJidForCleanup = normalizedPhone
-    ? String(normalizedPhone).split('@')[0] + '@s.whatsapp.net'
-    : (mainWebhookKey.participant || mainWebhookKey.remoteJid || '');
+  const contactIdentity = mainWebhookBody.contact?.id
+    ? 'contact:' + mainWebhookBody.contact.id
+    : mainWebhookBody.contact?.user_id
+      ? 'user:' + mainWebhookBody.contact.user_id
+      : (mainWebhookKey.participant || mainWebhookKey.remoteJid || '');
   const connectionKeyForCleanup = mainWebhookBody.connection_key
     || (mainWebhookBody.instance ? 'evolution:' + mainWebhookBody.instance : baseApi.connection_key || 'default');
-  const redisConversationPrefix = 'beautyflow_bot.' + connectionKeyForCleanup + '.' + conversationJidForCleanup;
-  const cleanupKeys = config.cleanupKeys || (conversationJidForCleanup ? [
+  const redisConversationPrefix = 'beautyflow_bot.' + connectionKeyForCleanup + '.' + contactIdentity;
+  const cleanupKeys = config.cleanupKeys || (contactIdentity ? [
     redisConversationPrefix + '.chat_buffer',
     redisConversationPrefix + '.chat_memory',
     redisConversationPrefix + '.state',
     redisConversationPrefix + '.outside_hours_context',
-    redisConversationPrefix + '.personal_block',
+    redisConversationPrefix + '.commercial_spam',
     redisConversationPrefix + '.conversation_meta',
   ] : []);
 
@@ -1033,14 +1035,14 @@ return [{ json: testCase }];`,
 
     @node({
         id: '8ac46c65-2fc0-481b-8f3b-cc3e95dd16ab',
-        name: 'clear main-staging personal block',
+        name: 'clear main-staging spam suppression',
         type: 'n8n-nodes-base.redis',
         version: 1,
         position: [-528, -544],
         credentials: { redis: { id: 'yq1GIl0nbdK5QpYm', name: 'beautyflow test' } },
         onError: 'continueRegularOutput',
     })
-    ClearMainStagingPersonalBlock = {
+    ClearMainStagingSpamSuppression = {
         operation: 'delete',
         key: "={{ $('prepare test case').first().json.cleanupKeys[4] }}",
     };
@@ -1638,8 +1640,8 @@ Os testes existentes do backend sao pytest/CLI, entao nao foram chamados diretam
         this.ClearMainStagingChatBuffer.out(0).to(this.ClearMainStagingChatMemory.in(0));
         this.ClearMainStagingChatMemory.out(0).to(this.ClearMainStagingState.in(0));
         this.ClearMainStagingState.out(0).to(this.ClearMainStagingOutsideHoursContext.in(0));
-        this.ClearMainStagingOutsideHoursContext.out(0).to(this.ClearMainStagingPersonalBlock.in(0));
-        this.ClearMainStagingPersonalBlock.out(0).to(this.ClearMainStagingConversationMeta.in(0));
+        this.ClearMainStagingOutsideHoursContext.out(0).to(this.ClearMainStagingSpamSuppression.in(0));
+        this.ClearMainStagingSpamSuppression.out(0).to(this.ClearMainStagingConversationMeta.in(0));
         this.ClearMainStagingConversationMeta.out(0).to(this.CallMainStagingWebhook.in(0));
         this.CallMainStagingWebhook.out(0).to(this.BuildSummaryAndMiniReport.in(0));
         this.ExecuteBusinessesStaging.out(0).to(this.BuildSummaryAndMiniReport.in(0));

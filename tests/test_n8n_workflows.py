@@ -158,6 +158,89 @@ def test_staging_main_accepts_wrapped_normalized_webhook_contract():
     assert "/whatsapp/messages" in source
 
 
+def test_staging_contact_ownership_precedes_business_context_and_classifier():
+    source = workflow_body((ROOT / "workflows/main-staging.workflow.ts").read_text(encoding="utf-8"))
+
+    assert "/whatsapp/contacts/resolve" in source
+    assert "this.ApiContext.out(0).to(this.ResolveContactOwnership.in(0))" in source
+    assert "this.ResolveContactOwnership.out(0).to(this.OwnershipAllowsBot.in(0))" in source
+    assert "this.OwnershipAllowsBot.out(0).to(this.BusinessContext.in(0))" in source
+    assert "this.ApiContext.out(0).to(this.BusinessContext.in(0))" not in source
+    assert "PERSONAL_OR_HUMAN" not in source
+    assert "HUMAN_HANDOFF_REQUEST" in source
+    assert "PERSONAL_CONTEXT" in source
+    assert "this.MessageClassifier.out(0).to(this.ActivateHumanTakeover.in(0))" in source
+    assert "this.MessageClassifier.out(9).to(this.CommercialSpamAudit.in(0))" in source
+    assert "this.MessageClassifier.out(9).to(this.ActivateHumanTakeover.in(0))" not in source
+    assert "this.MessageClassifier.out(10).to(this.PersonalContextApplies.in(0))" in source
+    assert "this.PersonalContextApplies.out(0).to(this.End.in(0))" in source
+    assert "this.PersonalContextApplies.out(1).to(this.TrashResponse.in(0))" in source
+    assert "contact.bot_policy }}\",\n                    rightValue: 'AUTO'" in source
+    assert "personal_block" not in source
+    assert "pessoal ou pedido de atendimento humano" not in source
+
+
+def test_staging_covercut_identity_never_fabricates_a_whatsapp_jid():
+    source = workflow_body((ROOT / "workflows/main-staging.workflow.ts").read_text(encoding="utf-8"))
+
+    assert "'contact:' + ($json.body?.contact?.id" in source
+    assert "'user:' + ($json.body?.contact?.user_id" in source
+    assert "contact.provider_user_id" in source
+    assert "contact_id: $('resolve contact ownership').first().json.contact.id" in source
+    assert "? { to: $('data handler').first().json.client.phone }" in source
+    assert "{ recipient: $('resolve contact ownership').first().json.contact.provider_user_id }" in source
+
+    test_harness = workflow_body(
+        (ROOT / "workflows/test-staging.workflow.ts").read_text(encoding="utf-8")
+    )
+    covercut_fixture = test_harness.split("function covercutBody", 1)[1].split("const common", 1)[0]
+    assert "user_id: 'test-covercut-bsuid-900001'" in covercut_fixture
+    assert "phone: String(remoteJid).split('@')[0]" not in covercut_fixture
+    assert "wa_id: String(remoteJid).split('@')[0]" not in covercut_fixture
+
+
+def test_clients_staging_requests_contact_info_before_phone_dependent_api_calls():
+    source = workflow_body((ROOT / "workflows/clients-staging.workflow.ts").read_text(encoding="utf-8"))
+
+    assert "name: 'has client phone?'" in source
+    assert "type: 'request_contact_info'" in source
+    assert "recipient: $('data handler').first().json.client.provider_user_id" in source
+    assert "this.DataHandler.out(0).to(this.HasClientPhone.in(0))" in source
+    assert "this.HasClientPhone.out(0).to(this.Switch_.in(0))" in source
+    assert "this.HasClientPhone.out(1).to(this.RequestContactInfo.in(0))" in source
+    assert "const derivedPhone = remoteJid.includes('@')" in source
+
+
+def test_staging_pending_and_error_outbound_support_bsuid_and_last_mile_ownership():
+    pending = workflow_body(
+        (ROOT / "workflows/pending state-staging.workflow.ts").read_text(encoding="utf-8")
+    )
+    error = workflow_body(
+        (ROOT / "workflows/error-staging.workflow.ts").read_text(encoding="utf-8")
+    )
+    main = workflow_body(
+        (ROOT / "workflows/main-staging.workflow.ts").read_text(encoding="utf-8")
+    )
+
+    assert "? { recipient: $json.client.provider_user_id }" in pending
+    assert "{ contact_id: $json.client.contact_id }" in pending
+    assert "provider_user_id: $('data handler').item.json.client.provider_user_id" in pending
+    assert "const hasDeliverableIdentity = Boolean(" in pending
+    assert "? { recipient: $('data handler').first().json.client.provider_user_id }" in error
+    assert "{ contact_id: $('data handler').first().json.client.contact_id }" in error
+    assert "provider_user_id: contact.provider_user_id" in main
+
+
+def test_staging_spam_and_human_takeover_state_are_independent():
+    staging = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in sorted((ROOT / "workflows").glob("*-staging.workflow.ts"))
+    )
+    assert "personal_block" not in staging
+    assert ".commercial_spam" in staging
+    assert "human_takeover" in staging
+
+
 def test_staging_demo_customizations_are_removed():
     main = workflow_body(
         (ROOT / "workflows/main-staging.workflow.ts").read_text(encoding="utf-8")

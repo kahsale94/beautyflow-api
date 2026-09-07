@@ -11,8 +11,8 @@
       "filename": "cache-cleanup-prod.workflow.ts"
     },
     "P8X2SfwMgUmKvh1v": {
-      "lastSyncedHash": "9b610012e8d4d2905bbbf806fa2c541129659caec71f8185a0266ffdb8eccc39",
-      "lastSyncedAt": "2026-09-07T18:22:15.387Z",
+      "lastSyncedHash": "bf0232b3921e8da0d156564e46edf4d38f83a77db6bd0baba805892453a0b272",
+      "lastSyncedAt": "2026-09-07T21:10:59.201Z",
       "filename": "test-staging.workflow.ts"
     },
     "249kJRLhcloHLPCk": {
@@ -21,13 +21,13 @@
       "filename": "availabilities-staging.workflow.ts"
     },
     "el3GeDHzGRJaidKi": {
-      "lastSyncedHash": "a9e0fccde13cc985471b4db83f8eddfb8634693beeae67054e11fe00ec741421",
-      "lastSyncedAt": "2026-09-07T18:21:52.695Z",
+      "lastSyncedHash": "9829be83270172581fac59644833b128b0b3232ca3ea8370c38e8eade8c4e2b8",
+      "lastSyncedAt": "2026-09-07T20:58:46.533Z",
       "filename": "clients-staging.workflow.ts"
     },
     "VJhji9bH9TjYZy06": {
-      "lastSyncedHash": "bc0ff84e7d8c6da425132ee25b215abd1e2f5bd6bec75bffc66c574975854798",
-      "lastSyncedAt": "2026-09-03T02:15:10.511Z",
+      "lastSyncedHash": "083d1425474fe48c8e2568cb767fe4c3c34f1d057c6de84c5249e01004afde6a",
+      "lastSyncedAt": "2026-09-07T21:08:44.689Z",
       "filename": "pending state-staging.workflow.ts"
     },
     "rMEHtjR5lFuN97w0": {
@@ -51,13 +51,13 @@
       "filename": "businesses-staging.workflow.ts"
     },
     "BxyJLKjTEcfzV18k": {
-      "lastSyncedHash": "981ec5edf3dce1965ca81725ac83a67a8450d5a477a8c5e865070373e39b73cc",
-      "lastSyncedAt": "2026-09-07T18:22:03.748Z",
+      "lastSyncedHash": "1328c60ddfd1bed73f2af55674b3b2e4c63cde1839532cc27af1bc96d3360996",
+      "lastSyncedAt": "2026-09-07T21:13:00.966Z",
       "filename": "error-staging.workflow.ts"
     },
     "4HdDMg12MHYD0pW0": {
-      "lastSyncedHash": "d764c9f2e8dbaf7848e47f40015eac6711af9c7fd1c97ba8aa4fbce329d6d1d3",
-      "lastSyncedAt": "2026-09-07T18:21:40.309Z",
+      "lastSyncedHash": "4d8d249088a53dff8c34005b20bee52301b3f039ec7bb0e9102406929f331e59",
+      "lastSyncedAt": "2026-09-07T21:12:54.162Z",
       "filename": "main-staging.workflow.ts"
     },
     "HH6KPg5oLoi1L6IG": {

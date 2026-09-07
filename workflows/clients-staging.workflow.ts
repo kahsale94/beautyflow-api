@@ -2,12 +2,15 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 
 // <workflow-map>
 // Workflow : clients-staging
-// Nodes   : 58  |  Connections: 68
+// Nodes   : 61  |  Connections: 72
 //
 // NODE INDEX
 // ──────────────────────────────────────────────────────────────────
 // Property name                    Node type (short)         Flags
 // DataHandler                        set
+// HasClientPhone                     if
+// RequestContactInfo                 httpRequest                [onError→out(1)]
+// ContactInfoRequestedEnd            code
 // PostClient                         httpRequest                [onError→out(1)]
 // SendConfirmation                   gmail                      [onError→out(1)] [creds]
 // ClientData                         set
@@ -70,72 +73,76 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 // ──────────────────────────────────────────────────────────────────
 // Webhook
 //    → DataHandler
-//      → Switch_
-//        → GetClient1
-//          → NameExtractor
-//            → NameInMessage
-//              → AddName
-//                → Response1
-//                  → SplitOut1
-//                    → LoopResponse1
-//                      → DeletePending
-//                        → PushHumanMemory
-//                          → PushAiMemory
-//                            → DeleteBuffer
-//                             .out(1) → ErrorReport24
-//                           .out(1) → ErrorReport26
-//                              → DeleteBuffer (↩ loop)
-//                         .out(1) → ErrorReport26 (↩ loop)
-//                       .out(1) → ErrorReport17
-//                     .out(1) → TypingDelay1
-//                        → SendResponse1
-//                          → LoopResponse1 (↩ loop)
-//                         .out(1) → ErrorReport18
-//               .out(1) → ErrorReport14
-//             .out(1) → Response2
-//                → SplitOut
-//                  → LoopResponse
-//                    → SetPendingState
-//                      → PushHumanMemory1
-//                        → PushAiMemory1
-//                          → DeleteBuffer (↩ loop)
-//                         .out(1) → ErrorReport25
+//      → HasClientPhone
+//        → Switch_
+//          → GetClient1
+//            → NameExtractor
+//              → NameInMessage
+//                → AddName
+//                  → Response1
+//                    → SplitOut1
+//                      → LoopResponse1
+//                        → DeletePending
+//                          → PushHumanMemory
+//                            → PushAiMemory
+//                              → DeleteBuffer
+//                               .out(1) → ErrorReport24
+//                             .out(1) → ErrorReport26
+//                                → DeleteBuffer (↩ loop)
+//                           .out(1) → ErrorReport26 (↩ loop)
+//                         .out(1) → ErrorReport17
+//                       .out(1) → TypingDelay1
+//                          → SendResponse1
+//                            → LoopResponse1 (↩ loop)
+//                           .out(1) → ErrorReport18
+//                 .out(1) → ErrorReport14
+//               .out(1) → Response2
+//                  → SplitOut
+//                    → LoopResponse
+//                      → SetPendingState
+//                        → PushHumanMemory1
+//                          → PushAiMemory1
 //                            → DeleteBuffer (↩ loop)
-//                       .out(1) → ErrorReport25 (↩ loop)
-//                     .out(1) → ErrorReport16
-//                   .out(1) → TypingDelay
-//                      → SendResponse
-//                        → LoopResponse (↩ loop)
-//                       .out(1) → ErrorReport15
-//           .out(1) → ErrorReport23
-//              → NameInMessage (↩ loop)
-//         .out(1) → ErrorReport1
-//       .out(1) → PostClient
-//          → ClientData
-//            → Response
-//              → SplitOut (↩ loop)
-//         .out(1) → ErrorReport
-//       .out(2) → BypassCacheForExistingOnly
-//          → GetClient2
-//            → HasClient
-//              → ReturnExistingClientDirectly
-//                → ExistingClientSuccess
-//               .out(1) → PushContext2
-//                  → Name
-//                    → Sucess
-//                   .out(1) → Response (↩ loop)
-//                 .out(1) → ErrorReport21
-//                    → Name (↩ loop)
-//             .out(1) → ExistingOnly
-//                → ExistingClientNotFound
-//               .out(1) → PostClient1
-//           .out(1) → ErrorReport13
-//         .out(1) → GetContext
-//            → HasData
-//              → Convert
-//                → Name (↩ loop)
-//             .out(1) → GetClient2 (↩ loop)
-//           .out(1) → ErrorReport12
+//                           .out(1) → ErrorReport25
+//                              → DeleteBuffer (↩ loop)
+//                         .out(1) → ErrorReport25 (↩ loop)
+//                       .out(1) → ErrorReport16
+//                     .out(1) → TypingDelay
+//                        → SendResponse
+//                          → LoopResponse (↩ loop)
+//                         .out(1) → ErrorReport15
+//             .out(1) → ErrorReport23
+//                → NameInMessage (↩ loop)
+//           .out(1) → ErrorReport1
+//         .out(1) → PostClient
+//            → ClientData
+//              → Response
+//                → SplitOut (↩ loop)
+//           .out(1) → ErrorReport
+//         .out(2) → BypassCacheForExistingOnly
+//            → GetClient2
+//              → HasClient
+//                → ReturnExistingClientDirectly
+//                  → ExistingClientSuccess
+//                 .out(1) → PushContext2
+//                    → Name
+//                      → Sucess
+//                     .out(1) → Response (↩ loop)
+//                   .out(1) → ErrorReport21
+//                      → Name (↩ loop)
+//               .out(1) → ExistingOnly
+//                  → ExistingClientNotFound
+//                 .out(1) → PostClient1
+//             .out(1) → ErrorReport13
+//           .out(1) → GetContext
+//              → HasData
+//                → Convert
+//                  → Name (↩ loop)
+//               .out(1) → GetClient2 (↩ loop)
+//             .out(1) → ErrorReport12
+//       .out(1) → RequestContactInfo
+//          → ContactInfoRequestedEnd
+//         .out(1) → ErrorReport15 (↩ loop)
 // ErrorReport22
 //    → ClientData (↩ loop)
 //
@@ -152,7 +159,6 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
     name: 'clients-staging',
     active: true,
     isArchived: false,
-    projectId: 'UVYVLJNFC5m6HlJG',
     tags: ['Kaiky', 'beautyflow-api'],
     settings: {
         executionOrder: 'v1',
@@ -204,7 +210,9 @@ export class ClientsStagingWorkflow {
   const client = $json.client || {};
   const explicitPhone = String(client.phone || '').trim();
   const remoteJid = String(client.remote_jid || '');
-  const derivedPhone = remoteJid.includes('@g.us') ? '' : remoteJid.split('@')[0];
+  const derivedPhone = remoteJid.includes('@') && !remoteJid.includes('@g.us')
+    ? remoteJid.split('@')[0]
+    : '';
 
   return {
     ...client,
@@ -225,6 +233,81 @@ export class ClientsStagingWorkflow {
             ],
         },
         options: {},
+    };
+
+    @node({
+        id: 'contact-phone-required-guard',
+        name: 'has client phone?',
+        type: 'n8n-nodes-base.if',
+        version: 2.3,
+        position: [-608, 4432],
+    })
+    HasClientPhone = {
+        conditions: {
+            options: {
+                caseSensitive: true,
+                leftValue: '',
+                typeValidation: 'loose',
+                version: 3,
+            },
+            conditions: [
+                {
+                    id: 'client-phone-not-empty',
+                    leftValue: "={{ $('data handler').first().json.client.phone }}",
+                    rightValue: '',
+                    operator: {
+                        type: 'string',
+                        operation: 'notEmpty',
+                        singleValue: true,
+                    },
+                },
+            ],
+            combinator: 'and',
+        },
+        looseTypeValidation: true,
+        options: {},
+    };
+
+    @node({
+        id: 'request-covercut-contact-info',
+        name: 'request contact info',
+        type: 'n8n-nodes-base.httpRequest',
+        version: 4.4,
+        position: [-384, 4688],
+        onError: 'continueErrorOutput',
+    })
+    RequestContactInfo = {
+        method: 'POST',
+        url: "={{ $('data handler').first().json.api.url.replace(/\\/clients\\/?$/, '') }}/whatsapp/messages",
+        sendHeaders: true,
+        headerParameters: {
+            parameters: [
+                {
+                    name: 'Authorization',
+                    value: "={{ $('data handler').first().json.api.token }}",
+                },
+            ],
+        },
+        sendBody: true,
+        specifyBody: 'json',
+        jsonBody: `={{ {
+  type: 'request_contact_info',
+  recipient: $('data handler').first().json.client.provider_user_id,
+  contact_id: $('data handler').first().json.client.contact_id,
+  text: 'Para continuar com seu cadastro e agendamento, compartilhe seu número de telefone pelo botão abaixo.'
+} }}`,
+        options: {},
+    };
+
+    @node({
+        id: 'contact-info-requested-end',
+        name: 'contact info requested end',
+        type: 'n8n-nodes-base.code',
+        version: 2,
+        position: [-144, 4688],
+    })
+    ContactInfoRequestedEnd = {
+        jsCode: 'return [];',
     };
 
     @node({
@@ -616,6 +699,7 @@ export class ClientsStagingWorkflow {
         jsonBody: `={{ {
   type: 'text',
   to: $('data handler').first().json.client.phone,
+  contact_id: $('data handler').first().json.client.contact_id || null,
   text: $('typing delay').item.json.response
 } }}`,
         options: {},
@@ -1233,6 +1317,7 @@ return [
         jsonBody: `={{ {
   type: 'text',
   to: $('data handler').first().json.client.phone,
+  contact_id: $('data handler').first().json.client.contact_id || null,
   text: $('typing delay 1').item.json.response
 } }}`,
         options: {},
@@ -2572,7 +2657,11 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
 
     @links()
     defineRouting() {
-        this.DataHandler.out(0).to(this.Switch_.in(0));
+        this.DataHandler.out(0).to(this.HasClientPhone.in(0));
+        this.HasClientPhone.out(0).to(this.Switch_.in(0));
+        this.HasClientPhone.out(1).to(this.RequestContactInfo.in(0));
+        this.RequestContactInfo.out(0).to(this.ContactInfoRequestedEnd.in(0));
+        this.RequestContactInfo.out(1).to(this.ErrorReport15.in(0));
         this.PostClient.out(0).to(this.ClientData.in(0));
         this.PostClient.out(1).to(this.ErrorReport.in(0));
         this.Webhook.out(0).to(this.DataHandler.in(0));
