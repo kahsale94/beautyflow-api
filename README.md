@@ -24,6 +24,8 @@ CoverCut/Meta Cloud API is available for the staged migration.
 - JWT authentication with access tokens and revocable refresh tokens.
 - Provider-agnostic WhatsApp onboarding through Evolution QR or CoverCut
   embedded signup.
+- Provider-neutral WhatsApp Contacts, persistent `BOT`/`HUMAN`/`AUTO` policy,
+  and temporary Redis-backed human takeover.
 - CEP lookup and persisted, normalized business addresses in the admin panel.
 - n8n automation for conversation handling and scheduling tools.
 - Redis-backed rate limiting with an in-memory fallback.
@@ -131,6 +133,7 @@ Business endpoints use the `/v1` prefix.
 | Integrations | `/v1/integrations` | External integration credentials |
 | Business integrations | `/v1/business-integrations` | Per-business integration links and config |
 | WhatsApp messaging | `/v1/whatsapp` | Tenant-scoped outbound gateway |
+| WhatsApp contacts | `/v1/whatsapp/contacts` | Identity resolution and conversation ownership |
 | CoverCut webhooks | `/v1/webhooks/covercut` | Signed message and SaaS events |
 
 Interactive docs are available in development:
@@ -409,6 +412,8 @@ EVOLUTION_REQUEST_TIMEOUT_SECONDS=15
 
 WHATSAPP_ENABLED_PROVIDERS=evolution,covercut
 WHATSAPP_DEFAULT_PROVIDER=covercut
+WHATSAPP_HUMAN_TAKEOVER_TTL_SECONDS=86400
+WHATSAPP_BOT_AGENT_NAME=Beautyflow
 COVERCUT_API_BASE_URL=https://api.covercut.com.br/api/v1
 COVERCUT_API_KEY=replace-with-the-staging-api-key
 COVERCUT_API_SECRET=replace-with-the-staging-api-secret
@@ -522,6 +527,8 @@ Cookie names, paths, and `SameSite` values can also be customized through
 | `EVOLUTION_REQUEST_TIMEOUT_SECONDS` | no | HTTP timeout, default `15` |
 | `WHATSAPP_ENABLED_PROVIDERS` | yes | Enabled providers (`evolution`, `covercut`, or both) |
 | `WHATSAPP_DEFAULT_PROVIDER` | yes | Provider only for the first connection provisioning |
+| `WHATSAPP_HUMAN_TAKEOVER_TTL_SECONDS` | no | Temporary human ownership TTL, default 24 hours |
+| `WHATSAPP_BOT_AGENT_NAME` | no | `agent_name` used to recognize the bot's own CoverCut API echoes |
 | `COVERCUT_API_BASE_URL` | CoverCut | CoverCut API v1 base URL |
 | `COVERCUT_API_KEY` | CoverCut | Server-side CoverCut API key |
 | `COVERCUT_API_SECRET` | CoverCut | Server-side CoverCut API secret |
@@ -655,9 +662,11 @@ alembic upgrade head
 alembic check
 ```
 
-The current migration head is `0013_whatsapp_connections`. It adds generic
-WhatsApp connections, webhook deduplication receipts and a lossless backfill of
-legacy Evolution records. See the provider guide for rollback details.
+The current migration head is `0014_contacts_ownership`. It adds provider-neutral
+WhatsApp Contacts and safely backfills existing Clients with `BOT` policy. The
+preceding `0013_whatsapp_connections` revision adds generic connections, webhook
+deduplication receipts and a lossless backfill of legacy Evolution records. See
+the provider guide for staging rollout and rollback details.
 
 Deployments run `alembic upgrade head` in a separate container before starting
 the backend. Back up PostgreSQL before production migrations.

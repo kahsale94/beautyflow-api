@@ -37,6 +37,43 @@ events older than the last accepted provider timestamp are ignored. An
 ambiguous outbound timeout is returned as indeterminate and must not be retried
 automatically.
 
+## Contacts and conversation ownership
+
+`Contact` is the provider identity for a conversation and is deliberately
+separate from `Client`, the appointment-domain entity. A Contact belongs to one
+business, can optionally reference one Client, and can be identified by a
+provider user id/BSUID, `wa_id`, phone, or username. A phone is not required and
+must never be fabricated from a BSUID, username, or JID.
+
+The deterministic response order is:
+
+1. resolve the authenticated business and exact WhatsApp connection;
+2. resolve or create the Contact;
+3. stop on an active temporary human takeover;
+4. apply the persistent Contact policy;
+5. allow contextual classification to decide ownership only for `AUTO`;
+6. route an eligible conversation into the commercial flow.
+
+Existing Clients are backfilled as Contacts with `BOT`. Saved CoverCut contacts
+without a matching Client default to `HUMAN`; spontaneous inbound identities
+default to `AUTO`. Admin policy changes are marked as manual and subsequent
+syncs never overwrite them.
+
+Temporary takeover uses a business/connection/contact-scoped Redis key with a
+configurable 24-hour default TTL. A CoverCut `echo` from the phone activates or
+renews it. An API echo with `agent_name` equal to `WHATSAPP_BOT_AGENT_NAME` does
+not; a different non-empty API agent name is treated as a human tool. Explicit
+handoff is separate from personal-context classification, and commercial spam
+uses a separate audit path/state. The outbound gateway rechecks policy and
+takeover immediately before sending, including legacy phone-only reminder
+calls when the identity already has a Contact.
+
+The signed `smb_app_state_sync` event upserts saved contacts without creating
+Clients. `user_id_update` changes the BSUID on the same Contact. `history` is
+deduplicated and acknowledged without entering n8n. When an appointment flow
+needs a phone for a BSUID-only Contact, staging sends CoverCut's
+`REQUEST_CONTACT_INFO` interaction and waits for the contact response.
+
 ## Selecting a provider
 
 `WHATSAPP_ENABLED_PROVIDERS` controls which adapters may run. An existing
@@ -102,6 +139,8 @@ the authoritative source of connection status.
 | --- | --- | --- |
 | `WHATSAPP_ENABLED_PROVIDERS` | yes | Comma-separated adapters, e.g. `evolution,covercut` in staging |
 | `WHATSAPP_DEFAULT_PROVIDER` | yes | Provider used only for first provisioning |
+| `WHATSAPP_HUMAN_TAKEOVER_TTL_SECONDS` | no | Redis takeover TTL; default `86400` seconds |
+| `WHATSAPP_BOT_AGENT_NAME` | no | Stable name attached to bot API sends and ignored as human echo |
 | `COVERCUT_API_BASE_URL` | CoverCut | Normally `https://api.covercut.com.br/api/v1` |
 | `COVERCUT_API_KEY` | CoverCut | Server-side key from CoverCut |
 | `COVERCUT_API_SECRET` | CoverCut | Server-side secret from CoverCut |
@@ -154,21 +193,33 @@ or business verification required by Meta for its account and template use.
    and deploy/activate the staging n8n workflows.
 4. In an active business-integration link, select CoverCut, open Admin >
    Integrations, click Connect, complete embedded signup with a non-production
-   number, and wait for the signed SaaS event. Expected: the panel reports
-   connected and the database owns exactly that `phone_number_id`.
-5. Send inbound text. Expected: one normalized execution in `main-staging`, one
-   gateway outbound and one client reply from the same tenant number.
-6. Send inbound audio. Expected: bounded server-side media download, n8n
-   transcription and a reply without CoverCut credentials in n8n.
-7. Replay the same signed event. Expected: `duplicate` and no second n8n run.
-8. Repeat with two businesses/numbers. Expected: no cross-tenant token,
-   connection, source number or response.
-9. Trigger manual and scheduled reminders. Expected: approved template delivery,
-   persisted external message id and `sent`; ambiguous failures remain for
-   reconciliation rather than blind retry.
-10. Suspend/reconnect the staging number. Expected: normalized disconnected and
-    connected states in the admin. Use Remove only when permanent CoverCut
-    disconnect is intended.
+   Coexistence number, and wait for the signed SaaS event. Expected: the panel
+   reports connected and the database owns exactly that `phone_number_id`.
+5. Open Admin > Contacts and request CoverCut synchronization.
+6. Confirm saved identities were imported without automatically creating
+   Clients, including username/BSUID when present.
+7. Confirm an existing Client is linked to a Contact with `BOT` policy.
+8. Confirm a saved personal contact without Client has `HUMAN` policy.
+9. From that HUMAN contact send “quero marcar amanhã”; confirm there is no n8n
+   classifier call and no bot reply.
+10. Change its policy to `BOT`, send again, and confirm normal bot service.
+11. Reply from the WhatsApp Business mobile app; confirm CoverCut emits
+    `echo_source=phone` and the admin shows temporary takeover.
+12. Send another inbound message; confirm the bot remains silent.
+13. Click “Retomar bot”; confirm takeover clears without changing the policy.
+14. Exercise an unknown `AUTO` contact with commercial and personal messages;
+    confirm only the contextual fallback decides those paths.
+15. Ask explicitly for a person from a BOT contact; confirm handoff activates
+    takeover while the personal-context and spam paths remain separate.
+16. When possible, test a BSUID-only identity; confirm no fake phone is stored
+    and the Client flow requests contact information only when needed.
+17. Send inbound audio. Expected: bounded server-side media download, n8n
+    transcription and a reply without CoverCut credentials in n8n.
+18. Replay the same signed event. Expected: `duplicate` and no second n8n run.
+19. Repeat with two businesses/numbers and then with Evolution. Expected: no
+    cross-tenant state and the existing Evolution path remains operational.
+20. Trigger manual/scheduled reminders and suspend/reconnect the staging number;
+    confirm message reconciliation and normalized connection states.
 
 Real-number E2E cannot be completed until staging credentials, public backend
 URL, WABA/test number and approved template are available. Static and mocked
@@ -190,12 +241,13 @@ promoted or synchronized from the staging files.
 ## Migration and rollback
 
 Revision `0013_whatsapp_connections` adds `whatsapp_connections`, backfills every
-legacy `evolution_instances` row, and adds `whatsapp_webhook_events`. Unique
-constraints enforce one connection per business and globally unique, indexed
-provider identifier/external reference. The compatibility table remains in
-place.
+legacy `evolution_instances` row, and adds `whatsapp_webhook_events`. Revision
+`0014_contacts_ownership` adds `contacts`, tenant-scoped identity indexes and a
+composite Client/business foreign key, then backfills every existing Client as
+`BOT`. Both migrations retain the Evolution compatibility table.
 
-Downgrade first upserts generic Evolution rows back into
-`evolution_instances`, then removes the two new tables. CoverCut-only data has no
+Downgrading `0014` removes Contact data and its Client composite constraint.
+Downgrading `0013` first upserts generic Evolution rows back into
+`evolution_instances`, then removes its two tables. CoverCut-only data has no
 legacy representation and is therefore removed on downgrade; export it before
 an intentional rollback.
