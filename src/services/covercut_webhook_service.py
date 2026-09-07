@@ -19,6 +19,7 @@ from src.core import (
     COVERCUT_N8N_WEBHOOK_URL,
     COVERCUT_REQUEST_TIMEOUT_SECONDS,
     COVERCUT_SAAS_WEBHOOK_SECRET,
+    WHATSAPP_BOT_AGENT_NAME,
     DataBaseDep,
     N8N_WEBHOOK_HEADER,
     N8N_WEBHOOK_SECRET,
@@ -30,6 +31,8 @@ from src.repositories import (
     WhatsAppConnectionRepository,
     WhatsAppWebhookEventRepository,
 )
+from src.services.contact_service import ContactIdentityConflictError, get_contact_service
+from src.services.conversation_ownership_service import ConversationOwnershipService
 
 
 logger = logging.getLogger(__name__)
@@ -84,7 +87,7 @@ def validate_covercut_timestamp(value: str | None) -> None:
 
 
 class CovercutWebhookService:
-    SUPPORTED_MESSAGE_TYPES = {"text", "audio"}
+    SUPPORTED_MESSAGE_TYPES = {"text", "audio", "contacts"}
 
     def __init__(
         self,
@@ -102,6 +105,9 @@ class CovercutWebhookService:
         media_max_bytes: int,
         transport: httpx.AsyncBaseTransport | None = None,
         business_integration_repo=None,
+        contact_service=None,
+        ownership_service=None,
+        bot_agent_name: str = "Beautyflow",
     ):
         self.db = db
         self.connection_repo = connection_repo
@@ -116,6 +122,9 @@ class CovercutWebhookService:
         self.n8n_webhook_secret = n8n_webhook_secret or ""
         self.media_max_bytes = media_max_bytes
         self.transport = transport
+        self.contact_service = contact_service
+        self.ownership_service = ownership_service
+        self.bot_agent_name = bot_agent_name.strip().casefold()
 
     @staticmethod
     def _payload(raw_body: bytes) -> dict[str, Any]:
@@ -229,6 +238,37 @@ class CovercutWebhookService:
             return str(media["id"])
         return None
 
+    @staticmethod
+    def _contact_payload(payload: dict[str, Any], message: dict[str, Any]) -> dict[str, Any]:
+        contact = payload.get("contact") if isinstance(payload.get("contact"), dict) else {}
+        return {
+            "provider_user_id": contact.get("user_id") or message.get("from_user_id") or payload.get("from_user_id"),
+            "parent_provider_user_id": contact.get("parent_user_id"),
+            "wa_id": contact.get("wa_id"),
+            "phone": contact.get("phone_number") or payload.get("from_number"),
+            "username": contact.get("username"),
+            "name": contact.get("name") or contact.get("full_name") or contact.get("first_name"),
+        }
+
+    @staticmethod
+    def _sync_records(payload: dict[str, Any]) -> list[dict[str, Any]]:
+        candidates = [payload.get("contacts"), payload.get("data"), payload.get("smb_app_state_sync")]
+        for candidate in candidates:
+            if isinstance(candidate, list):
+                return [item for item in candidate if isinstance(item, dict)]
+            if isinstance(candidate, dict):
+                records = candidate.get("contacts") or candidate.get("users")
+                if isinstance(records, list):
+                    return [item for item in records if isinstance(item, dict)]
+        return []
+
+    def _is_human_echo(self, payload: dict[str, Any], message: dict[str, Any]) -> bool:
+        source = str(payload.get("echo_source") or message.get("echo_source") or "").strip().lower()
+        if source == "phone":
+            return True
+        agent = str(message.get("agent_name") or payload.get("agent_name") or "").strip()
+        return source == "api" and bool(agent) and agent.casefold() != self.bot_agent_name
+
     async def handle_message(
         self,
         raw_body: bytes,
@@ -304,22 +344,113 @@ class CovercutWebhookService:
             self._finish_event(event, "processed", connection)
             return {"accepted": True, "status_updated": True}
 
-        direction = str(payload.get("direction") or "inbound").lower()
+        if event_type == "smb_app_state_sync":
+            if not self.contact_service:
+                self._finish_event(event, "ignored", connection)
+                return {"accepted": True, "ignored": "contact_service_unavailable"}
+            synced = self.contact_service.sync_contacts(
+                connection.business_id, connection, self._sync_records(payload)
+            )
+            self._finish_event(event, "processed", connection)
+            return {"accepted": True, "contacts_synced": synced}
+
+        if event_type == "user_id_update":
+            raw_updates = payload.get("user_id_update")
+            updates = raw_updates if isinstance(raw_updates, list) else [raw_updates] if isinstance(raw_updates, dict) else []
+            if not self.contact_service or not updates:
+                self._finish_event(event, "ignored", connection)
+                return {"accepted": True, "ignored": "invalid_user_id_update"}
+            updated_contacts = []
+            try:
+                for update in updates:
+                    user_id = update.get("user_id") if isinstance(update.get("user_id"), dict) else {}
+                    parent_user_id = update.get("parent_user_id") if isinstance(update.get("parent_user_id"), dict) else {}
+                    previous = str(user_id.get("previous") or update.get("previous_user_id") or update.get("previous") or "")
+                    current = str(user_id.get("current") or update.get("current_user_id") or update.get("current") or "")
+                    if not previous or not current:
+                        raise ContactIdentityConflictError()
+                    updated_contacts.append(self.contact_service.update_provider_user_id(
+                        connection.business_id,
+                        connection,
+                        previous,
+                        current,
+                        update.get("wa_id"),
+                        previous_parent=parent_user_id.get("previous"),
+                        current_parent=parent_user_id.get("current"),
+                    ))
+            except ContactIdentityConflictError:
+                self._finish_event(event, "failed", connection)
+                raise CovercutWebhookConflictError()
+            self._finish_event(event, "processed", connection)
+            return {"accepted": True, "contact_id": updated_contacts[0].id, "contacts_updated": len(updated_contacts), "user_id_updated": True}
+
+        if event_type == "history":
+            self._finish_event(event, "ignored", connection)
+            return {"accepted": True, "ignored": "history_not_live"}
+
+        direction = "outbound" if event_type == "echo" else str(payload.get("direction") or "inbound").lower()
         message_type = str(message.get("type") or "unknown").lower()
-        if event_type != "message" or direction != "inbound" or message_type not in self.SUPPORTED_MESSAGE_TYPES:
+        if event_type not in {"message", "echo"} or message_type not in self.SUPPORTED_MESSAGE_TYPES:
             self._finish_event(event, "ignored", connection)
             return {"accepted": True, "ignored": "non_live_or_unsupported"}
 
-        contact = payload.get("contact") if isinstance(payload.get("contact"), dict) else {}
-        sender_phone = str(contact.get("wa_id") or payload.get("from_number") or "")
-        if not sender_phone:
+        if event_type == "echo" and not self.contact_service:
             self._finish_event(event, "ignored", connection)
-            return {"accepted": True, "ignored": "sender_phone_missing"}
+            return {"accepted": True, "ignored": "bot_or_unknown_echo"}
+
+        identity = self._contact_payload(payload, message)
+        shared_contacts = message.get("contacts") if isinstance(message.get("contacts"), list) else []
+        if direction == "inbound" and message_type == "contacts" and shared_contacts:
+            shared = shared_contacts[0] if isinstance(shared_contacts[0], dict) else {}
+            if shared.get("origin") == "contact_request" and identity.get("provider_user_id"):
+                phones = shared.get("phones") if isinstance(shared.get("phones"), list) else []
+                phone_record = phones[0] if phones and isinstance(phones[0], dict) else {}
+                identity["phone"] = phone_record.get("phone") or identity.get("phone")
+                identity["wa_id"] = phone_record.get("wa_id") or identity.get("wa_id")
+
+        resolved_contact = None
+        if self.contact_service:
+            try:
+                resolved_contact = self.contact_service.resolve(
+                    business_id=connection.business_id,
+                    connection=connection,
+                    **identity,
+                    source="inbound",
+                )
+            except (ValueError, ContactIdentityConflictError):
+                self._finish_event(event, "failed", connection)
+                raise CovercutWebhookConflictError()
+        elif not identity.get("phone") and not identity.get("wa_id"):
+            self._finish_event(event, "ignored", connection)
+            return {"accepted": True, "ignored": "sender_identity_missing"}
+
+        if direction != "inbound":
+            if resolved_contact and self.ownership_service and self._is_human_echo(payload, message):
+                self.ownership_service.activate(
+                    connection.business_id, connection.id, resolved_contact.id,
+                    str(payload.get("echo_source") or message.get("echo_source") or "api_human"),
+                    connection_key=connection.connection_key,
+                    conversation_key=f"contact:{resolved_contact.id}",
+                )
+                self._finish_event(event, "processed", connection)
+                return {"accepted": True, "human_takeover": True, "contact_id": resolved_contact.id}
+            self._finish_event(event, "ignored", connection)
+            return {"accepted": True, "ignored": "bot_or_unknown_echo"}
+
+        if resolved_contact and self.ownership_service:
+            takeover = self.ownership_service.is_active(connection.business_id, connection.id, resolved_contact.id)
+            if resolved_contact.bot_policy == "HUMAN" or takeover:
+                self._finish_event(event, "ignored", connection)
+                return {"accepted": True, "ignored": "human_owned", "contact_id": resolved_contact.id}
 
         normalized_message: dict[str, Any] = {
             "id": external_event_id,
-            "type": message_type,
-            "text": message.get("text") if message_type == "text" else None,
+            "type": "text" if message_type == "contacts" else message_type,
+            "text": (
+                "Meu telefone foi compartilhado."
+                if message_type == "contacts"
+                else message.get("text") if message_type == "text" else None
+            ),
         }
         if isinstance(normalized_message["text"], dict):
             normalized_message["text"] = normalized_message["text"].get("body")
@@ -353,10 +484,15 @@ class CovercutWebhookService:
             "integration_id": connection.integration_id,
             "event_id": external_event_id,
             "contact": {
-                "phone": sender_phone,
-                "name": contact.get("name"),
-                "user_id": contact.get("user_id"),
-                "username": contact.get("username"),
+                "id": getattr(resolved_contact, "id", None),
+                "client_id": getattr(resolved_contact, "client_id", None),
+                "policy": getattr(resolved_contact, "bot_policy", "AUTO"),
+                "phone": getattr(resolved_contact, "phone", None) or identity.get("phone") or identity.get("wa_id"),
+                "wa_id": getattr(resolved_contact, "wa_id", None) or identity.get("wa_id"),
+                "name": getattr(resolved_contact, "name", None) or identity.get("name"),
+                "user_id": getattr(resolved_contact, "provider_user_id", None) or identity.get("provider_user_id"),
+                "parent_user_id": getattr(resolved_contact, "parent_provider_user_id", None) or identity.get("parent_provider_user_id"),
+                "username": getattr(resolved_contact, "username", None) or identity.get("username"),
             },
             "message": normalized_message,
         }
@@ -490,6 +626,7 @@ def get_covercut_webhook_service(db: DataBaseDep):
         COVERCUT_API_KEY,
         COVERCUT_API_SECRET,
         timeout_seconds=COVERCUT_REQUEST_TIMEOUT_SECONDS,
+        bot_agent_name=WHATSAPP_BOT_AGENT_NAME,
     )
     return CovercutWebhookService(
         db,
@@ -504,4 +641,7 @@ def get_covercut_webhook_service(db: DataBaseDep):
         n8n_webhook_secret=N8N_WEBHOOK_SECRET,
         media_max_bytes=COVERCUT_MEDIA_MAX_BYTES,
         business_integration_repo=BusinessIntegrationRepository(),
+        contact_service=get_contact_service(db),
+        ownership_service=ConversationOwnershipService(),
+        bot_agent_name=WHATSAPP_BOT_AGENT_NAME,
     )

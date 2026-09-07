@@ -24,6 +24,7 @@ def test_single_clean_initial_migration_exists():
         "0011_add_business_pay_methods.py",
         "0012_add_business_cep.py",
         "0013_whatsapp_connections.py",
+        "0014_contacts_ownership.py",
     ]
     assert all(len(Path(filename).stem) <= 32 for filename in migration_files)
 
@@ -127,3 +128,11 @@ def test_single_clean_initial_migration_exists():
     assert "FROM evolution_instances" in source
     assert "uq_whatsapp_connection_provider_identifier" in source
     assert "uq_whatsapp_connection_provider_reference" in source
+
+    source = read_source("alembic/versions/0014_contacts_ownership.py")
+    assert 'revision: str = "0014_contacts_ownership"' in source
+    assert 'down_revision: Union[str, None] = "0013_whatsapp_connections"' in source
+    assert "contacts" in source
+    assert "client_backfill" in source
+    assert "bot_policy" in source
+    assert "uq_contacts_business_provider_user" in source

@@ -13,6 +13,7 @@ from src.schemas import WhatsAppMessageRequest, WhatsAppMessageResponse
 from src.services.messaging_service import (
     WhatsAppMessagingTenantError,
     WhatsAppMessagingUnavailableError,
+    WhatsAppMessagingOwnershipError,
 )
 from src.services.whatsapp_connection_service import WhatsAppProviderUnavailableError
 
@@ -33,8 +34,10 @@ async def send_whatsapp_message(
                 actor.integration_id,
                 to=data.to,
                 text=data.text or "",
+                recipient=data.recipient,
+                contact_id=data.contact_id,
             )
-        else:
+        elif data.type == "template":
             template = data.template
             assert template is not None
             result = await service.send_template(
@@ -44,12 +47,24 @@ async def send_whatsapp_message(
                 name=template.name,
                 language=template.language,
                 body_parameters=template.body_parameters,
+                recipient=data.recipient,
+                contact_id=data.contact_id,
+            )
+        else:
+            result = await service.request_contact_info(
+                actor.business_id,
+                actor.integration_id,
+                recipient=data.recipient or "",
+                text=data.text or "",
+                contact_id=data.contact_id,
             )
         return result.as_dict()
     except WhatsAppMessagingTenantError:
         raise HTTPException(status_code=404, detail="Conexão WhatsApp não encontrada.")
     except WhatsAppMessagingUnavailableError:
         raise HTTPException(status_code=409, detail="WhatsApp não está conectado.")
+    except WhatsAppMessagingOwnershipError:
+        raise HTTPException(status_code=409, detail="Conversa em atendimento humano; envio do bot bloqueado.")
     except (WhatsAppProviderUnavailableError, CovercutConfigurationError, EvolutionConfigurationError):
         raise HTTPException(status_code=503, detail="Provider WhatsApp indisponível.")
     except (CovercutAmbiguousSendError, EvolutionAmbiguousSendError):

@@ -31,3 +31,4 @@ from .availability_schema import (
 )
 from .business_integration_schema import BusinessIntegrationResponse, BusinessIntegrationCreate, BusinessIntegrationUpdate
 from .whatsapp_schema import WhatsAppMessageRequest, WhatsAppMessageResponse, WhatsAppTemplateRequest
+from .contact_schema import ContactIdentityRequest, ContactOwnershipResponse, ContactResponse, ContactTakeoverRequest

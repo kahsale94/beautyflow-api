@@ -185,3 +185,25 @@ def test_covercut_media_is_scoped_and_bounded():
 
     with pytest.raises(CovercutMediaError):
         run(client.get_media(phone_number_id="pnid", media_id="media-1", max_bytes=3))
+
+
+def test_covercut_supports_bsuid_contact_request_and_coexistence_sync():
+    requests = []
+
+    async def handler(request: httpx.Request):
+        requests.append((request.url.path, json.loads(request.content)))
+        return httpx.Response(200, json={"success": True, "message_id": "wamid.bsuid"})
+
+    client = CovercutClient("https://api.example/api/v1", "key", "secret", transport=httpx.MockTransport(handler))
+    run(client.send_text(phone_number_id="pnid", to=None, recipient="BR.123", text="Oi"))
+    run(client.request_contact_info(phone_number_id="pnid", recipient="BR.123", text="Compartilhe"))
+    run(client.sync_coexistence(phone_number_id="pnid"))
+
+    assert requests[0][1]["recipient"] == "BR.123"
+    assert "to" not in requests[0][1]
+    assert requests[1][1]["interactive"] == {
+        "type": "request_contact_info",
+        "body": {"text": "Compartilhe"},
+        "action": {"name": "request_contact_info"},
+    }
+    assert requests[2] == ("/api/v1/numbers/sync_coexistence", {"from": "pnid"})

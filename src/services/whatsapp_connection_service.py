@@ -15,6 +15,7 @@ from src.core import (
     COVERCUT_API_SECRET,
     COVERCUT_EXTERNAL_ID_PREFIX,
     COVERCUT_REQUEST_TIMEOUT_SECONDS,
+    WHATSAPP_BOT_AGENT_NAME,
     DataBaseDep,
     EVOLUTION_API_KEY,
     EVOLUTION_API_URL,
@@ -286,6 +287,13 @@ class WhatsAppConnectionService:
         self.connection_repo.delete(self.db, connection)
         self.db.commit()
 
+    async def request_contact_sync(self, business_id: int) -> dict:
+        connection = self.get_for_business(business_id)
+        if not connection or connection.provider != "covercut" or connection.provider_connection_id.startswith("pending:"):
+            raise WhatsAppConnectionNotFoundError()
+        provider = self._provider("covercut")
+        return await provider.client.sync_coexistence(phone_number_id=connection.provider_connection_id)
+
 
 def get_whatsapp_connection_service(db: DataBaseDep):
     evolution_service = get_evolution_instance_service(db)
@@ -294,6 +302,7 @@ def get_whatsapp_connection_service(db: DataBaseDep):
         COVERCUT_API_KEY,
         COVERCUT_API_SECRET,
         timeout_seconds=COVERCUT_REQUEST_TIMEOUT_SECONDS,
+        bot_agent_name=WHATSAPP_BOT_AGENT_NAME,
     )
     providers: dict[str, WhatsAppProvider] = {
         "evolution": EvolutionWhatsAppProvider(

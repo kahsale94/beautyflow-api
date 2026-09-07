@@ -47,12 +47,20 @@ class CovercutClient:
         api_secret: str | None,
         timeout_seconds: int = 15,
         transport: httpx.AsyncBaseTransport | None = None,
+        bot_agent_name: str = "Beautyflow",
     ):
         self.base_url = (base_url or "").rstrip("/")
         self.api_key = api_key or ""
         self.api_secret = api_secret or ""
         self.timeout_seconds = timeout_seconds
         self.transport = transport
+        self.bot_agent_name = bot_agent_name[:100]
+
+    @staticmethod
+    def _recipient(to: str | None, recipient: str | None = None) -> dict[str, str]:
+        if bool(to) == bool(recipient):
+            raise ValueError("Informe exatamente um destinatário CoverCut.")
+        return {"recipient": str(recipient)} if recipient else {"to": str(to)}
 
     @property
     def configured(self) -> bool:
@@ -226,18 +234,19 @@ class CovercutClient:
         self,
         *,
         phone_number_id: str,
-        to: str,
+        to: str | None,
         text: str,
+        recipient: str | None = None,
     ) -> dict[str, Any]:
         return await self._request_json(
             "POST",
             "/messages/send",
             json={
                 "from": phone_number_id,
-                "to": to,
+                **self._recipient(to, recipient),
                 "type": "text",
                 "text": {"body": text},
-                "agent_name": "Beautyflow",
+                "agent_name": self.bot_agent_name,
             },
             ambiguous_on_network_error=True,
         )
@@ -246,17 +255,18 @@ class CovercutClient:
         self,
         *,
         phone_number_id: str,
-        to: str,
+        to: str | None,
         name: str,
         language: str,
         body_parameters: Sequence[str],
+        recipient: str | None = None,
     ) -> dict[str, Any]:
         return await self._request_json(
             "POST",
             "/messages/template",
             json={
                 "from": phone_number_id,
-                "to": to,
+                **self._recipient(to, recipient),
                 "type": "template",
                 "template": {
                     "name": name,
@@ -271,9 +281,41 @@ class CovercutClient:
                         }
                     ],
                 },
-                "agent_name": "Beautyflow",
+                "agent_name": self.bot_agent_name,
             },
             ambiguous_on_network_error=True,
+        )
+
+    async def request_contact_info(
+        self,
+        *,
+        phone_number_id: str,
+        recipient: str,
+        text: str,
+    ) -> dict[str, Any]:
+        return await self._request_json(
+            "POST",
+            "/messages/send",
+            json={
+                "from": phone_number_id,
+                "recipient": recipient,
+                "type": "interactive",
+                "interactive": {
+                    "type": "request_contact_info",
+                    "body": {"text": text},
+                    "action": {"name": "request_contact_info"},
+                },
+                "agent_name": self.bot_agent_name,
+            },
+            ambiguous_on_network_error=True,
+        )
+
+    async def sync_coexistence(self, *, phone_number_id: str) -> dict[str, Any]:
+        return await self._request_json(
+            "POST",
+            "/numbers/sync_coexistence",
+            json={"from": phone_number_id},
+            retry_safe=True,
         )
 
     async def get_media(

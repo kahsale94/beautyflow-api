@@ -20,3 +20,4 @@ from .whatsapp_connection_model import (
     WhatsAppProviderType,
     WhatsAppWebhookEvent,
 )
+from .contact_model import Contact

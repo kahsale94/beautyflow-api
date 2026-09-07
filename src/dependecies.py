@@ -19,6 +19,7 @@ from src.services.evolution_instance_service import EvolutionInstanceService, ge
 from src.services.whatsapp_connection_service import WhatsAppConnectionService, get_whatsapp_connection_service
 from src.services.messaging_service import MessagingService, get_messaging_service
 from src.services.covercut_webhook_service import CovercutWebhookService, get_covercut_webhook_service
+from src.services.contact_service import ContactService, get_contact_service
 from src.security import (require_user, require_super_admin, UserContext, get_business_scope, require_admin, IntegrationContext, 
 require_integration, get_business_phone, require_business_integration, BusinessIntegrationContext, require_user_or_business_integration)
 
@@ -51,3 +52,4 @@ EvolutionInstanceServiceDep = Annotated[EvolutionInstanceService, Depends(get_ev
 WhatsAppConnectionServiceDep = Annotated[WhatsAppConnectionService, Depends(get_whatsapp_connection_service)]
 MessagingServiceDep = Annotated[MessagingService, Depends(get_messaging_service)]
 CovercutWebhookServiceDep = Annotated[CovercutWebhookService, Depends(get_covercut_webhook_service)]
+ContactServiceDep = Annotated[ContactService, Depends(get_contact_service)]

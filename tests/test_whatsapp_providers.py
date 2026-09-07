@@ -7,6 +7,7 @@ from src.clients import CovercutAmbiguousSendError
 from src.providers import CovercutWhatsAppProvider, WhatsAppOperationContext, normalize_connection_status
 from src.services.messaging_service import (
     MessagingService,
+    WhatsAppMessagingOwnershipError,
     WhatsAppMessagingTenantError,
     WhatsAppMessagingUnavailableError,
 )
@@ -34,15 +35,19 @@ class FakeCovercutClient:
             "reused_existing": True,
         }
 
-    async def send_text(self, *, phone_number_id, to, text):
+    async def send_text(self, *, phone_number_id, to, text, recipient=None):
         if self.error:
             raise self.error
-        self.sent = (phone_number_id, to, text)
+        self.sent = (phone_number_id, recipient or to, text)
         return {"message_id": "wamid.1"}
 
-    async def send_template(self, *, phone_number_id, to, name, language, body_parameters):
+    async def send_template(self, *, phone_number_id, to, name, language, body_parameters, recipient=None):
         self.template_sent = (phone_number_id, to, name, language, list(body_parameters))
         return {"data": {"message_id": "wamid.template"}}
+
+    async def request_contact_info(self, *, phone_number_id, recipient, text):
+        self.sent = (phone_number_id, recipient, text)
+        return {"message_id": "wamid.contact"}
 
 
 class FakeConnectionRepository:
@@ -57,6 +62,43 @@ class FakeConnectionRepository:
         ):
             return self.connection
         return None
+
+
+class FakeContactRepository:
+    def __init__(self, contact):
+        self.contact = contact
+
+    def get_by_id(self, db, business_id, contact_id):
+        if self.contact.business_id == business_id and self.contact.id == contact_id:
+            return self.contact
+        return None
+
+    def find_by_identities(
+        self, db, business_id, provider, *, provider_user_id=None,
+        wa_id=None, phone=None,
+    ):
+        if self.contact.business_id != business_id:
+            return []
+        identities = {value for value in (provider_user_id, wa_id, phone) if value}
+        contact_identities = {
+            value for value in (
+                getattr(self.contact, "provider_user_id", None),
+                getattr(self.contact, "wa_id", None),
+                getattr(self.contact, "phone", None),
+            ) if value
+        }
+        return [self.contact] if identities & contact_identities else []
+
+
+class FakeOwnership:
+    def __init__(self, active=False, unavailable=False):
+        self.active = active
+        self.unavailable = unavailable
+
+    def is_active_strict(self, business_id, connection_id, contact_id):
+        if self.unavailable:
+            raise RuntimeError("redis down")
+        return self.active
 
 
 @pytest.mark.parametrize(
@@ -192,6 +234,59 @@ def test_messaging_rejects_disconnected_and_preserves_ambiguous_send():
     client.error = CovercutAmbiguousSendError(503, "indeterminate")
     with pytest.raises(CovercutAmbiguousSendError):
         run(service.send_text(7, 3, to="11999999999", text="Uma tentativa"))
+
+
+def test_messaging_sends_to_bsuid_and_rechecks_takeover_at_last_mile():
+    client = FakeCovercutClient()
+    provider = CovercutWhatsAppProvider(client)
+    item = SimpleNamespace(id=4, business_id=7, integration_id=3, provider="covercut", provider_connection_id="pnid-business-7", status="connected")
+    contact = SimpleNamespace(id=31, business_id=7, whatsapp_connection_id=4, bot_policy="AUTO")
+    ownership = FakeOwnership()
+    service = MessagingService(
+        None, FakeConnectionRepository(item), {"covercut": provider},
+        FakeContactRepository(contact), ownership,
+    )
+
+    result = run(service.send_text(7, 3, to=None, recipient="BR.31", contact_id=31, text="Olá"))
+    assert result.external_message_id == "wamid.1"
+    assert client.sent == ("pnid-business-7", "BR.31", "Olá")
+
+    ownership.active = True
+    with pytest.raises(WhatsAppMessagingOwnershipError):
+        run(service.send_text(7, 3, to=None, recipient="BR.31", contact_id=31, text="Não enviar"))
+
+
+def test_messaging_blocks_persistent_human_policy():
+    client = FakeCovercutClient()
+    item = SimpleNamespace(id=4, business_id=7, integration_id=3, provider="covercut", provider_connection_id="pnid-business-7", status="connected")
+    contact = SimpleNamespace(id=31, business_id=7, whatsapp_connection_id=4, bot_policy="HUMAN")
+    service = MessagingService(
+        None, FakeConnectionRepository(item), {"covercut": CovercutWhatsAppProvider(client)},
+        FakeContactRepository(contact), FakeOwnership(),
+    )
+    with pytest.raises(WhatsAppMessagingOwnershipError):
+        run(service.send_text(7, 3, to=None, recipient="BR.31", contact_id=31, text="Não enviar"))
+
+
+def test_messaging_legacy_send_resolves_contact_before_last_mile():
+    client = FakeCovercutClient()
+    item = SimpleNamespace(id=4, business_id=7, integration_id=3, provider="covercut", provider_connection_id="pnid-business-7", status="connected")
+    contact = SimpleNamespace(
+        id=31, business_id=7, whatsapp_connection_id=4, bot_policy="HUMAN",
+        provider_user_id=None, wa_id="5511999999999", phone="5511999999999",
+    )
+    service = MessagingService(
+        None, FakeConnectionRepository(item), {"covercut": CovercutWhatsAppProvider(client)},
+        FakeContactRepository(contact), FakeOwnership(),
+    )
+
+    with pytest.raises(WhatsAppMessagingOwnershipError):
+        run(service.send_template(
+            7, 3, to="(11) 99999-9999", name="appointment_reminder",
+            language="pt_BR", body_parameters=[],
+        ))
+
+    assert client.template_sent is None
 
 
 def test_connection_model_enforces_one_business_and_provider_identity():

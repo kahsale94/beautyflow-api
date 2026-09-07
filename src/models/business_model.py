@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from .business_integration_model import BusinessIntegration
     from .evolution_instance_model import EvolutionInstance
     from .whatsapp_connection_model import WhatsAppConnection
+    from .contact_model import Contact
 
 
 class BusinessType(str, PyEnum):
@@ -146,6 +147,9 @@ class Business(Base):
     services: Mapped[list["Service"]] = relationship(back_populates="business", cascade="all, delete-orphan")
     users: Mapped[list["User"]] = relationship(back_populates="business", cascade="all, delete-orphan")
     clients: Mapped[list["Client"]] = relationship(back_populates="business", cascade="all, delete-orphan")
+    contacts: Mapped[list["Contact"]] = relationship(
+        back_populates="business", cascade="all, delete-orphan", overlaps="client,contact"
+    )
 
     integrations: Mapped[list["Integration"]] = relationship(secondary="business_integrations", viewonly=True)
     business_integrations: Mapped[list["BusinessIntegration"]] = relationship(back_populates="business", cascade="all, delete-orphan")

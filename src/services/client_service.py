@@ -5,10 +5,10 @@ from typing import Sequence
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
-from src.models import Client
+from src.models import Client, Contact
 from src.core import DataBaseDep
 from src.utils import normalize_phone
-from src.repositories import ClientRepository
+from src.repositories import ClientRepository, ContactRepository, WhatsAppConnectionRepository
 from src.schemas import ClientCreate, ClientUpdate
 from src.services.redis_cache_invalidator import RedisCacheInvalidator
 
@@ -25,10 +25,14 @@ class ClientService:
         db: Session,
         client_repo: ClientRepository,
         cache_invalidator: RedisCacheInvalidator | None = None,
+        contact_repo: ContactRepository | None = None,
+        connection_repo: WhatsAppConnectionRepository | None = None,
     ):
         self.db = db
         self.client_repo = client_repo
         self.cache_invalidator = cache_invalidator or RedisCacheInvalidator()
+        self.contact_repo = contact_repo
+        self.connection_repo = connection_repo
 
     def _get_valid(self, business_id: int, client_id: int):
         client = self.client_repo.get_by_id(self.db, business_id, client_id)
@@ -70,6 +74,38 @@ class ClientService:
         self.client_repo.add(self.db, client)
 
         try:
+            if self.contact_repo and self.connection_repo:
+                self.db.flush()
+                connection = self.connection_repo.get_by_business(self.db, business_id)
+                matches = self.contact_repo.find_by_identities(
+                    self.db,
+                    business_id,
+                    getattr(connection, "provider", None),
+                    phone=phone,
+                    wa_id=phone if connection else None,
+                    for_update=True,
+                )
+                if len({item.id for item in matches}) > 1:
+                    raise IntegrityError("contact identity conflict", {}, None)
+                contact = matches[0] if matches else None
+                if contact:
+                    contact.client_id = client.id
+                    contact.name = client.name or contact.name
+                    if not contact.policy_manually_overridden:
+                        contact.bot_policy = "BOT"
+                        contact.source = "client"
+                else:
+                    self.contact_repo.add(self.db, Contact(
+                        business_id=business_id,
+                        client_id=client.id,
+                        whatsapp_connection_id=getattr(connection, "id", None),
+                        provider=getattr(connection, "provider", None),
+                        wa_id=phone if connection else None,
+                        phone=phone,
+                        name=client.name,
+                        source="client",
+                        bot_policy="BOT",
+                    ))
             self.db.commit()
         except IntegrityError:
             self.db.rollback()
@@ -105,6 +141,18 @@ class ClientService:
         for field, value in update_data.items():
             setattr(client, field, value)
 
+        if self.contact_repo:
+            contact = self.contact_repo.get_by_client(self.db, business_id, client.id)
+            if contact:
+                contact.name = client.name or contact.name
+                if client.phone != previous_phone:
+                    contact.phone = client.phone
+                    if contact.wa_id == previous_phone:
+                        contact.wa_id = client.phone
+                if not contact.policy_manually_overridden:
+                    contact.bot_policy = "BOT"
+                    contact.source = "client"
+
         try:
             self.db.commit()
         except IntegrityError:
@@ -134,4 +182,6 @@ def get_client_service(db: DataBaseDep):
         db,
         ClientRepository(),
         RedisCacheInvalidator(),
+        ContactRepository(),
+        WhatsAppConnectionRepository(),
     )

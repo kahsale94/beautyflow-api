@@ -120,6 +120,8 @@ def build_service(
     businesses=(7,),
     links=((7, 3),),
     covercut_client=None,
+    contact_service=None,
+    ownership_service=None,
 ):
     return CovercutWebhookService(
         FakeDatabase(),
@@ -135,7 +137,51 @@ def build_service(
         media_max_bytes=1024,
         transport=transport,
         business_integration_repo=FakeBusinessIntegrationRepository(links),
+        contact_service=contact_service,
+        ownership_service=ownership_service,
     )
+
+
+class FakeContactService:
+    def __init__(self, policy="AUTO"):
+        self.policy = policy
+        self.resolved = []
+        self.synced = []
+        self.updated = None
+
+    def resolve(self, **identity):
+        self.resolved.append(identity)
+        return SimpleNamespace(
+            id=31,
+            client_id=None,
+            bot_policy=self.policy,
+            phone=identity.get("phone") or identity.get("wa_id"),
+            wa_id=identity.get("wa_id"),
+            provider_user_id=identity.get("provider_user_id"),
+            parent_provider_user_id=identity.get("parent_provider_user_id"),
+            username=identity.get("username"),
+            name=identity.get("name"),
+        )
+
+    def sync_contacts(self, business_id, connection, records):
+        self.synced.extend(records)
+        return len(records)
+
+    def update_provider_user_id(self, business_id, connection, previous, current, wa_id, **kwargs):
+        self.updated = (business_id, previous, current, wa_id, kwargs)
+        return SimpleNamespace(id=31)
+
+
+class FakeOwnershipService:
+    def __init__(self, active=False):
+        self.active = active
+        self.activations = []
+
+    def is_active(self, business_id, connection_id, contact_id):
+        return self.active
+
+    def activate(self, business_id, connection_id, contact_id, source, **kwargs):
+        self.activations.append((business_id, connection_id, contact_id, source, kwargs))
 
 
 def run(coroutine):
@@ -180,6 +226,124 @@ def test_message_webhook_verifies_hmac_normalizes_and_deduplicates_text():
     }
 
 
+def test_bsuid_only_inbound_is_forwarded_without_fabricated_phone():
+    forwarded = []
+
+    async def handler(request: httpx.Request):
+        forwarded.append(json.loads(request.content))
+        return httpx.Response(200, json={"ok": True})
+
+    raw = json.dumps({
+        "event": "message",
+        "direction": "inbound",
+        "from_number_id": "pnid-7",
+        "contact": {"user_id": "BR.bsuid-only", "username": "ana"},
+        "message": {"id": "wamid.bsuid", "type": "text", "text": "Oi"},
+    }).encode()
+    contacts = FakeContactService()
+    result = run(build_service(
+        connections=[connection(status="connected")],
+        transport=httpx.MockTransport(handler),
+        contact_service=contacts,
+        ownership_service=FakeOwnershipService(),
+    ).handle_message(raw, signature=signed(raw), timestamp="1778884885"))
+
+    assert result["forwarded"] is True
+    assert forwarded[0]["contact"]["user_id"] == "BR.bsuid-only"
+    assert forwarded[0]["contact"]["phone"] is None
+
+
+@pytest.mark.parametrize(
+    ("echo_source", "agent_name", "expected_takeover"),
+    [("phone", None, True), ("api", "Beautyflow", False), ("api", "Atendente Joana", True)],
+)
+def test_echo_source_and_agent_name_control_human_takeover(echo_source, agent_name, expected_takeover):
+    message = {"id": f"echo-{echo_source}-{agent_name}", "type": "text", "text": "Resposta", "echo_source": echo_source}
+    if agent_name:
+        message["agent_name"] = agent_name
+    raw = json.dumps({
+        "event": "echo",
+        "direction": "outbound",
+        "from_number_id": "pnid-7",
+        "contact": {"user_id": "BR.echo"},
+        "message": message,
+    }).encode()
+    ownership = FakeOwnershipService()
+    result = run(build_service(
+        connections=[connection(status="connected")],
+        contact_service=FakeContactService(),
+        ownership_service=ownership,
+    ).handle_message(raw, signature=signed(raw), timestamp="1778884885"))
+
+    assert bool(ownership.activations) is expected_takeover
+    assert result.get("human_takeover", False) is expected_takeover
+
+
+def test_saved_contact_sync_and_user_id_update_are_idempotent_domain_events():
+    contacts = FakeContactService()
+    sync_raw = json.dumps({
+        "event": "smb_app_state_sync",
+        "id": "sync-package-1",
+        "from_number_id": "pnid-7",
+        "data": {"contacts": [{"full_name": "Ana", "username": "ana", "user_id": "BR.old"}]},
+    }).encode()
+    sync_result = run(build_service(
+        connections=[connection(status="connected")], contact_service=contacts,
+    ).handle_message(sync_raw, signature=signed(sync_raw), timestamp="1778884885"))
+    assert sync_result["contacts_synced"] == 1
+    assert contacts.synced[0]["user_id"] == "BR.old"
+
+    update_raw = json.dumps({
+        "event": "user_id_update",
+        "id": "user-update-1",
+        "from_number_id": "pnid-7",
+        "user_id_update": [{
+            "wa_id": "5511999999999",
+            "user_id": {"previous": "BR.old", "current": "BR.new"},
+            "parent_user_id": {"previous": "BR.parent.old", "current": "BR.parent.new"},
+        }],
+    }).encode()
+    update_result = run(build_service(
+        connections=[connection(status="connected")], contact_service=contacts,
+    ).handle_message(update_raw, signature=signed(update_raw), timestamp="1778884885"))
+    assert update_result["user_id_updated"] is True
+    assert contacts.updated == (
+        7, "BR.old", "BR.new", "5511999999999",
+        {"previous_parent": "BR.parent.old", "current_parent": "BR.parent.new"},
+    )
+
+
+def test_contact_request_reply_updates_sender_and_becomes_safe_text_event():
+    forwarded = []
+
+    async def handler(request: httpx.Request):
+        forwarded.append(json.loads(request.content))
+        return httpx.Response(200, json={"ok": True})
+
+    raw = json.dumps({
+        "event": "message",
+        "direction": "inbound",
+        "from_number_id": "pnid-7",
+        "contact": {"user_id": "BR.sender"},
+        "message": {
+            "id": "wamid.contact",
+            "type": "contacts",
+            "from_user_id": "BR.sender",
+            "contacts": [{"origin": "contact_request", "phones": [{"phone": "+55 11 99999-9999", "wa_id": "5511999999999"}]}],
+        },
+    }).encode()
+    contacts = FakeContactService()
+    run(build_service(
+        connections=[connection(status="connected")], transport=httpx.MockTransport(handler),
+        contact_service=contacts, ownership_service=FakeOwnershipService(),
+    ).handle_message(raw, signature=signed(raw), timestamp="1778884885"))
+
+    assert contacts.resolved[0]["provider_user_id"] == "BR.sender"
+    assert contacts.resolved[0]["phone"] == "+55 11 99999-9999"
+    assert forwarded[0]["message"]["type"] == "text"
+    assert "telefone" in forwarded[0]["message"]["text"].lower()
+
+
 def test_message_webhook_rejects_bad_signature_changed_body_and_timestamp():
     raw = b'{"event":"message"}'
     service = build_service()
@@ -192,16 +356,16 @@ def test_message_webhook_rejects_bad_signature_changed_body_and_timestamp():
 
 
 @pytest.mark.parametrize(
-    ("event", "direction", "message_type"),
+    ("event", "direction", "message_type", "expected_reason"),
     [
-        ("history", "inbound", "text"),
-        ("smb_app_state_sync", "inbound", "text"),
-        ("echo", "outbound", "text"),
-        ("status", "outbound", "text"),
-        ("message", "inbound", "unsupported"),
+        ("history", "inbound", "text", "history_not_live"),
+        ("smb_app_state_sync", "inbound", "text", "contact_service_unavailable"),
+        ("echo", "outbound", "text", "bot_or_unknown_echo"),
+        ("status", "outbound", "text", "non_live_or_unsupported"),
+        ("message", "inbound", "unsupported", "non_live_or_unsupported"),
     ],
 )
-def test_non_live_and_unsupported_events_never_enter_bot(event, direction, message_type):
+def test_non_live_and_unsupported_events_never_enter_bot(event, direction, message_type, expected_reason):
     async def handler(request: httpx.Request):
         raise AssertionError("n8n must not receive this event")
 
@@ -219,7 +383,7 @@ def test_non_live_and_unsupported_events_never_enter_bot(event, direction, messa
             transport=httpx.MockTransport(handler),
         ).handle_message(raw, signature=signed(raw), timestamp="1778884885")
     )
-    assert result["ignored"] == "non_live_or_unsupported"
+    assert result["ignored"] == expected_reason
 
 
 def test_unknown_number_is_accepted_without_tenant_fallback():

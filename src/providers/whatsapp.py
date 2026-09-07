@@ -57,16 +57,20 @@ class WhatsAppProvider(Protocol):
 
     async def remove(self, context: WhatsAppOperationContext) -> None: ...
 
-    async def send_text(self, connection: WhatsAppConnection, to: str, text: str) -> dict[str, Any]: ...
+    async def send_text(self, connection: WhatsAppConnection, to: str | None, text: str, *, recipient: str | None = None) -> dict[str, Any]: ...
 
     async def send_template(
         self,
         connection: WhatsAppConnection,
-        to: str,
+        to: str | None,
         name: str,
         language: str,
         body_parameters: list[str],
+        *,
+        recipient: str | None = None,
     ) -> dict[str, Any]: ...
+
+    async def request_contact_info(self, connection: WhatsAppConnection, recipient: str, text: str) -> dict[str, Any]: ...
 
 
 class EvolutionWhatsAppProvider:
@@ -116,18 +120,25 @@ class EvolutionWhatsAppProvider:
     async def remove(self, context: WhatsAppOperationContext) -> None:
         await self.lifecycle_service.delete(context.business_id, context.integration_id)
 
-    async def send_text(self, connection: WhatsAppConnection, to: str, text: str) -> dict[str, Any]:
+    async def send_text(self, connection: WhatsAppConnection, to: str | None, text: str, *, recipient: str | None = None) -> dict[str, Any]:
+        if not to or recipient:
+            raise ValueError("Evolution exige destinatário por telefone.")
         return await self.client.send_text(connection.provider_connection_id, to, text)
 
     async def send_template(
         self,
         connection: WhatsAppConnection,
-        to: str,
+        to: str | None,
         name: str,
         language: str,
         body_parameters: list[str],
+        *,
+        recipient: str | None = None,
     ) -> dict[str, Any]:
         raise NotImplementedError("Templates não são suportados pelo provider Evolution configurado.")
+
+    async def request_contact_info(self, connection: WhatsAppConnection, recipient: str, text: str) -> dict[str, Any]:
+        raise NotImplementedError("Solicitação de telefone por BSUID não é suportada no Evolution.")
 
 
 class CovercutWhatsAppProvider:
@@ -296,25 +307,36 @@ class CovercutWhatsAppProvider:
                 action="disconnect",
             )
 
-    async def send_text(self, connection: WhatsAppConnection, to: str, text: str) -> dict[str, Any]:
-        return await self.client.send_text(
-            phone_number_id=connection.provider_connection_id,
-            to=to,
-            text=text,
-        )
+    async def send_text(self, connection: WhatsAppConnection, to: str | None, text: str, *, recipient: str | None = None) -> dict[str, Any]:
+        kwargs = {"phone_number_id": connection.provider_connection_id, "to": to, "text": text}
+        if recipient:
+            kwargs["recipient"] = recipient
+        return await self.client.send_text(**kwargs)
 
     async def send_template(
         self,
         connection: WhatsAppConnection,
-        to: str,
+        to: str | None,
         name: str,
         language: str,
         body_parameters: list[str],
+        *,
+        recipient: str | None = None,
     ) -> dict[str, Any]:
-        return await self.client.send_template(
+        kwargs = {
+            "phone_number_id": connection.provider_connection_id,
+            "to": to,
+            "name": name,
+            "language": language,
+            "body_parameters": body_parameters,
+        }
+        if recipient:
+            kwargs["recipient"] = recipient
+        return await self.client.send_template(**kwargs)
+
+    async def request_contact_info(self, connection: WhatsAppConnection, recipient: str, text: str) -> dict[str, Any]:
+        return await self.client.request_contact_info(
             phone_number_id=connection.provider_connection_id,
-            to=to,
-            name=name,
-            language=language,
-            body_parameters=body_parameters,
+            recipient=recipient,
+            text=text,
         )

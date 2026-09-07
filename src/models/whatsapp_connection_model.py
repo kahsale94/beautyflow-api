@@ -12,6 +12,7 @@ from .base_model import Base, business_fk, integration_fk, intpk
 if TYPE_CHECKING:
     from .business_model import Business
     from .integration_model import Integration
+    from .contact_model import Contact
 
 
 class WhatsAppProviderType(str, PyEnum):
@@ -94,6 +95,7 @@ class WhatsAppConnection(Base):
         back_populates="connection",
         cascade="all, delete-orphan",
     )
+    contacts: Mapped[list["Contact"]] = relationship(back_populates="whatsapp_connection")
 
     @property
     def connection_key(self) -> str:
