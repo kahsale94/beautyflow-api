@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException
 
 from src.schemas import AppointmentCreate, AppointmentResponse, AppointmentUpdate
 from src.dependecies import AdminDep, AppointmentServiceDep, BusinessScopeDep, UserOrBusinessIntegrationDep
-from src.services.appointment_service import (AppointmentAlreadyCanceledError, AppointmentAlreadyCompletedError, AppointmentBlockedByScheduleBlockError,
+from src.services.appointment_service import (AppointmentAlreadyCanceledError, AppointmentAlreadyCompletedError, AppointmentAlreadyNoShowError, AppointmentBlockedByScheduleBlockError,
     AppointmentCancellationDeadlineError, AppointmentClientCancellationDisabledError, AppointmentConfirmationPendingError,
     AppointmentInvalidSlotIntervalError, AppointmentMaximumScheduleWindowError, AppointmentMinimumNoticeError, AppointmentNotFoundError,
     AppointmentTimeConflictError,  BusinessNotAvailableForBookingError, ClientNotFoundError, DatetimeFormatError, InvalidBusinessTimezoneError,
@@ -62,6 +62,9 @@ def _handle_booking_rule_errors(exc: Exception):
 
     if isinstance(exc, AppointmentAlreadyCompletedError):
         raise HTTPException(status_code=409, detail="Agendamento já concluído e não pode ser alterado!")
+
+    if isinstance(exc, AppointmentAlreadyNoShowError):
+        raise HTTPException(status_code=409, detail="Agendamento já foi marcado como falta e não pode ser alterado!")
 
     if isinstance(exc, AppointmentClientCancellationDisabledError):
         raise HTTPException(status_code=403, detail="Cancelamento pelo cliente está desabilitado!")
@@ -122,7 +125,7 @@ def update_appointment(appointment_id: int, data: AppointmentUpdate, business_id
 
     except (BusinessNotAvailableForBookingError, AppointmentMinimumNoticeError, AppointmentMaximumScheduleWindowError,
         AppointmentInvalidSlotIntervalError, InvalidBusinessTimezoneError, AppointmentNotFoundError,
-        AppointmentAlreadyCanceledError, AppointmentAlreadyCompletedError, ProfessionalNotAvailableError,
+        AppointmentAlreadyCanceledError, AppointmentAlreadyCompletedError, AppointmentAlreadyNoShowError, ProfessionalNotAvailableError,
         ServiceNotAvailableError, ClientNotFoundError, ProfessionalServiceMismatchError,
         AppointmentTimeConflictError, AppointmentBlockedByScheduleBlockError, DatetimeFormatError, ValueError,
     ) as exc:
@@ -134,7 +137,7 @@ def complete_appointment(appointment_id: int, business_id: BusinessScopeDep, ser
         service.complete(business_id, appointment_id)
 
     except (AppointmentNotFoundError, AppointmentAlreadyCompletedError, AppointmentAlreadyCanceledError,
-        AppointmentConfirmationPendingError,
+        AppointmentConfirmationPendingError, AppointmentAlreadyNoShowError,
     ) as exc:
         _handle_booking_rule_errors(exc)
 
@@ -143,7 +146,7 @@ def confirm_appointment(appointment_id: int, business_id: BusinessScopeDep, serv
     try:
         service.confirm(business_id, appointment_id)
 
-    except (AppointmentNotFoundError, AppointmentAlreadyCompletedError, AppointmentAlreadyCanceledError) as exc:
+    except (AppointmentNotFoundError, AppointmentAlreadyCompletedError, AppointmentAlreadyCanceledError, AppointmentAlreadyNoShowError) as exc:
         _handle_booking_rule_errors(exc)
 
 @router.patch("/{appointment_id}/cancel", status_code=204)
@@ -156,6 +159,25 @@ def cancel_appointment(appointment_id: int, business_id: BusinessScopeDep, servi
         )
 
     except (AppointmentNotFoundError, AppointmentAlreadyCompletedError, AppointmentAlreadyCanceledError,
-        AppointmentClientCancellationDisabledError, AppointmentCancellationDeadlineError,
+        AppointmentClientCancellationDisabledError, AppointmentCancellationDeadlineError, AppointmentAlreadyNoShowError,
+    ) as exc:
+        _handle_booking_rule_errors(exc)
+
+
+@router.patch("/{appointment_id}/no-show", status_code=204)
+def mark_appointment_no_show(
+    appointment_id: int,
+    business_id: BusinessScopeDep,
+    service: AppointmentServiceDep,
+    admin: AdminDep,
+):
+    try:
+        service.mark_no_show(business_id, appointment_id)
+    except (
+        AppointmentNotFoundError,
+        AppointmentAlreadyCompletedError,
+        AppointmentAlreadyCanceledError,
+        AppointmentAlreadyNoShowError,
+        AppointmentConfirmationPendingError,
     ) as exc:
         _handle_booking_rule_errors(exc)

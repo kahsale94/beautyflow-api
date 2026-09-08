@@ -5,7 +5,7 @@ from .service_model import Service
 from .business_model import Business, BusinessAttendancePlan, BusinessPaymentMethod, BusinessType
 from .business_feature_model import BusinessFeature, BusinessFeatureKey
 from .business_opening_hour_model import BusinessOpeningHour
-from .appointment_model import Appointment
+from .appointment_model import Appointment, AppointmentKind, AppointmentStatus
 from .appointment_reminder_model import AppointmentReminder
 from .schedule_block_model import ScheduleBlock
 from .integration_model import Integration

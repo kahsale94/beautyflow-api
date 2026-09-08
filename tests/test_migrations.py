@@ -26,6 +26,8 @@ def test_single_clean_initial_migration_exists():
         "0013_whatsapp_connections.py",
         "0014_contacts_ownership.py",
         "0015_business_features.py",
+        "0016_appointment_capacity_fields.py",
+        "0017_capacity_lane_constraint.py",
     ]
     assert all(len(Path(filename).stem) <= 32 for filename in migration_files)
 
@@ -144,3 +146,15 @@ def test_single_clean_initial_migration_exists():
     assert "business_features" in source
     assert "pilates_studio" in source
     assert "uq_business_features_business_key" in source
+
+    source = read_source("alembic/versions/0016_appointment_capacity_fields.py")
+    assert 'revision: str = "0016_appointment_capacity"' in source
+    assert "simultaneous_capacity" in source
+    assert "capacity_slot" in source
+    assert "appointmentkind" in source
+    assert "no_show" in source
+
+    source = read_source("alembic/versions/0017_capacity_lane_constraint.py")
+    assert 'revision: str = "0017_capacity_lane"' in source
+    assert "ex_appointments_business_professional_capacity_time_conflict" in source
+    assert '("capacity_slot", "=")' in source

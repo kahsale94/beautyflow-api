@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 
 from src.schemas import ProfessionalCreate, ProfessionalResponse, ProfessionalUpdate
-from src.services.professional_service import ProfessionalNotFoundError, ProfessionalAlreadyExistsError
+from src.services.professional_service import ProfessionalNotFoundError, ProfessionalAlreadyExistsError, ProfessionalCapacityConflictError
 from src.dependecies import ProfessionalServiceDep, BusinessScopeDep, AdminDep, UserOrBusinessIntegrationDep
 
 router = APIRouter(prefix="/professionals", tags=["V1 ➔ Professionals"])
@@ -39,6 +39,9 @@ def update_professional(professional_id: int, data: ProfessionalUpdate, business
     
     except ProfessionalNotFoundError:
         raise HTTPException(status_code=404, detail="Profissional não encontrado!")
+
+    except ProfessionalCapacityConflictError:
+        raise HTTPException(status_code=409, detail="A capacidade não pode ser reduzida porque há agendamentos futuros simultâneos.")
 
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc) or "Dados inválidos")

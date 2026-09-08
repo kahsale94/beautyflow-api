@@ -16,8 +16,8 @@ def test_appointment_conflict_constraint_name_is_aligned():
     model_source = read_source("src/models/appointment_model.py")
     service_source = read_source("src/services/appointment_service.py")
 
-    assert "ex_appointments_business_professional_time_conflict" in model_source
-    assert "ex_appointments_business_professional_time_conflict" in service_source
+    assert "ex_appointments_business_professional_capacity_time_conflict" in model_source
+    assert "ex_appointments_business_professional_capacity_time_conflict" in service_source
 
 def test_appointment_requires_professional_service_link():
     source = read_source("src/services/appointment_service.py")
@@ -82,7 +82,7 @@ def test_appointment_validation_uses_saved_availability_hours():
 def test_update_appointment_rejects_null_required_fields():
     source = read_source("src/services/appointment_service.py")
 
-    assert 'for field in ("client_id", "professional_id", "service_id", "start_datetime")' in source
+    assert 'for field in ("client_id", "professional_id", "service_id", "start_datetime", "kind")' in source
     assert 'raise ValueError(f"{field} não pode ser nulo")' in source
 
 def test_cancel_completed_appointment_returns_conflict():

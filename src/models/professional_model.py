@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from sqlalchemy import UniqueConstraint, Index
+from sqlalchemy import CheckConstraint, Integer, UniqueConstraint, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base_model import Base, intpk, business_fk, name_type, phone_type
@@ -19,6 +19,7 @@ class Professional(Base):
 
     __table_args__ = (
         UniqueConstraint("business_id", "name", name="uq_professional_business_name"),
+        CheckConstraint("simultaneous_capacity >= 1", name="ck_professionals_simultaneous_capacity_positive"),
         Index(
             "idx_professionals_normalized_name_trgm",
             "normalized_name",
@@ -36,6 +37,7 @@ class Professional(Base):
     email: Mapped[str] = mapped_column(nullable=False)
     phone: Mapped[phone_type] = mapped_column(nullable=False)
     is_active: Mapped[bool] = mapped_column(nullable=False, default=True, server_default="true")
+    simultaneous_capacity: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
 
     business: Mapped["Business"] = relationship(back_populates="professionals")
     appointments: Mapped[list["Appointment"]] = relationship(back_populates="professional", cascade="all, delete-orphan")

@@ -77,3 +77,23 @@ class AppointmentRepository:
         stmt = stmt.order_by(Appointment.start_datetime)
 
         return db.scalars(stmt).all()
+
+    def get_future_scheduled_by_professional(
+        self,
+        db: Session,
+        business_id: int,
+        professional_id: int,
+        now: datetime,
+    ):
+        stmt = (
+            select(Appointment)
+            .where(
+                Appointment.business_id == business_id,
+                Appointment.professional_id == professional_id,
+                Appointment.status == AppointmentStatus.scheduled,
+                Appointment.end_datetime > now,
+            )
+            .order_by(Appointment.start_datetime, Appointment.end_datetime, Appointment.id)
+            .with_for_update()
+        )
+        return list(db.scalars(stmt).all())

@@ -1,17 +1,23 @@
+from datetime import datetime, timezone
+
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
 from src.core import DataBaseDep
 from src.models import Professional
-from src.repositories import ProfessionalRepository
+from src.repositories import AppointmentRepository, ProfessionalRepository
 from src.utils import normalize_text, normalize_phone
 from src.schemas import ProfessionalCreate, ProfessionalUpdate
 from src.services.redis_cache_invalidator import RedisCacheInvalidator
+from src.services.scheduling_lock import acquire_schedule_lock
 
 class ProfessionalNotFoundError(Exception):
     pass
 
 class ProfessionalAlreadyExistsError(Exception):
+    pass
+
+class ProfessionalCapacityConflictError(Exception):
     pass
 
 class ProfessionalService:
@@ -21,10 +27,36 @@ class ProfessionalService:
         db: Session,
         professional_repo: ProfessionalRepository,
         cache_invalidator: RedisCacheInvalidator | None = None,
+        appointment_repo: AppointmentRepository | None = None,
     ):
         self.db = db
         self.professional_repo = professional_repo
         self.cache_invalidator = cache_invalidator or RedisCacheInvalidator()
+        self.appointment_repo = appointment_repo or AppointmentRepository()
+
+    def _repack_future_capacity(self, business_id: int, professional: Professional, new_capacity: int) -> None:
+        acquire_schedule_lock(self.db, business_id, professional.id)
+        appointments = self.appointment_repo.get_future_scheduled_by_professional(
+            self.db,
+            business_id,
+            professional.id,
+            datetime.now(timezone.utc),
+        )
+        lanes: list[list] = [[] for _ in range(new_capacity)]
+        for appointment in appointments:
+            assigned_lane = None
+            for index, lane_items in enumerate(lanes, start=1):
+                if all(
+                    existing.end_datetime <= appointment.start_datetime
+                    or existing.start_datetime >= appointment.end_datetime
+                    for existing in lane_items
+                ):
+                    assigned_lane = index
+                    lane_items.append(appointment)
+                    break
+            if assigned_lane is None:
+                raise ProfessionalCapacityConflictError()
+            appointment.capacity_slot = assigned_lane
 
     def _get_valid(self, business_id: int, professional_id: int) -> Professional:
         professional = self.professional_repo.get_by_id(self.db, business_id, professional_id)
@@ -72,6 +104,7 @@ class ProfessionalService:
             email = str(data.email),
             phone = phone,
             normalized_name = name,
+            simultaneous_capacity = data.simultaneous_capacity,
         )
 
         self.professional_repo.add(self.db, professional)
@@ -91,6 +124,10 @@ class ProfessionalService:
         professional = self._get_valid(business_id, professional_id)
 
         update_data = data.model_dump(exclude_unset=True)
+
+        new_capacity = update_data.get("simultaneous_capacity")
+        if new_capacity is not None and new_capacity < professional.simultaneous_capacity:
+            self._repack_future_capacity(business_id, professional, new_capacity)
 
         if "email" in update_data and update_data["email"] is not None:
             update_data["email"] = str(update_data["email"])
@@ -134,4 +171,5 @@ def get_professional_service(db: DataBaseDep):
         db,
         ProfessionalRepository(),
         RedisCacheInvalidator(),
+        AppointmentRepository(),
     )

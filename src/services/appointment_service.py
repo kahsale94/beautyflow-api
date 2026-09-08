@@ -43,6 +43,9 @@ class AppointmentAlreadyCompletedError(Exception):
 class AppointmentAlreadyCanceledError(Exception):
     pass
 
+class AppointmentAlreadyNoShowError(Exception):
+    pass
+
 class DatetimeFormatError(Exception):
     pass
 
@@ -71,7 +74,7 @@ class InvalidBusinessTimezoneError(Exception):
     pass
 
 class AppointmentService:
-    APPOINTMENT_OVERLAP_CONSTRAINT = "ex_appointments_business_professional_time_conflict"
+    APPOINTMENT_OVERLAP_CONSTRAINT = "ex_appointments_business_professional_capacity_time_conflict"
 
     def __init__(
         self,
@@ -273,6 +276,8 @@ class AppointmentService:
                 created_at = appointment.created_at,
                 status = appointment.status,
                 confirmation_pending = appointment.confirmation_pending,
+                capacity_slot = appointment.capacity_slot,
+                kind = appointment.kind,
             )
 
         if isinstance(appointment_or_list, list):
@@ -367,6 +372,8 @@ class AppointmentService:
             end_datetime = end_datetime,
             status = AppointmentStatus.scheduled,
             confirmation_pending = business.appointment_confirmation_required,
+            capacity_slot = 1,
+            kind = data.kind,
         )
 
         self.appointment_repo.add(self.db, appointment)
@@ -388,8 +395,11 @@ class AppointmentService:
         if appointment.status == AppointmentStatus.completed:
             raise AppointmentAlreadyCompletedError()
 
+        if appointment.status == AppointmentStatus.no_show:
+            raise AppointmentAlreadyNoShowError()
+
         update_data = data.model_dump(exclude_unset=True)
-        for field in ("client_id", "professional_id", "service_id", "start_datetime"):
+        for field in ("client_id", "professional_id", "service_id", "start_datetime", "kind"):
             if field in update_data and update_data[field] is None:
                 raise ValueError(f"{field} não pode ser nulo")
 
@@ -397,6 +407,7 @@ class AppointmentService:
         final_professional = update_data.get("professional_id", appointment.professional_id)
         final_service = update_data.get("service_id", appointment.service_id)
         final_start = update_data.get("start_datetime", appointment.start_datetime)
+        final_kind = update_data.get("kind", appointment.kind)
 
         start_datetime, end_datetime = self._validate_appointment(business_id, final_client, final_professional, final_service, final_start)
         start_changed = start_datetime != original_start_datetime
@@ -407,6 +418,7 @@ class AppointmentService:
         appointment.service_id = final_service
         appointment.start_datetime = start_datetime
         appointment.end_datetime = end_datetime
+        appointment.kind = final_kind
 
         if start_changed:
             self._skip_pending_reminders(appointment.id, reason="appointment_rescheduled")
@@ -427,6 +439,9 @@ class AppointmentService:
         if appointment.status == AppointmentStatus.completed:
             raise AppointmentAlreadyCompletedError()
 
+        if appointment.status == AppointmentStatus.no_show:
+            raise AppointmentAlreadyNoShowError()
+
         if appointment.confirmation_pending:
             raise AppointmentConfirmationPendingError()
 
@@ -445,6 +460,9 @@ class AppointmentService:
         if appointment.status == AppointmentStatus.completed:
             raise AppointmentAlreadyCompletedError()
 
+        if appointment.status == AppointmentStatus.no_show:
+            raise AppointmentAlreadyNoShowError()
+
         appointment.confirmation_pending = False
         business = self._get_business_or_raise(business_id)
         self._schedule_reminder_if_needed(appointment, business)
@@ -460,6 +478,9 @@ class AppointmentService:
 
         if appointment.status == AppointmentStatus.completed:
             raise AppointmentAlreadyCompletedError()
+
+        if appointment.status == AppointmentStatus.no_show:
+            raise AppointmentAlreadyNoShowError()
 
         if enforce_client_policy:
             business = self._get_business_or_raise(business_id)
@@ -487,11 +508,33 @@ class AppointmentService:
         if appointment.status == AppointmentStatus.canceled:
             raise AppointmentAlreadyCanceledError()
 
+        if appointment.status == AppointmentStatus.no_show:
+            raise AppointmentAlreadyNoShowError()
+
         appointment.status = AppointmentStatus.canceled
         self._skip_pending_reminders(appointment.id, reason="appointment_deleted")
         self._commit_or_raise_conflict()
 
         return
+
+    def mark_no_show(self, business_id: int, appointment_id: int) -> None:
+        appointment = self._get_appointment_or_raise(business_id, appointment_id)
+
+        if appointment.status == AppointmentStatus.canceled:
+            raise AppointmentAlreadyCanceledError()
+
+        if appointment.status == AppointmentStatus.completed:
+            raise AppointmentAlreadyCompletedError()
+
+        if appointment.status == AppointmentStatus.no_show:
+            raise AppointmentAlreadyNoShowError()
+
+        if appointment.confirmation_pending:
+            raise AppointmentConfirmationPendingError()
+
+        appointment.status = AppointmentStatus.no_show
+        self._skip_pending_reminders(appointment.id, reason="appointment_no_show")
+        self._commit_or_raise_conflict()
 
 def get_appointment_service(db: DataBaseDep):
     return AppointmentService(
