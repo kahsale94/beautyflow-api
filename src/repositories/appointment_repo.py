@@ -36,11 +36,20 @@ class AppointmentRepository:
             end_of_day,
         )
 
-    def get_by_id(self, db: Session, business_id: int, appointment_id: int):
+    def get_by_id(
+        self,
+        db: Session,
+        business_id: int,
+        appointment_id: int,
+        *,
+        for_update: bool = False,
+    ):
         stmt = select(Appointment).where(
             Appointment.business_id == business_id,
             Appointment.id == appointment_id,
         )
+        if for_update:
+            stmt = stmt.with_for_update()
         return db.scalars(stmt).one_or_none()
 
     def get_by_client(self, db: Session, business_id: int, client_id: int):

@@ -22,6 +22,10 @@ from src.services.covercut_webhook_service import CovercutWebhookService, get_co
 from src.services.contact_service import ContactService, get_contact_service
 from src.services.business_feature_service import BusinessFeatureService, get_business_feature_service
 from src.services.recurring_schedule_service import RecurringScheduleService, get_recurring_schedule_service
+from src.services.replacement_entitlement_service import (
+    ReplacementEntitlementService,
+    get_replacement_entitlement_service,
+)
 from src.security import (require_user, require_super_admin, UserContext, get_business_scope, require_admin, IntegrationContext, 
 require_integration, get_business_phone, require_business_integration, BusinessIntegrationContext, require_user_or_business_integration)
 
@@ -57,3 +61,6 @@ CovercutWebhookServiceDep = Annotated[CovercutWebhookService, Depends(get_coverc
 ContactServiceDep = Annotated[ContactService, Depends(get_contact_service)]
 BusinessFeatureServiceDep = Annotated[BusinessFeatureService, Depends(get_business_feature_service)]
 RecurringScheduleServiceDep = Annotated[RecurringScheduleService, Depends(get_recurring_schedule_service)]
+ReplacementEntitlementServiceDep = Annotated[
+    ReplacementEntitlementService, Depends(get_replacement_entitlement_service)
+]

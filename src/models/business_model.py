@@ -27,6 +27,7 @@ if TYPE_CHECKING:
     from .contact_model import Contact
     from .business_feature_model import BusinessFeature
     from .recurring_schedule_model import RecurringSchedule
+    from .replacement_entitlement_model import ReplacementEntitlement
 
 
 class BusinessType(str, PyEnum):
@@ -157,6 +158,9 @@ class Business(Base):
         back_populates="business", cascade="all, delete-orphan"
     )
     recurring_schedules: Mapped[list["RecurringSchedule"]] = relationship(
+        back_populates="business", cascade="all, delete-orphan"
+    )
+    replacement_entitlements: Mapped[list["ReplacementEntitlement"]] = relationship(
         back_populates="business", cascade="all, delete-orphan"
     )
 

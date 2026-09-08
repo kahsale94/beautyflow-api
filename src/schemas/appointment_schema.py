@@ -34,5 +34,6 @@ class AppointmentResponse(BaseModel):
     kind: AppointmentKind
     series_id: int | None = None
     occurrence_start: datetime | None = None
+    replacement_entitlement_id: int | None = None
 
     model_config = ConfigDict(from_attributes=True)

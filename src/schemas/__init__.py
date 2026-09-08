@@ -51,3 +51,9 @@ from .recurring_schedule_schema import (
     RecurringScheduleResponse,
     RecurringScheduleUpdate,
 )
+from .replacement_entitlement_schema import (
+    ReplacementBookingCreate,
+    ReplacementEntitlementCreate,
+    ReplacementEntitlementResponse,
+    ReplacementUseResponse,
+)

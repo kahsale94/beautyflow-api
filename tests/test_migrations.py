@@ -29,6 +29,7 @@ def test_single_clean_initial_migration_exists():
         "0016_appointment_capacity_fields.py",
         "0017_capacity_lane_constraint.py",
         "0018_recurring_schedules.py",
+        "0019_replacement_entitlements.py",
     ]
     assert all(len(Path(filename).stem) <= 32 for filename in migration_files)
 
@@ -165,3 +166,9 @@ def test_single_clean_initial_migration_exists():
     assert 'down_revision: Union[str, None] = "0017_capacity_lane"' in source
     assert "recurring_schedules" in source
     assert "uq_appointments_series_occurrence_start" in source
+
+    source = read_source("alembic/versions/0019_replacement_entitlements.py")
+    assert 'revision: str = "0019_replacement_entitlements"' in source
+    assert 'down_revision: Union[str, None] = "0018_recurring_schedules"' in source
+    assert "uq_replacement_entitlements_source_appointment" in source
+    assert "uq_appointments_replacement_entitlement_id" in source

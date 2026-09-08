@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from .professional_model import Professional
     from .appointment_reminder_model import AppointmentReminder
     from .recurring_schedule_model import RecurringSchedule
+    from .replacement_entitlement_model import ReplacementEntitlement
 
 
 class AppointmentStatus(str, PyEnum):
@@ -70,6 +71,9 @@ class Appointment(Base):
         ForeignKey("recurring_schedules.id", ondelete="RESTRICT"), nullable=True, index=True
     )
     occurrence_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    replacement_entitlement_id: Mapped[int | None] = mapped_column(
+        ForeignKey("replacement_entitlements.id", ondelete="RESTRICT"), nullable=True, unique=True, index=True
+    )
 
     client: Mapped["Client"] = relationship(back_populates="appointments")
     professional: Mapped["Professional"] = relationship(back_populates="appointments")
@@ -77,3 +81,11 @@ class Appointment(Base):
     business: Mapped["Business"] = relationship(back_populates="appointments")
     reminders: Mapped[list["AppointmentReminder"]] = relationship(back_populates="appointment", cascade="all, delete-orphan")
     series: Mapped["RecurringSchedule | None"] = relationship(back_populates="occurrences")
+    replacement_entitlement: Mapped["ReplacementEntitlement | None"] = relationship(
+        foreign_keys=[replacement_entitlement_id], back_populates="replacement_appointment"
+    )
+    generated_replacement_entitlement: Mapped["ReplacementEntitlement | None"] = relationship(
+        foreign_keys="ReplacementEntitlement.source_appointment_id",
+        back_populates="source_appointment",
+        uselist=False,
+    )

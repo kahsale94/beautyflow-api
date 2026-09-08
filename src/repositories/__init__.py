@@ -15,3 +15,4 @@ from .whatsapp_connection_repo import WhatsAppConnectionRepository, WhatsAppWebh
 from .contact_repo import ContactRepository
 from .business_feature_repo import BusinessFeatureRepository
 from .recurring_schedule_repo import RecurringScheduleRepository
+from .replacement_entitlement_repo import ReplacementEntitlementRepository

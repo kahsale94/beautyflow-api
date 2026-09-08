@@ -23,3 +23,8 @@ from .whatsapp_connection_model import (
 )
 from .contact_model import Contact
 from .recurring_schedule_model import RecurringSchedule, RecurringScheduleStatus
+from .replacement_entitlement_model import (
+    ReplacementEntitlement,
+    ReplacementEntitlementReason,
+    ReplacementEntitlementStatus,
+)

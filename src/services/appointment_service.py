@@ -349,6 +349,7 @@ class AppointmentService:
                     if appointment.occurrence_start
                     else None
                 ),
+                replacement_entitlement_id = appointment.replacement_entitlement_id,
             )
 
         if isinstance(appointment_or_list, list):
@@ -438,6 +439,8 @@ class AppointmentService:
         series_id: int | None = None,
         occurrence_start: datetime | None = None,
         force_automatic: bool = False,
+        replacement_entitlement_id: int | None = None,
+        commit: bool = True,
     ):
         if data.kind == AppointmentKind.trial and not self._feature_enabled(
             business_id,
@@ -490,13 +493,15 @@ class AppointmentService:
             kind = data.kind,
             series_id = series_id,
             occurrence_start = occurrence_start,
+            replacement_entitlement_id = replacement_entitlement_id,
         )
 
         self.appointment_repo.add(self.db, appointment)
         self._flush_or_raise_conflict()
         self._schedule_reminder_if_needed(appointment, business)
-        self._commit_or_raise_conflict()
-        self.db.refresh(appointment)
+        if commit:
+            self._commit_or_raise_conflict()
+            self.db.refresh(appointment)
 
         business_tz = self._get_business_timezone(business_id)
         return self._validate_return(appointment, business_tz)
