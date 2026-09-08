@@ -25,6 +25,7 @@ def test_single_clean_initial_migration_exists():
         "0012_add_business_cep.py",
         "0013_whatsapp_connections.py",
         "0014_contacts_ownership.py",
+        "0015_business_features.py",
     ]
     assert all(len(Path(filename).stem) <= 32 for filename in migration_files)
 
@@ -136,3 +137,10 @@ def test_single_clean_initial_migration_exists():
     assert "client_backfill" in source
     assert "bot_policy" in source
     assert "uq_contacts_business_provider_user" in source
+
+    source = read_source("alembic/versions/0015_business_features.py")
+    assert 'revision: str = "0015_business_features"' in source
+    assert 'down_revision: Union[str, None] = "0014_contacts_ownership"' in source
+    assert "business_features" in source
+    assert "pilates_studio" in source
+    assert "uq_business_features_business_key" in source

@@ -6,12 +6,13 @@ from sqlalchemy.exc import IntegrityError
 
 from src.core import DataBaseDep
 from src.clients import CepLookupError, lookup_cep
-from src.models import Business, BusinessOpeningHour
+from src.models import Business, BusinessOpeningHour, BusinessType
 from src.utils import normalize_phone, normalize_text
 from src.schemas import BusinessCreate, BusinessUpdate
 from src.repositories import AppointmentReminderRepository, BusinessRepository
 from src.services.appointment_reminder_service import AppointmentReminderService
 from src.services.redis_cache_invalidator import RedisCacheInvalidator
+from src.services.business_feature_service import pilates_feature_defaults
 
 class BusinessNotFoundError(Exception):
     pass
@@ -183,6 +184,8 @@ class BusinessService:
             )
             for item in opening_hours
         ]
+        if data.type == BusinessType.pilates_studio:
+            business.features = pilates_feature_defaults()
 
         self.business_repo.add(self.db, business)
 

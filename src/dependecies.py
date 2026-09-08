@@ -20,6 +20,7 @@ from src.services.whatsapp_connection_service import WhatsAppConnectionService, 
 from src.services.messaging_service import MessagingService, get_messaging_service
 from src.services.covercut_webhook_service import CovercutWebhookService, get_covercut_webhook_service
 from src.services.contact_service import ContactService, get_contact_service
+from src.services.business_feature_service import BusinessFeatureService, get_business_feature_service
 from src.security import (require_user, require_super_admin, UserContext, get_business_scope, require_admin, IntegrationContext, 
 require_integration, get_business_phone, require_business_integration, BusinessIntegrationContext, require_user_or_business_integration)
 
@@ -53,3 +54,4 @@ WhatsAppConnectionServiceDep = Annotated[WhatsAppConnectionService, Depends(get_
 MessagingServiceDep = Annotated[MessagingService, Depends(get_messaging_service)]
 CovercutWebhookServiceDep = Annotated[CovercutWebhookService, Depends(get_covercut_webhook_service)]
 ContactServiceDep = Annotated[ContactService, Depends(get_contact_service)]
+BusinessFeatureServiceDep = Annotated[BusinessFeatureService, Depends(get_business_feature_service)]

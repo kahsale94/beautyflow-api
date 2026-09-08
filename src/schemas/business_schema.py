@@ -13,6 +13,7 @@ from src.models.business_model import (
     payment_method_labels as get_payment_method_labels,
 )
 from src.utils import normalize_cep
+from .business_feature_schema import BusinessFeatureResponse
 
 
 def validate_slug_value(value: str | None) -> str | None:
@@ -186,6 +187,7 @@ class BusinessResponse(BaseModel):
     allow_client_cancel: bool
     cancel_limit_hours: int
     appointment_confirmation_required: bool
+    features: list[BusinessFeatureResponse] = Field(default_factory=list)
     business_is_open: bool
     attendance_allowed: bool
     attendance_block_reason: str | None = None
