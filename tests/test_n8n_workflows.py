@@ -35,8 +35,9 @@ def test_main_workflows_use_backend_attendance_decision():
 
 def test_business_context_workflows_version_cached_payload():
     for name, source in workflow_source_items("businesses"):
-        assert "business?.cache_version === 3" in source
-        assert "cache_version: 3" in source
+        expected_version = 4 if "-staging." in name else 3
+        assert f"business?.cache_version === {expected_version}" in source
+        assert f"cache_version: {expected_version}" in source
         assert "attendance_plan: business.attendance_plan" in source
         assert "attendance_status: business.attendance_status" in source
         assert "payment_methods: paymentMethods" in source
@@ -280,6 +281,71 @@ def test_staging_test_harness_covers_both_inbound_provider_contracts():
     assert "provider: 'covercut'" in source
     assert "connection_key: connectionKey" in source
     assert "Connection key override" in source
+
+
+def test_staging_main_composes_feature_aware_prompt_and_domain_tools():
+    source = workflow_body(
+        (ROOT / "workflows/main-staging.workflow.ts").read_text(encoding="utf-8")
+    )
+
+    assert "const modules = {" in source
+    assert "Object.values(modules).filter(Boolean).join" in source
+    assert "features.capacity_based_booking === true" in source
+    assert "features.recurring_schedules === true" in source
+    assert "features.replacement_classes === true" in source
+    assert "features.trial_appointments === true" in source
+    assert "Every date shown to the client must include the weekday" in source
+    assert "value: 'RsEC18urVBX7Kf6N'" in source
+    assert "value: 'PwsI7k9PNKMowO6v'" in source
+    assert "this.RecurringSchedules.output" in source
+    assert "this.ReplacementEntitlements.output" in source
+
+
+def test_staging_scheduling_workflows_delegate_capacity_to_backend():
+    appointments = workflow_body(
+        (ROOT / "workflows/appointments-staging.workflow.ts").read_text(encoding="utf-8")
+    )
+    availabilities = workflow_body(
+        (ROOT / "workflows/availabilities-staging.workflow.ts").read_text(encoding="utf-8")
+    )
+    professionals = workflow_body(
+        (ROOT / "workflows/professionals-staging.workflow.ts").read_text(encoding="utf-8")
+    )
+
+    assert "kind: data.data.appointment.kind || 'standard'" in appointments
+    assert "professional_id: data.data.professional.id" in appointments
+    assert "Object.fromEntries(Object.entries" in appointments
+    assert "/no-show" in appointments
+    assert "studio/check-and-suggest" in availabilities
+    assert "studio_capacity" in availabilities
+    assert "weekday" in availabilities
+    assert "simultaneous_capacity" in professionals
+
+
+def test_new_staging_domain_workflows_are_backend_authoritative():
+    recurring_path = ROOT / "workflows/recurring-schedules-staging.workflow.ts"
+    replacement_path = ROOT / "workflows/replacement-entitlements-staging.workflow.ts"
+    notifications_path = ROOT / "workflows/notification-jobs-staging.workflow.ts"
+
+    recurring = workflow_body(recurring_path.read_text(encoding="utf-8"))
+    replacement = workflow_body(replacement_path.read_text(encoding="utf-8"))
+    notifications = workflow_body(notifications_path.read_text(encoding="utf-8"))
+
+    for action in ["list", "get", "create", "update", "pause", "resume", "cancel"]:
+        assert f"rightValue: '{action}'" in recurring
+    assert "/recurring-schedules/" in recurring
+    assert "client_id" in recurring
+
+    for action in ["list", "get", "cancel_with_replacement", "use"]:
+        assert f"rightValue: '{action}'" in replacement
+    assert "/replacement-entitlements/" in replacement
+    assert "name: 'status'" in replacement
+    assert "value: 'available'" in replacement
+
+    assert "field: 'minutes'" in notifications
+    assert "/notification-jobs/claim" in notifications
+    assert "/notification-jobs/{{ $json.id }}/dispatch" in notifications
+    assert "n8n beautyflow token - staging" in notifications
 
 
 def test_production_workflows_remain_on_the_legacy_evolution_path():

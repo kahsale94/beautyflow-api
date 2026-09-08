@@ -2,7 +2,7 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 
 // <workflow-map>
 // Workflow : appointments-staging
-// Nodes   : 41  |  Connections: 57
+// Nodes   : 42  |  Connections: 61
 //
 // NODE INDEX
 // ──────────────────────────────────────────────────────────────────
@@ -11,6 +11,7 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 // DataHandler                        set
 // Action                             switch
 // Cancel                             httpRequest                [onError→out(1)]
+// NoShow                             httpRequest                [onError→out(1)]
 // Post                               httpRequest                [onError→out(1)]
 // Patch                              httpRequest                [onError→out(1)]
 // Action1                            switch
@@ -92,6 +93,9 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 //                   .out(3) → Cancel
 //                      → PrepareEmailNotification (↩ loop)
 //                     .out(1) → ErrorReport21
+//                   .out(4) → NoShow
+//                      → ReturnContext (↩ loop)
+//                     .out(1) → ErrorReport21 (↩ loop)
 //         .out(1) → ErrorReport20
 //       .out(1) → Patch
 //          → PreContext (↩ loop)
@@ -104,6 +108,7 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 //         .out(1) → GetByClient
 //            → PreContext (↩ loop)
 //           .out(1) → ErrorReport16
+//       .out(4) → GetById (↩ loop)
 // ReminderSchedule
 //    → ClaimReminders
 //      → SplitReminderClaims
@@ -121,7 +126,6 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
     name: 'appointments-staging',
     active: true,
     isArchived: false,
-    projectId: 'UVYVLJNFC5m6HlJG',
     tags: ['Kaiky', 'beautyflow-api'],
     settings: {
         executionOrder: 'v1',
@@ -162,6 +166,9 @@ export class AppointmentsStagingWorkflow {
                 },
                 {
                     name: 'start_datetime',
+                },
+                {
+                    name: 'kind',
                 },
                 {
                     name: 'client',
@@ -205,7 +212,8 @@ export class AppointmentsStagingWorkflow {
     action,
     appointment: {
       id: clean($json.appointment_id),
-      start_datetime: clean($json.start_datetime)
+      start_datetime: clean($json.start_datetime),
+      kind: clean($json.kind) || 'standard'
     },
     professional: {
       id: clean($json.professional_id)
@@ -349,6 +357,30 @@ export class AppointmentsStagingWorkflow {
                     renameOutput: true,
                     outputKey: 'GET',
                 },
+                {
+                    conditions: {
+                        options: {
+                            caseSensitive: true,
+                            leftValue: '',
+                            typeValidation: 'loose',
+                            version: 3,
+                        },
+                        conditions: [
+                            {
+                                id: '0f1ce111-c962-4da5-9b2e-5f2f51bb734b',
+                                leftValue: "={{ $('data handler').item.json.data.action }}",
+                                rightValue: 'no_show',
+                                operator: {
+                                    type: 'string',
+                                    operation: 'equals',
+                                },
+                            },
+                        ],
+                        combinator: 'and',
+                    },
+                    renameOutput: true,
+                    outputKey: 'NO_SHOW',
+                },
             ],
         },
         looseTypeValidation: true,
@@ -386,6 +418,29 @@ export class AppointmentsStagingWorkflow {
     };
 
     @node({
+        id: '7e05b749-3614-4e76-a6d0-ef521714b53a',
+        name: 'no show',
+        type: 'n8n-nodes-base.httpRequest',
+        version: 4.4,
+        position: [4192, 7168],
+        onError: 'continueErrorOutput',
+    })
+    NoShow = {
+        method: 'PATCH',
+        url: "={{ $('data handler').item.json.api.url }}/appointments/{{ $('data handler').item.json.data.appointment.id }}/no-show",
+        sendHeaders: true,
+        headerParameters: {
+            parameters: [
+                {
+                    name: 'Authorization',
+                    value: "={{ $('data handler').item.json.api.token }}",
+                },
+            ],
+        },
+        options: {},
+    };
+
+    @node({
         id: 'e711e37f-f9be-41ae-b20a-eaf7ebcc4e75',
         name: 'post',
         type: 'n8n-nodes-base.httpRequest',
@@ -407,26 +462,17 @@ export class AppointmentsStagingWorkflow {
             ],
         },
         sendBody: true,
-        bodyParameters: {
-            parameters: [
-                {
-                    name: 'client_id',
-                    value: "={{ $('data handler').item.json.client.id }}",
-                },
-                {
-                    name: 'professional_id',
-                    value: "={{ $('data handler').item.json.data.professional.id }}",
-                },
-                {
-                    name: 'service_id',
-                    value: "={{ $('data handler').item.json.data.service.id }}",
-                },
-                {
-                    name: 'start_datetime',
-                    value: "={{ $('data handler').item.json.data.appointment.start_datetime }}",
-                },
-            ],
-        },
+        specifyBody: 'json',
+        jsonBody: `={{ (() => {
+  const data = $('data handler').item.json;
+  return Object.fromEntries(Object.entries({
+    client_id: data.client.id,
+    professional_id: data.data.professional.id,
+    service_id: data.data.service.id,
+    start_datetime: data.data.appointment.start_datetime,
+    kind: data.data.appointment.kind || 'standard',
+  }).filter(([_, value]) => value !== undefined && value !== null && String(value).trim() !== ''));
+})() }}`,
         options: {},
     };
 
@@ -462,6 +508,7 @@ export class AppointmentsStagingWorkflow {
       professional_id: data.professional.id,
       service_id: data.service.id,
       start_datetime: appointment.start_datetime,
+      kind: appointment.kind,
     }).filter(([_, value]) => value !== undefined && value !== null && String(value).trim() !== '')
   );
 })() }}`,
@@ -577,6 +624,30 @@ export class AppointmentsStagingWorkflow {
                     renameOutput: true,
                     outputKey: 'CANCEL',
                 },
+                {
+                    conditions: {
+                        options: {
+                            caseSensitive: true,
+                            leftValue: '',
+                            typeValidation: 'loose',
+                            version: 3,
+                        },
+                        conditions: [
+                            {
+                                id: '134d12f5-fdb9-4523-b77f-532d982c44d9',
+                                leftValue: "={{ $('data handler').first().json.data.action }}",
+                                rightValue: 'no_show',
+                                operator: {
+                                    type: 'string',
+                                    operation: 'equals',
+                                },
+                            },
+                        ],
+                        combinator: 'and',
+                    },
+                    renameOutput: true,
+                    outputKey: 'NO_SHOW',
+                },
             ],
         },
         looseTypeValidation: true,
@@ -608,13 +679,19 @@ export class AppointmentsStagingWorkflow {
   const now = Date.now();
   const appointments = Array.isArray($json.appointments) ? $json.appointments : [];
 
+  const businessTimezone = $('data handler').first().json.business?.timezone || 'UTC';
   return appointments
     .filter((appointment) => {
       const status = String(appointment?.status || '').toLowerCase();
       const start = Date.parse(String(appointment?.start_datetime || ''));
       return status === 'scheduled' && Number.isFinite(start) && start > now;
     })
-    .sort((left, right) => Date.parse(left.start_datetime) - Date.parse(right.start_datetime));
+    .sort((left, right) => Date.parse(left.start_datetime) - Date.parse(right.start_datetime))
+    .map((appointment) => ({
+      ...appointment,
+      weekday: new Intl.DateTimeFormat('pt-BR', { weekday: 'long', timeZone: businessTimezone })
+        .format(new Date(appointment.start_datetime)),
+    }));
 })() }}`,
                     type: 'array',
                 },
@@ -1668,6 +1745,14 @@ const result = source[""] ? source[""] : source;
 if (action === 'cancel') {
   result.status = 'canceled';
 }
+if (action === 'no_show') {
+  result.status = 'no_show';
+}
+if (result?.start_datetime) {
+  const timezone = $('data handler').first().json.business?.timezone || 'UTC';
+  result.weekday = new Intl.DateTimeFormat('pt-BR', { weekday: 'long', timeZone: timezone })
+    .format(new Date(result.start_datetime));
+}
 
 return {
   json: result
@@ -2237,6 +2322,7 @@ return {
         this.Action.out(1).to(this.Patch.in(0));
         this.Action.out(2).to(this.GetById.in(0));
         this.Action.out(3).to(this.Id.in(0));
+        this.Action.out(4).to(this.GetById.in(0));
         this.Post.out(0).to(this.PreContext.in(0));
         this.Post.out(1).to(this.ErrorReport20.in(0));
         this.Patch.out(0).to(this.PreContext.in(0));
@@ -2247,6 +2333,9 @@ return {
         this.Action1.out(1).to(this.ReturnContext.in(0));
         this.Action1.out(2).to(this.PrepareEmailNotification.in(0));
         this.Action1.out(3).to(this.Cancel.in(0));
+        this.Action1.out(4).to(this.NoShow.in(0));
+        this.NoShow.out(0).to(this.ReturnContext.in(0));
+        this.NoShow.out(1).to(this.ErrorReport21.in(0));
         this.PrepareEmailNotification.out(0).to(this.CanSendEmail.in(0));
         this.CanSendEmail.out(0).to(this.FindSentNotification.in(0));
         this.CanSendEmail.out(1).to(this.ReturnContext.in(0));
