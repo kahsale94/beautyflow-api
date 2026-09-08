@@ -28,6 +28,9 @@ from .availability_schema import (
     AvailabilityCheckAndSuggestRequest,
     AvailabilitySuggestionResponse,
     AvailabilityCheckAndSuggestResponse,
+    ProfessionalCapacityResponse,
+    StudioAvailabilityCheckRequest,
+    StudioAvailabilityCheckResponse,
 )
 from .business_integration_schema import BusinessIntegrationResponse, BusinessIntegrationCreate, BusinessIntegrationUpdate
 from .whatsapp_schema import WhatsAppMessageRequest, WhatsAppMessageResponse, WhatsAppTemplateRequest

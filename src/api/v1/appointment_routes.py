@@ -7,7 +7,7 @@ from src.dependecies import AdminDep, AppointmentServiceDep, BusinessScopeDep, U
 from src.services.appointment_service import (AppointmentAlreadyCanceledError, AppointmentAlreadyCompletedError, AppointmentAlreadyNoShowError, AppointmentBlockedByScheduleBlockError,
     AppointmentCancellationDeadlineError, AppointmentClientCancellationDisabledError, AppointmentConfirmationPendingError,
     AppointmentInvalidSlotIntervalError, AppointmentMaximumScheduleWindowError, AppointmentMinimumNoticeError, AppointmentNotFoundError,
-    AppointmentTimeConflictError,  BusinessNotAvailableForBookingError, ClientNotFoundError, DatetimeFormatError, InvalidBusinessTimezoneError,
+    AppointmentTimeConflictError, AppointmentFeatureDisabledError, BusinessNotAvailableForBookingError, ClientNotFoundError, DatetimeFormatError, InvalidBusinessTimezoneError,
     ProfessionalNotAvailableError, ProfessionalServiceMismatchError, ServiceNotAvailableError,
 )
 
@@ -17,6 +17,9 @@ router = APIRouter(prefix="/appointments", tags=["V1 ➔ Appointments"])
 def _handle_booking_rule_errors(exc: Exception):
     if isinstance(exc, BusinessNotAvailableForBookingError):
         raise HTTPException(status_code=403, detail="Agendamento desabilitado para esta empresa!")
+
+    if isinstance(exc, AppointmentFeatureDisabledError):
+        raise HTTPException(status_code=403, detail="Este tipo de agendamento não está habilitado para a empresa!")
     
     if isinstance(exc, AppointmentMinimumNoticeError):
         raise HTTPException(status_code=400, detail="Horário não respeita a antecedência mínima de agendamento!")
@@ -114,7 +117,7 @@ def create_appointment(data: AppointmentCreate, business_id: BusinessScopeDep, s
     except (BusinessNotAvailableForBookingError, AppointmentMinimumNoticeError, AppointmentMaximumScheduleWindowError,
             AppointmentInvalidSlotIntervalError, InvalidBusinessTimezoneError, ProfessionalNotAvailableError,
             ServiceNotAvailableError, ClientNotFoundError, ProfessionalServiceMismatchError,
-            AppointmentTimeConflictError, AppointmentBlockedByScheduleBlockError, DatetimeFormatError, ValueError,
+            AppointmentTimeConflictError, AppointmentBlockedByScheduleBlockError, AppointmentFeatureDisabledError, DatetimeFormatError, ValueError,
     ) as exc:
         _handle_booking_rule_errors(exc)
 
@@ -127,7 +130,7 @@ def update_appointment(appointment_id: int, data: AppointmentUpdate, business_id
         AppointmentInvalidSlotIntervalError, InvalidBusinessTimezoneError, AppointmentNotFoundError,
         AppointmentAlreadyCanceledError, AppointmentAlreadyCompletedError, AppointmentAlreadyNoShowError, ProfessionalNotAvailableError,
         ServiceNotAvailableError, ClientNotFoundError, ProfessionalServiceMismatchError,
-        AppointmentTimeConflictError, AppointmentBlockedByScheduleBlockError, DatetimeFormatError, ValueError,
+        AppointmentTimeConflictError, AppointmentBlockedByScheduleBlockError, AppointmentFeatureDisabledError, DatetimeFormatError, ValueError,
     ) as exc:
         _handle_booking_rule_errors(exc)
 

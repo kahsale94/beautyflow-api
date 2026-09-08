@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func
 
-from src.models import Professional
+from src.models import Professional, ProfessionalService
 
 class ProfessionalRepository:
 
@@ -42,3 +42,19 @@ class ProfessionalRepository:
             Professional.business_id == business_id,
         )
         return db.scalars(stmt).all()
+
+    def get_eligible_for_service(self, db: Session, business_id: int, service_id: int):
+        stmt = (
+            select(Professional)
+            .join(
+                ProfessionalService,
+                ProfessionalService.professional_id == Professional.id,
+            )
+            .where(
+                Professional.is_active == True,
+                Professional.business_id == business_id,
+                ProfessionalService.service_id == service_id,
+            )
+            .order_by(Professional.id)
+        )
+        return list(db.scalars(stmt).all())

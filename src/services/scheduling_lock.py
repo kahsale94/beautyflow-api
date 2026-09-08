@@ -10,3 +10,8 @@ def acquire_schedule_lock(db: Session, business_id: int, professional_id: int) -
             "professional_id": professional_id,
         },
     )
+
+
+def acquire_schedule_locks(db: Session, business_id: int, professional_ids) -> None:
+    for professional_id in sorted({int(item) for item in professional_ids}):
+        acquire_schedule_lock(db, business_id, professional_id)

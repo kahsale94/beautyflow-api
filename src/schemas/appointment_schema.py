@@ -7,7 +7,7 @@ from src.models.appointment_model import AppointmentKind, AppointmentStatus
 
 class AppointmentCreate(BaseModel):
     client_id: int
-    professional_id: int
+    professional_id: int | None = None
     service_id: int
     start_datetime: datetime
     kind: AppointmentKind = AppointmentKind.standard

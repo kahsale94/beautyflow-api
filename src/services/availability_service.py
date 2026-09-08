@@ -9,11 +9,15 @@ from src.core import DataBaseDep
 from src.models import Availability
 from src.schemas import (AvailabilityCreate, AvailabilityUpdate, AvailabilitySlotsResponse,
     AvailabilityCheckAndSuggestRequest, AvailabilityCheckAndSuggestResponse, AvailabilitySuggestionResponse,
+    ProfessionalCapacityResponse, StudioAvailabilityCheckRequest, StudioAvailabilityCheckResponse,
 )
 from src.schemas.appointment_schema import AppointmentStatus
 from src.repositories import (AvailabilityRepository, ProfessionalRepository, AppointmentRepository,
-    ServiceRepository, ProfessionalServiceRepository, ScheduleBlockRepository
+    ServiceRepository, ProfessionalServiceRepository, ScheduleBlockRepository, BusinessRepository
 )
+from src.models.business_feature_model import BusinessFeatureKey
+from src.services.business_feature_service import BusinessFeatureService, get_business_feature_service
+from src.services.professional_assignment_service import ProfessionalAssignmentService
 
 
 class ProfessionalNotFoundError(Exception):
@@ -43,9 +47,21 @@ class DatetimeFormatError(Exception):
 class BusinessNotAvailableForBookingError(Exception):
     pass
 
+class CapacityBasedBookingDisabledError(Exception):
+    pass
+
 class AvailabilityService:
 
     SLOT_STEP_MINUTES = 15
+    WEEKDAYS = (
+        "segunda-feira",
+        "terça-feira",
+        "quarta-feira",
+        "quinta-feira",
+        "sexta-feira",
+        "sábado",
+        "domingo",
+    )
 
     def __init__(
         self,
@@ -56,6 +72,9 @@ class AvailabilityService:
         service_repo: ServiceRepository,
         professional_service_repo: ProfessionalServiceRepository,
         schedule_block_repo: ScheduleBlockRepository,
+        business_repo: BusinessRepository | None = None,
+        business_feature_service: BusinessFeatureService | None = None,
+        assignment_service: ProfessionalAssignmentService | None = None,
     ):
         self.db = db
         self.availability_repo = availability_repo
@@ -64,6 +83,9 @@ class AvailabilityService:
         self.service_repo = service_repo
         self.professional_service_repo = professional_service_repo
         self.schedule_block_repo = schedule_block_repo
+        self.business_repo = business_repo
+        self.business_feature_service = business_feature_service
+        self.assignment_service = assignment_service
 
     def _validate_professional(self, business_id: int, professional_id: int):
         professional = self.professional_repo.get_by_id(self.db, business_id, professional_id)
@@ -265,6 +287,124 @@ class AvailabilityService:
             end_datetime=slot_end,
             date=slot_start.date(),
             slot_time=slot_start.time(),
+            weekday=self.WEEKDAYS[slot_start.weekday()],
+        )
+
+    def _studio_slot_datetimes_for_date(self, business_id: int, service, target_date: date, now: datetime):
+        if not self.assignment_service:
+            return []
+        professionals = self.professional_repo.get_eligible_for_service(self.db, business_id, service.id)
+        possible: set[datetime] = set()
+        for professional in professionals:
+            availability = self.availability_repo.get_by_professional_and_weekday(
+                self.db,
+                professional.id,
+                target_date.weekday(),
+            )
+            if not availability:
+                continue
+            tz = now.tzinfo
+            start_dt = self._combine_date_time(target_date, availability.start_time, tz)
+            end_dt = self._combine_date_time(target_date, availability.end_time, tz)
+            minimum_start = now + timedelta(minutes=professional.business.minimum_notice_minutes or 0)
+            for slot_time in self._generate_slots(
+                start_dt,
+                end_dt,
+                service.duration_minutes,
+                professional.business.slot_interval_minutes or self.SLOT_STEP_MINUTES,
+                minimum_start if target_date == now.date() else None,
+            ):
+                possible.add(self._combine_date_time(target_date, slot_time, tz))
+
+        available = []
+        for slot_start in sorted(possible):
+            slot_end = slot_start + timedelta(minutes=service.duration_minutes)
+            snapshot = self.assignment_service.snapshot(
+                business_id,
+                service.id,
+                slot_start,
+                slot_end,
+                use_configured_capacity=True,
+            )
+            if snapshot.remaining_capacity > 0:
+                available.append(slot_start)
+        return available
+
+    def check_studio_capacity(self, business_id: int, data: StudioAvailabilityCheckRequest):
+        if not self.business_repo or not self.business_feature_service or not self.assignment_service:
+            raise CapacityBasedBookingDisabledError()
+        business = self.business_repo.get_by_id(self.db, business_id)
+        if not business or business.id != business_id or not business.is_active:
+            raise BusinessNotAvailableForBookingError()
+        if not self.business_feature_service.is_enabled(
+            business_id,
+            BusinessFeatureKey.capacity_based_booking,
+        ):
+            raise CapacityBasedBookingDisabledError()
+        if not business.booking_enabled:
+            raise BusinessNotAvailableForBookingError()
+        service = self._validate_service(business_id, data.service_id)
+        if data.requested_start.tzinfo is None or data.requested_start.utcoffset() is None:
+            raise DatetimeFormatError()
+
+        tz = ZoneInfo(business.timezone)
+        now = datetime.now(tz)
+        requested_start = data.requested_start.astimezone(tz).replace(second=0, microsecond=0)
+        requested_end = requested_start + timedelta(minutes=service.duration_minutes)
+        max_date = now.date() + timedelta(days=business.maximum_schedule_days or 30)
+        if requested_start.date() < now.date():
+            raise ProfessionalUnavailableError()
+        if requested_start.date() > max_date:
+            raise AvailabilityNotFoundError()
+
+        snapshot = self.assignment_service.snapshot(
+            business_id,
+            service.id,
+            requested_start,
+            requested_end,
+            use_configured_capacity=True,
+            exclude_appointment_id=data.exclude_appointment_id,
+        )
+        aligned = self._align_to_slot(requested_start, business.slot_interval_minutes or self.SLOT_STEP_MINUTES) == requested_start
+        notice_ok = requested_start >= now + timedelta(minutes=business.minimum_notice_minutes or 0)
+        available = aligned and notice_ok and snapshot.remaining_capacity > 0
+
+        suggestions: list[AvailabilitySuggestionResponse] = []
+        if not available:
+            search_days = data.search_days_ahead if data.search_days_ahead is not None else business.maximum_schedule_days or 30
+            search_days = min(search_days, business.maximum_schedule_days or 30)
+            for offset in range(search_days + 1):
+                target_date = requested_start.date() + timedelta(days=offset)
+                if target_date > max_date:
+                    break
+                for slot_start in self._studio_slot_datetimes_for_date(business_id, service, target_date, now):
+                    if slot_start == requested_start:
+                        continue
+                    suggestions.append(self._build_suggestion(slot_start, service.duration_minutes))
+                    if len(suggestions) >= data.max_suggestions:
+                        break
+                if len(suggestions) >= data.max_suggestions:
+                    break
+
+        return StudioAvailabilityCheckResponse(
+            requested_start=requested_start,
+            requested_end=requested_end,
+            weekday=self.WEEKDAYS[requested_start.weekday()],
+            available=available,
+            reason="requested_slot_available" if available else "requested_slot_unavailable",
+            total_capacity=snapshot.total_capacity,
+            occupied=snapshot.occupied,
+            remaining_capacity=snapshot.remaining_capacity if aligned and notice_ok else 0,
+            professionals=[
+                ProfessionalCapacityResponse(
+                    professional_id=item.professional_id,
+                    capacity=item.capacity,
+                    occupied=item.occupied,
+                    remaining_capacity=item.remaining,
+                )
+                for item in snapshot.professionals
+            ],
+            suggestions=suggestions,
         )
 
     def get_all(self, business_id: int, professional_id: int):
@@ -488,12 +628,27 @@ class AvailabilityService:
         return
 
 def get_availability_service(db: DataBaseDep):
+    professional_repo = ProfessionalRepository()
+    availability_repo = AvailabilityRepository()
+    appointment_repo = AppointmentRepository()
+    schedule_block_repo = ScheduleBlockRepository()
+    feature_service = get_business_feature_service(db)
+    assignment_service = ProfessionalAssignmentService(
+        db,
+        professional_repo,
+        availability_repo,
+        appointment_repo,
+        schedule_block_repo,
+    )
     return AvailabilityService(
         db,
-        AvailabilityRepository(),
-        ProfessionalRepository(),
-        AppointmentRepository(),
+        availability_repo,
+        professional_repo,
+        appointment_repo,
         ServiceRepository(),
         ProfessionalServiceRepository(),
-        ScheduleBlockRepository(),
+        schedule_block_repo,
+        BusinessRepository(),
+        feature_service,
+        assignment_service,
     )

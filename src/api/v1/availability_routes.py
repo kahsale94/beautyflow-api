@@ -4,15 +4,39 @@ from fastapi import APIRouter, HTTPException
 
 from src.schemas import (AvailabilityCreate, AvailabilityUpdate, AvailabilityResponse, AvailabilitySlotsResponse,
     AvailabilityCheckAndSuggestRequest, AvailabilityCheckAndSuggestResponse,
+    StudioAvailabilityCheckRequest, StudioAvailabilityCheckResponse,
 )
 from src.dependecies import AvailabilityServiceDep, BusinessScopeDep, UserOrBusinessIntegrationDep, AdminDep
 from src.services.availability_service import (ProfessionalNotFoundError, InvalidTimeRangeError, AvailabilityAlreadyExistsError,
     AvailabilityNotFoundError, ProfessionalUnavailableError, ServiceNotFoundError, ProfessionalServiceMismatchError, DatetimeFormatError,
-    BusinessNotAvailableForBookingError,
+    BusinessNotAvailableForBookingError, CapacityBasedBookingDisabledError,
 )
 
 
 router = APIRouter(prefix="/availabilities", tags=["V1 ➔ Availabilities"])
+
+
+@router.post("/studio/check-and-suggest", response_model=StudioAvailabilityCheckResponse)
+def check_studio_availability(
+    data: StudioAvailabilityCheckRequest,
+    business_id: BusinessScopeDep,
+    service: AvailabilityServiceDep,
+    actor: UserOrBusinessIntegrationDep,
+):
+    try:
+        return service.check_studio_capacity(business_id, data)
+    except CapacityBasedBookingDisabledError:
+        raise HTTPException(status_code=403, detail="Agendamento por capacidade não está habilitado.")
+    except ServiceNotFoundError:
+        raise HTTPException(status_code=404, detail="Serviço não encontrado!")
+    except BusinessNotAvailableForBookingError:
+        raise HTTPException(status_code=403, detail="Agendamento desabilitado para esta empresa!")
+    except DatetimeFormatError:
+        raise HTTPException(status_code=400, detail="Formato de data invalido! Envie timezone no datetime.")
+    except AvailabilityNotFoundError:
+        raise HTTPException(status_code=404, detail="Disponibilidade não encontrada dentro da janela de agendamento!")
+    except ProfessionalUnavailableError:
+        raise HTTPException(status_code=404, detail="Horário indisponível!")
 
 @router.post("/check-and-suggest", response_model=AvailabilityCheckAndSuggestResponse)
 def check_and_suggest_availability(data: AvailabilityCheckAndSuggestRequest, business_id: BusinessScopeDep, service: AvailabilityServiceDep, actor: UserOrBusinessIntegrationDep):
