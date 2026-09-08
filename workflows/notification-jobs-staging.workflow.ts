@@ -27,7 +27,7 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 @workflow({
     id: '3aHL57uETapQw6IS',
     name: 'notification-jobs-staging',
-    active: true,
+    active: false,
     isArchived: false,
     projectId: 'UVYVLJNFC5m6HlJG',
     settings: {
