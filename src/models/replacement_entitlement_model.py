@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import DateTime, Enum as SAEnum, ForeignKey, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from .base_model import Base, business_fk, client_fk, intpk
+from .base_model import Base, business_fk, intpk
 
 if TYPE_CHECKING:
     from .appointment_model import Appointment
@@ -35,7 +35,9 @@ class ReplacementEntitlement(Base):
 
     id: Mapped[intpk]
     business_id: Mapped[business_fk]
-    client_id: Mapped[client_fk]
+    client_id: Mapped[int] = mapped_column(
+        ForeignKey("clients.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
     source_appointment_id: Mapped[int] = mapped_column(
         ForeignKey("appointments.id", ondelete="RESTRICT"), nullable=False, index=True
     )

@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum as PyEnum
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import Boolean, DateTime, Enum as SAEnum, JSON, UniqueConstraint, func, text
+from sqlalchemy import Boolean, CheckConstraint, DateTime, JSON, String, UniqueConstraint, func, text
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -25,19 +25,19 @@ class BusinessFeature(Base):
     __tablename__ = "business_features"
 
     __table_args__ = (
+        CheckConstraint(
+            "feature_key IN ('capacity_based_booking', 'recurring_schedules', "
+            "'replacement_classes', 'trial_appointments', "
+            "'professional_schedule_notifications', 'reminder_policy')",
+            name="businessfeaturekey",
+        ),
         UniqueConstraint("business_id", "feature_key", name="uq_business_features_business_key"),
     )
 
     id: Mapped[intpk]
     business_id: Mapped[business_fk]
     feature_key: Mapped[BusinessFeatureKey] = mapped_column(
-        SAEnum(
-            BusinessFeatureKey,
-            name="businessfeaturekey",
-            native_enum=False,
-            create_constraint=True,
-            validate_strings=True,
-        ),
+        String(64),
         nullable=False,
         index=True,
     )

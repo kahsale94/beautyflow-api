@@ -48,6 +48,12 @@ class Appointment(Base):
             unique=True,
             postgresql_where=text("series_id IS NOT NULL"),
         ),
+        Index(
+            "uq_appointments_replacement_entitlement_id",
+            "replacement_entitlement_id",
+            unique=True,
+            postgresql_where=text("replacement_entitlement_id IS NOT NULL"),
+        ),
     )
 
     id: Mapped[intpk]
@@ -72,7 +78,7 @@ class Appointment(Base):
     )
     occurrence_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     replacement_entitlement_id: Mapped[int | None] = mapped_column(
-        ForeignKey("replacement_entitlements.id", ondelete="RESTRICT"), nullable=True, unique=True, index=True
+        ForeignKey("replacement_entitlements.id", ondelete="RESTRICT"), nullable=True
     )
 
     client: Mapped["Client"] = relationship(back_populates="appointments")

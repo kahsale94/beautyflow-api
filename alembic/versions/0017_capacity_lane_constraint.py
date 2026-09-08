@@ -21,16 +21,20 @@ NEW_CONSTRAINT = "ex_appointments_business_professional_capacity_time_conflict"
 
 
 def upgrade() -> None:
-    op.drop_constraint(OLD_CONSTRAINT, "appointments", type_="exclude")
-    op.create_exclude_constraint(
-        NEW_CONSTRAINT,
-        "appointments",
-        ("business_id", "="),
-        ("professional_id", "="),
-        ("capacity_slot", "="),
-        (sa.text("tstzrange(start_datetime, end_datetime, '[)')"), "&&"),
-        where=sa.text("status = 'scheduled'"),
-        using="gist",
+    op.drop_constraint(OLD_CONSTRAINT, "appointments")
+    op.execute(
+        sa.text(
+            f"""
+            ALTER TABLE appointments
+            ADD CONSTRAINT {NEW_CONSTRAINT}
+            EXCLUDE USING gist (
+                business_id WITH =,
+                professional_id WITH =,
+                capacity_slot WITH =,
+                tstzrange(start_datetime, end_datetime, '[)') WITH &&
+            ) WHERE (status = 'scheduled')
+            """
+        )
     )
 
 
@@ -58,13 +62,17 @@ def downgrade() -> None:
             """
         )
     )
-    op.drop_constraint(NEW_CONSTRAINT, "appointments", type_="exclude")
-    op.create_exclude_constraint(
-        OLD_CONSTRAINT,
-        "appointments",
-        ("business_id", "="),
-        ("professional_id", "="),
-        (sa.text("tstzrange(start_datetime, end_datetime, '[)')"), "&&"),
-        where=sa.text("status = 'scheduled'"),
-        using="gist",
+    op.drop_constraint(NEW_CONSTRAINT, "appointments")
+    op.execute(
+        sa.text(
+            f"""
+            ALTER TABLE appointments
+            ADD CONSTRAINT {OLD_CONSTRAINT}
+            EXCLUDE USING gist (
+                business_id WITH =,
+                professional_id WITH =,
+                tstzrange(start_datetime, end_datetime, '[)') WITH &&
+            ) WHERE (status = 'scheduled')
+            """
+        )
     )

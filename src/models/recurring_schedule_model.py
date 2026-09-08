@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Optional
 from sqlalchemy import CheckConstraint, Date, DateTime, Enum as SAEnum, ForeignKey, Integer, Text, Time, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from .base_model import Base, business_fk, client_fk, intpk, service_fk
+from .base_model import Base, business_fk, intpk
 
 if TYPE_CHECKING:
     from .appointment_model import Appointment
@@ -33,8 +33,12 @@ class RecurringSchedule(Base):
 
     id: Mapped[intpk]
     business_id: Mapped[business_fk]
-    client_id: Mapped[client_fk]
-    service_id: Mapped[service_fk]
+    client_id: Mapped[int] = mapped_column(
+        ForeignKey("clients.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
+    service_id: Mapped[int] = mapped_column(
+        ForeignKey("services.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
     weekday: Mapped[int] = mapped_column(Integer, nullable=False)
     start_time: Mapped[time] = mapped_column(Time(), nullable=False)
     effective_from: Mapped[date] = mapped_column(Date(), nullable=False)

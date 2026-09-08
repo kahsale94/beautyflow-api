@@ -97,7 +97,7 @@ def pause_recurring_schedule(
     series_id: int,
     business_id: BusinessScopeDep,
     service: RecurringScheduleServiceDep,
-    admin: AdminDep,
+    actor: UserOrBusinessIntegrationDep,
 ):
     try:
         return service.pause(business_id, series_id)
@@ -110,7 +110,7 @@ def resume_recurring_schedule(
     series_id: int,
     business_id: BusinessScopeDep,
     service: RecurringScheduleServiceDep,
-    admin: AdminDep,
+    actor: UserOrBusinessIntegrationDep,
 ):
     try:
         return service.resume(business_id, series_id)

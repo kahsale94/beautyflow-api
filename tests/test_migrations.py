@@ -160,7 +160,8 @@ def test_single_clean_initial_migration_exists():
     source = read_source("alembic/versions/0017_capacity_lane_constraint.py")
     assert 'revision: str = "0017_capacity_lane"' in source
     assert "ex_appointments_business_professional_capacity_time_conflict" in source
-    assert '("capacity_slot", "=")' in source
+    assert "capacity_slot WITH =" in source
+    assert "tstzrange(start_datetime, end_datetime, '[)') WITH &&" in source
 
     source = read_source("alembic/versions/0018_recurring_schedules.py")
     assert 'revision: str = "0018_recurring_schedules"' in source
