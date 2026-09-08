@@ -1,4 +1,5 @@
 {% extends "admin/base.html" %}
+{% from "admin/_components.html" import control_panel %}
 
 {% block title %}Clientes - Beautyflow{%endblock %}
 
@@ -10,8 +11,9 @@
     </div>
 </header>
 
-<section class="grid two-columns">
-    <form method="post" action="/admin/clients" class="card stack">
+<section class="admin-page-controls" aria-label="Controles de clientes">
+    {% call control_panel("Ações", "Cadastre um novo cliente.") %}
+    <form method="post" action="/admin/clients" class="stack">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
         <h2>Novo cliente</h2>
         <label>Nome <input name="name" minlength="3" maxlength="50" placeholder="Carlos Silva" /></label>
@@ -19,12 +21,18 @@
             <input name="phone" required minlength="9" maxlength="13" placeholder="5511999999999" /></label>
         <button class="button primary" type="submit">Cadastrar</button>
     </form>
+    {% endcall %}
 
-    <form method="get" action="/admin/clients" class="card stack admin-search-card">
+    {% call control_panel("Pesquisa e filtros", "Encontre clientes por nome ou telefone.", initially_open=q) %}
+    <form method="get" action="/admin/clients" class="stack admin-search-form">
         <h2>Buscar</h2>
         <label>Nome ou telefone <input name="q" value="{{ q }}" placeholder="Carlos ou 5511999999999" /></label>
-        <button class="button" type="submit">Filtrar</button>
+        <div class="filter-actions">
+            <button class="button" type="submit">Filtrar</button>
+            {% if q %}<a class="button secondary" href="/admin/clients">Limpar busca</a>{% endif %}
+        </div>
     </form>
+    {% endcall %}
 </section>
 
 <section class="card">

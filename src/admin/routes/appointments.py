@@ -91,6 +91,54 @@ def _slot_duration(interval_minutes: int | None) -> str:
     hours, minutes = divmod(interval, 60)
     return f"{hours:02d}:{minutes:02d}:00"
 
+def _calendar_display_config(opening_hours) -> dict[str, object]:
+    """Translate the company's saved hours to FullCalendar's weekday convention."""
+    business_hours: list[dict[str, object]] = []
+    valid_ranges = []
+
+    for item in opening_hours or []:
+        weekday = getattr(item, "weekday", None)
+        start_time = getattr(item, "start_time", None)
+        end_time = getattr(item, "end_time", None)
+
+        if (
+            not isinstance(weekday, int)
+            or weekday < 0
+            or weekday > 6
+            or start_time is None
+            or end_time is None
+            or start_time >= end_time
+        ):
+            continue
+
+        start_label = start_time.strftime("%H:%M:%S")
+        end_label = end_time.strftime("%H:%M:%S")
+        business_hours.append(
+            {
+                "daysOfWeek": [(weekday + 1) % 7],
+                "startTime": start_label,
+                "endTime": end_label,
+            }
+        )
+        valid_ranges.append((start_time, end_time, start_label, end_label))
+
+    if not valid_ranges:
+        return {
+            "business_hours": [],
+            "slot_min_time": "",
+            "slot_max_time": "",
+            "scroll_time": "",
+        }
+
+    earliest = min(valid_ranges, key=lambda item: item[0])
+    latest = max(valid_ranges, key=lambda item: item[1])
+    return {
+        "business_hours": business_hours,
+        "slot_min_time": earliest[2],
+        "slot_max_time": latest[3],
+        "scroll_time": earliest[2],
+    }
+
 def _service_professional_ids(business_id: int, professionals, link_service) -> dict[int, list[int]]:
     result: dict[int, list[int]] = {}
     for professional in professionals:
@@ -168,6 +216,7 @@ def calendar_page(request: Request, client_service: ClientServiceDep, profession
     max_start = now + timedelta(days=business.maximum_schedule_days)
     professionals = professional_service.get_all(session.business_id)
     services = service_service.get_all(session.business_id)
+    calendar_display = _calendar_display_config(business.opening_hours)
 
     return render(
         request,
@@ -180,6 +229,10 @@ def calendar_page(request: Request, client_service: ClientServiceDep, profession
             "max_start_datetime": max_start.strftime("%Y-%m-%dT%H:%M"),
             "slot_interval_seconds": business.slot_interval_minutes * 60,
             "slot_duration": _slot_duration(business.slot_interval_minutes),
+            "calendar_business_hours": calendar_display["business_hours"],
+            "calendar_slot_min_time": calendar_display["slot_min_time"],
+            "calendar_slot_max_time": calendar_display["slot_max_time"],
+            "calendar_scroll_time": calendar_display["scroll_time"],
             "clients": client_service.get_all(session.business_id),
             "professionals": professionals,
             "services": services,

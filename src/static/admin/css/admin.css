@@ -124,6 +124,7 @@ textarea {
 }
 
 .with-sidebar {
+    width: calc(100% - var(--sidebar-width));
     min-height: 100vh;
     margin-left: var(--sidebar-width);
 }
@@ -396,15 +397,6 @@ h2 {
     color: var(--muted);
     font-weight: 650;
     line-height: 1.35;
-}
-
-.admin-search-card {
-    align-self: start;
-    height: fit-content;
-}
-
-.admin-search-card .button {
-    margin-top: 2px;
 }
 
 .align-end {
@@ -1346,13 +1338,45 @@ tr.is-editing input[data-editable] {
     width: 100%;
 }
 
+.appointment-readonly-notice {
+    margin: var(--space-md) 0 0;
+    padding: 12px 14px;
+    border: 1px solid #cbd5e1;
+    border-radius: var(--radius-md);
+    background: #f8fafc;
+    color: #475569;
+    font-weight: 700;
+}
+
 .compact-form {
     margin-top: var(--space-md);
 }
 
-/* 12. Calendário */
+/* 12. Agenda */
 .calendar-card {
     overflow: hidden;
+}
+
+.calendar-filter-controls {
+    display: grid;
+    grid-template-columns: minmax(240px, 420px) auto;
+    align-items: end;
+    gap: var(--space-md);
+}
+
+.calendar-status {
+    max-width: none;
+    margin: var(--space-md) 0 0;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+}
+
+.calendar-status.error {
+    border-color: #fecaca;
+    background: var(--error-bg);
+    color: var(--error-text);
 }
 
 .calendar-month-strip {
@@ -1397,6 +1421,7 @@ tr.is-editing input[data-editable] {
 }
 
 .fc {
+    --bf-calendar-event-gap: var(--space-xs);
     --fc-border-color: var(--border);
     --fc-button-bg-color: #1f2937;
     --fc-button-border-color: #1f2937;
@@ -1546,6 +1571,14 @@ tr.is-editing input[data-editable] {
 .fc .fc-daygrid-event {
     min-width: 0;
     margin: 1px 3px;
+}
+
+.fc .fc-timegrid-event-harness > .fc-timegrid-event {
+    inset-inline: calc(var(--bf-calendar-event-gap) / 2);
+}
+
+.fc .fc-non-business {
+    background: rgba(148, 163, 184, .1);
 }
 
 .fc .fc-daygrid-event .fc-event-main,
@@ -1777,6 +1810,147 @@ summary {
 details > .stack,
 details > pre {
     margin: 0 var(--space-md) var(--space-md);
+}
+
+.admin-page-controls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-md);
+    margin-bottom: var(--space-lg);
+}
+
+.admin-page-controls > .admin-control-panel {
+    min-width: 0;
+    margin: 0;
+}
+
+.admin-page-controls > .admin-control-panel:only-child,
+.admin-page-controls > .admin-control-panel[open] {
+    grid-column: 1 / -1;
+}
+
+.admin-control-panel {
+    padding: 0;
+    overflow: hidden;
+    background: var(--surface);
+}
+
+.admin-control-panel > .admin-control-panel-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-md);
+    padding: 16px 18px;
+    list-style: none;
+    transition: background var(--transition);
+}
+
+.admin-control-panel > .admin-control-panel-summary::-webkit-details-marker {
+    display: none;
+}
+
+.admin-control-panel > .admin-control-panel-summary:hover {
+    background: var(--surface-2);
+}
+
+.admin-control-panel-heading {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    min-width: 0;
+}
+
+.admin-control-panel-heading > span:last-child {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+}
+
+.admin-control-panel-heading strong {
+    font-size: 1rem;
+    line-height: 1.25;
+}
+
+.admin-control-panel-heading small {
+    color: var(--muted);
+    font-weight: 500;
+    line-height: 1.35;
+}
+
+.admin-control-panel-icon {
+    display: grid;
+    width: 30px;
+    height: 30px;
+    flex: 0 0 30px;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--surface-2);
+}
+
+.admin-control-panel-toggle {
+    display: grid;
+    width: 30px;
+    height: 30px;
+    flex: 0 0 30px;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--surface-2);
+    color: var(--muted);
+}
+
+.admin-control-panel-toggle::before {
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    content: "";
+    transform: translateY(-2px) rotate(45deg);
+    transition: transform var(--transition);
+}
+
+.admin-control-panel[open] .admin-control-panel-toggle::before {
+    transform: translateY(2px) rotate(225deg);
+}
+
+.admin-control-panel-content {
+    padding: var(--space-lg);
+    border-top: 1px solid var(--border);
+    background: #fafafa;
+    animation: admin-control-panel-reveal var(--transition);
+}
+
+.admin-control-panel-content > :last-child,
+.admin-control-panel-content .appointment-management-grid > .card {
+    margin-bottom: 0;
+}
+
+.filter-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    flex-wrap: wrap;
+}
+
+@keyframes admin-control-panel-reveal {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .admin-control-panel-content {
+        animation: none;
+    }
+
+    .admin-control-panel-toggle::before {
+        transition: none;
+    }
 }
 
 pre,
@@ -2121,6 +2295,7 @@ pre {
     }
 
     .with-sidebar {
+        width: 100%;
         margin-left: 0;
     }
 
@@ -2131,6 +2306,14 @@ pre {
     .grid.two-columns,
     .settings-grid {
         grid-template-columns: 1fr;
+    }
+
+    .admin-page-controls {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-page-controls > .admin-control-panel {
+        grid-column: 1;
     }
 
     .compact-grid {
@@ -2192,8 +2375,7 @@ pre {
     .card-header .button,
     .settings-actions .button,
     .appointment-create-button,
-    .schedule-block-submit,
-    .admin-search-card .button {
+    .schedule-block-submit {
         width: 100%;
     }
 
@@ -2354,6 +2536,18 @@ pre {
 
     .calendar-card-header {
         align-items: stretch;
+    }
+
+    .calendar-filter-controls {
+        grid-template-columns: 1fr;
+    }
+
+    .calendar-filter-controls .button {
+        width: 100%;
+    }
+
+    .admin-control-panel-content {
+        padding: 16px;
     }
 
     .calendar-month-strip {

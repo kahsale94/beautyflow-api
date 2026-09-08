@@ -36,7 +36,7 @@
 <section class="card">
     <div class="card-header">
         <h2>Agendamentos de hoje</h2>
-        <a class="button small" href="/admin/appointments">Abrir calendário</a>
+        <a class="button small" href="/admin/appointments">Abrir agenda</a>
     </div>
     {% if today_appointments %}
     <div class="table-shell">
@@ -57,8 +57,8 @@
             {% set service = services_by_id.get(appointment.service_id) %}
             <tr>
                 <td data-label="Horário">
-                    {{ appointment.start_datetime.strftime('%H:%M') }} - {{
-                    appointment.end_datetime.strftime('%H:%M') }}
+                    {{ appointment.start_datetime|datetime_time(business.timezone) }} -
+                    {{ appointment.end_datetime|datetime_time(business.timezone) }}
                 </td>
                 <td data-label="Status">
                     <span class="badge {{ appointment.status.value }}">{{ appointment.status|admin_label }}</span>

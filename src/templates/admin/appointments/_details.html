@@ -1,3 +1,4 @@
+{% set appointment_is_editable = appointment.status.value == 'scheduled' %}
 <h2>Agendamento #{{ appointment.id }}</h2>
 <div class="details-list">
     <p>
@@ -79,6 +80,7 @@
     </div>
     {% endif %}
 
+    {% if appointment_is_editable %}
     <div class="reminder-actions">
         <form method="post" action="/admin/appointments/{{ appointment.id }}/reminders/manual"
             {% if not manual_reminder_disabled_reason %}data-confirm="{{ manual_reminder_confirm_message }}"{% endif %}>
@@ -92,8 +94,10 @@
         <small class="muted">{{ manual_reminder_disabled_reason }}</small>
         {% endif %}
     </div>
+    {% endif %}
 </div>
 
+{% if appointment_is_editable %}
 <form id="appointment-update-form-{{ appointment.id }}" method="post" action="/admin/appointments/{{ appointment.id }}"
     class="stack compact-form" data-appointment-service-filter>
     <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
@@ -161,3 +165,8 @@
     data-appointment-submit>
     Salvar alterações
 </button>
+{% else %}
+<p class="appointment-readonly-notice" role="status">
+    Este agendamento está {{ 'cancelado' if appointment.status.value == 'canceled' else 'concluído' }} e disponível somente para consulta.
+</p>
+{% endif %}

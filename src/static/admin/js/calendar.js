@@ -130,6 +130,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const eventsUrl = calendarEl.dataset.eventsUrl || '/admin/appointments/events';
     const professionalFilter = document.getElementById('calendar-professional-filter');
+    const refreshButton = document.getElementById('calendar-refresh-button');
+    const statusElement = document.getElementById('calendar-status');
     const monthStrip = document.getElementById('calendar-month-strip');
     const mobileCalendarQuery = window.matchMedia('(max-width: 760px)');
     const scheduleBlockEventColor = '#cbd5e1';
@@ -149,6 +151,36 @@ document.addEventListener('DOMContentLoaded', function () {
     const monthFormatter = new Intl.DateTimeFormat('pt-BR', {month: 'short',timeZone: 'UTC'});
     const monthTitleFormatter = new Intl.DateTimeFormat('pt-BR', {month: 'long', year: 'numeric', timeZone: 'UTC'});
     const dayHeaderFormatter = new Intl.DateTimeFormat('pt-BR', {weekday: 'short', timeZone: 'UTC'});
+
+    function parseBusinessHours(value) {
+        if (!value) return [];
+
+        try {
+            const parsed = JSON.parse(value);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch (_error) {
+            return [];
+        }
+    }
+
+    function setCalendarStatus(message, state = '') {
+        if (!(statusElement instanceof HTMLElement)) return;
+
+        statusElement.textContent = message;
+        statusElement.dataset.state = state;
+        statusElement.classList.toggle('error', state === 'error');
+        statusElement.hidden = !message;
+    }
+
+    const businessHours = parseBusinessHours(calendarEl.dataset.businessHours);
+    const calendarHoursOptions = businessHours.length
+        ? {
+            businessHours: businessHours,
+            slotMinTime: calendarEl.dataset.slotMinTime,
+            slotMaxTime: calendarEl.dataset.slotMaxTime,
+            scrollTime: calendarEl.dataset.scrollTime
+        }
+        : {};
 
     function normalizeShortMonth(value) {
         return value.replace('.', '').replace(/^./, char => char.toUpperCase());
@@ -326,25 +358,51 @@ document.addEventListener('DOMContentLoaded', function () {
         const activeButton = monthStrip.querySelector('[aria-current="date"]');
         if (activeButton) {
             window.requestAnimationFrame(function () {
-                activeButton.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                const buttonLeftInStrip = activeButton.getBoundingClientRect().left
+                    - monthStrip.getBoundingClientRect().left
+                    + monthStrip.scrollLeft;
+                const centeredScrollLeft = buttonLeftInStrip
+                    - (monthStrip.clientWidth - activeButton.offsetWidth) / 2;
+
+                monthStrip.scrollTo({
+                    left: Math.max(0, centeredScrollLeft),
+                    behavior: 'smooth'
+                });
             });
         }
     }
 
     let calendar;
     calendar = new FullCalendar.Calendar(calendarEl, {
-        initialView: 'dayGridMonth',
+        initialView: mobileCalendarQuery.matches ? 'timeGridDay' : 'timeGridWeek',
+        firstDay: 1,
         locale: 'pt-br',
         timeZone: calendarEl.dataset.timezone || 'America/Sao_Paulo',
         slotDuration: calendarEl.dataset.slotDuration || '00:15:00',
+        ...calendarHoursOptions,
         height: 'auto',
         expandRows: true,
         nowIndicator: true,
         selectable: false,
         navLinks: true,
+        allDaySlot: true,
+        allDayText: 'Dia inteiro',
+        slotEventOverlap: false,
         dayMaxEventRows: 3,
         eventDisplay: 'block',
         displayEventEnd: true,
+        loading: function (isLoading) {
+            if (refreshButton instanceof HTMLButtonElement) {
+                refreshButton.disabled = isLoading;
+                refreshButton.textContent = isLoading ? 'Atualizando…' : 'Atualizar agenda';
+            }
+
+            if (isLoading) {
+                setCalendarStatus('Atualizando agenda…', 'loading');
+            } else if (statusElement && statusElement.dataset.state === 'loading') {
+                setCalendarStatus('');
+            }
+        },
         dayHeaderFormat: { weekday: 'short', day: 'numeric' },
         views: {
             dayGridMonth: {
@@ -519,8 +577,17 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (!response.ok) throw new Error('Erro ao carregar eventos');
                     return response.json();
                 })
-                .then(successCallback)
-                .catch(failureCallback);
+                .then(events => {
+                    setCalendarStatus(
+                        events.length ? '' : 'Nenhum agendamento ou bloqueio neste período.',
+                        events.length ? '' : 'empty'
+                    );
+                    successCallback(events);
+                })
+                .catch(error => {
+                    setCalendarStatus('Não foi possível carregar os eventos. Tente atualizar a agenda.', 'error');
+                    failureCallback(error);
+                });
         },
         eventClick: function (info) {
             info.jsEvent.preventDefault();
@@ -573,6 +640,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (professionalFilter) {
         professionalFilter.addEventListener('change', function () {
+            calendar.refetchEvents();
+        });
+    }
+
+    if (refreshButton) {
+        refreshButton.addEventListener('click', function () {
             calendar.refetchEvents();
         });
     }

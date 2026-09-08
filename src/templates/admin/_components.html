@@ -1,0 +1,17 @@
+{% macro control_panel(title, description=None, icon=None, initially_open=false, class_name="") -%}
+<details class="card admin-control-panel{% if class_name %} {{ class_name }}{% endif %}"{% if initially_open %} open{% endif %}>
+    <summary class="admin-control-panel-summary">
+        <span class="admin-control-panel-heading">
+            {% if icon %}<span class="admin-control-panel-icon" aria-hidden="true">{{ icon }}</span>{% endif %}
+            <span>
+                <strong>{{ title }}</strong>
+                {% if description %}<small>{{ description }}</small>{% endif %}
+            </span>
+        </span>
+        <span class="admin-control-panel-toggle" aria-hidden="true"></span>
+    </summary>
+    <div class="admin-control-panel-content">
+        {{ caller() }}
+    </div>
+</details>
+{%- endmacro %}
