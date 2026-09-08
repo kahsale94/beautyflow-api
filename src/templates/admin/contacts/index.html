@@ -1,10 +1,15 @@
 {% extends "admin/base.html" %}
 {% from "admin/_components.html" import control_panel %}
+
 {% block title %}Contatos - Beautyflow{% endblock %}
+
 {% block content %}
-<header class="page-header">
-    <div><h1>Contatos do WhatsApp</h1><p class="muted">Identidades e política de atendimento por empresa.</p></div>
-    <form method="post" action="/admin/contacts/sync">
+<header class="page-header contacts-page-header">
+    <div>
+        <h1>Contatos do WhatsApp</h1>
+        <p class="muted">Identidades e política de atendimento por empresa.</p>
+    </div>
+    <form method="post" action="/admin/contacts/sync" class="contacts-sync-form">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
         <button class="button" type="submit">Sincronizar CoverCut</button>
     </form>
@@ -14,43 +19,142 @@
     {% call control_panel("Pesquisa e filtros", "Refine a lista por identidade, política, provedor ou vínculo salvo.", initially_open=(q or policy or provider or saved)) %}
     <form method="get" action="/admin/contacts" class="stack admin-search-form">
         <div class="grid two-columns">
-            <label>Buscar <input name="q" value="{{ q }}" placeholder="Nome, telefone, username ou BSUID" /></label>
-            <label>Política <select name="policy"><option value="">Todas</option>{% for value in ['BOT','HUMAN','AUTO'] %}<option value="{{ value }}" {{ 'selected' if policy == value else '' }}>{{ value }}</option>{% endfor %}</select></label>
-            <label>Provedor <select name="provider"><option value="">Todos</option><option value="covercut" {{ 'selected' if provider == 'covercut' else '' }}>CoverCut</option><option value="evolution" {{ 'selected' if provider == 'evolution' else '' }}>Evolution</option></select></label>
-            <label>Salvo <select name="saved"><option value="">Todos</option><option value="yes" {{ 'selected' if saved == 'yes' else '' }}>Sim</option><option value="no" {{ 'selected' if saved == 'no' else '' }}>Não</option></select></label>
+            <label>Buscar
+                <input name="q" value="{{ q }}" placeholder="Nome, telefone, username ou BSUID" />
+            </label>
+            <label>Política
+                <select name="policy">
+                    <option value="">Todas</option>
+                    {% for value in ['BOT','HUMAN','AUTO'] %}
+                    <option value="{{ value }}" {{ 'selected' if policy == value else '' }}>{{ value }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>Provedor
+                <select name="provider">
+                    <option value="">Todos</option>
+                    <option value="covercut" {{ 'selected' if provider == 'covercut' else '' }}>CoverCut</option>
+                    <option value="evolution" {{ 'selected' if provider == 'evolution' else '' }}>Evolution</option>
+                </select>
+            </label>
+            <label>Salvo
+                <select name="saved">
+                    <option value="">Todos</option>
+                    <option value="yes" {{ 'selected' if saved == 'yes' else '' }}>Sim</option>
+                    <option value="no" {{ 'selected' if saved == 'no' else '' }}>Não</option>
+                </select>
+            </label>
         </div>
         <div class="filter-actions">
             <button class="button" type="submit">Filtrar</button>
-            {% if q or policy or provider or saved %}<a class="button secondary" href="/admin/contacts">Limpar filtros</a>{% endif %}
+            {% if q or policy or provider or saved %}
+            <a class="button secondary" href="/admin/contacts">Limpar filtros</a>
+            {% endif %}
         </div>
     </form>
     {% endcall %}
 </section>
 
-<form method="post" action="/admin/contacts/bulk-policy" class="card stack">
+<form method="post" action="/admin/contacts/bulk-policy" class="card stack contacts-list-card">
     <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
-    <div class="card-header"><h2>{{ total }} contatos</h2><div><select name="policy" required>{% for value in ['BOT','HUMAN','AUTO'] %}<option value="{{ value }}">{{ value }}</option>{% endfor %}</select> <button class="button small" type="submit">Aplicar aos selecionados</button></div></div>
+    <div class="card-header contacts-list-header">
+        <div class="contacts-list-heading">
+            <h2>{{ total }} contatos</h2>
+            <p class="muted">Selecione contatos para alterar a política em conjunto ou edite cada linha individualmente.</p>
+        </div>
+        <div class="contacts-bulk-actions">
+            <label class="contacts-bulk-policy">
+                <span>Política para selecionados</span>
+                <select name="policy" required>
+                    {% for value in ['BOT','HUMAN','AUTO'] %}
+                    <option value="{{ value }}">{{ value }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <button class="button small" type="submit">Aplicar aos selecionados</button>
+        </div>
+    </div>
+
     {% if contacts %}
-    <div class="table-shell"><table class="table admin-data-table"><thead><tr><th></th><th>Contato</th><th>Identidade</th><th>Origem</th><th>Política</th><th>Atendimento</th><th>Ações</th></tr></thead><tbody>
-    {% for contact in contacts %}<tr>
-        <td><input type="checkbox" name="contact_ids" value="{{ contact.id }}" aria-label="Selecionar {{ contact.name or contact.id }}" /></td>
-        <td>{{ contact.name or 'Sem nome' }}{% if contact.client_id %}<br><span class="muted">Cliente #{{ contact.client_id }}</span>{% endif %}</td>
-        <td>{{ contact.phone or contact.wa_id or contact.username or contact.provider_user_id }}<br><span class="muted">{{ contact.provider or 'sem provider' }}</span></td>
-        <td>{{ contact.source }}{% if contact.is_saved %} · salvo{% endif %}</td>
-        <td>{{ contact.bot_policy }}{% if contact.policy_manually_overridden %} · manual{% endif %}</td>
-        <td>{{ 'Humano (temporário)' if takeover.get(contact.id) else 'Sem takeover' }}</td>
-        <td class="actions">
-            <select name="policy" form="policy-{{ contact.id }}">{% for value in ['BOT','HUMAN','AUTO'] %}<option value="{{ value }}" {{ 'selected' if contact.bot_policy == value else '' }}>{{ value }}</option>{% endfor %}</select>
-            <button class="button small" type="submit" form="policy-{{ contact.id }}">Salvar</button>
-            {% if takeover.get(contact.id) %}<button class="button success small" type="submit" form="resume-{{ contact.id }}">Retomar bot</button>{% endif %}
-        </td>
-    </tr>{% endfor %}
-    </tbody></table></div>
-    {% else %}<p class="empty">Nenhum contato encontrado.</p>{% endif %}
+    <div class="table-shell contacts-table-shell">
+        <table class="table admin-data-table contacts-table">
+            <thead>
+                <tr>
+                    <th class="contact-select-column" scope="col"><span class="visually-hidden">Selecionar</span></th>
+                    <th scope="col">Contato</th>
+                    <th scope="col">Identidade</th>
+                    <th scope="col">Origem</th>
+                    <th scope="col">Política</th>
+                    <th scope="col">Atendimento</th>
+                    <th scope="col">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for contact in contacts %}
+                <tr>
+                    <td class="contact-select-cell" data-label="Selecionar">
+                        <input type="checkbox" name="contact_ids" value="{{ contact.id }}"
+                            aria-label="Selecionar {{ contact.name or contact.id }}" />
+                    </td>
+                    <td data-label="Contato">
+                        <span class="contact-primary-value">{{ contact.name or 'Sem nome' }}</span>
+                        {% if contact.client_id %}<small class="contact-secondary-value">Cliente #{{ contact.client_id }}</small>{% endif %}
+                    </td>
+                    <td data-label="Identidade">
+                        <span class="contact-primary-value">{{ contact.phone or contact.wa_id or contact.username or contact.provider_user_id }}</span>
+                        <small class="contact-secondary-value">{{ contact.provider or 'sem provedor' }}</small>
+                    </td>
+                    <td data-label="Origem">{{ contact.source }}</td>
+                    <td data-label="Política">
+                        <span class="contact-policy-value">{{ contact.bot_policy }}</span>
+                        {% if contact.policy_manually_overridden %}<small class="contact-secondary-value">Definição manual</small>{% endif %}
+                    </td>
+                    <td data-label="Atendimento">{{ 'Humano (temporário)' if takeover.get(contact.id) else 'Sem takeover' }}</td>
+                    <td class="actions" data-label="Ações">
+                        <div class="contact-row-actions">
+                            <select name="policy" form="policy-{{ contact.id }}"
+                                aria-label="Política de {{ contact.name or contact.id }}">
+                                {% for value in ['BOT','HUMAN','AUTO'] %}
+                                <option value="{{ value }}" {{ 'selected' if contact.bot_policy == value else '' }}>{{ value }}</option>
+                                {% endfor %}
+                            </select>
+                            <button class="button small" type="submit" form="policy-{{ contact.id }}">Salvar</button>
+                            {% if takeover.get(contact.id) %}
+                            <button class="button success small contact-resume-button" type="submit"
+                                form="resume-{{ contact.id }}">Retomar bot</button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="empty">Nenhum contato encontrado.</p>
+    {% endif %}
+
+    {% if pages > 1 %}
+    <nav class="pagination contacts-pagination" aria-label="Paginação">
+        <span>Página {{ page }} de {{ pages }}</span>
+        <div class="pagination-actions">
+            {% if page > 1 %}
+            <a class="button small" href="?page={{ page - 1 }}&q={{ q }}&policy={{ policy }}&provider={{ provider }}&saved={{ saved }}">Anterior</a>
+            {% endif %}
+            {% if page < pages %}
+            <a class="button small" href="?page={{ page + 1 }}&q={{ q }}&policy={{ policy }}&provider={{ provider }}&saved={{ saved }}">Próxima</a>
+            {% endif %}
+        </div>
+    </nav>
+    {% endif %}
 </form>
+
 {% for contact in contacts %}
-<form id="policy-{{ contact.id }}" method="post" action="/admin/contacts/{{ contact.id }}/policy"><input type="hidden" name="_csrf_token" value="{{ csrf_token }}" /></form>
-<form id="resume-{{ contact.id }}" method="post" action="/admin/contacts/{{ contact.id }}/resume"><input type="hidden" name="_csrf_token" value="{{ csrf_token }}" /></form>
+<form id="policy-{{ contact.id }}" method="post" action="/admin/contacts/{{ contact.id }}/policy">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
+</form>
+<form id="resume-{{ contact.id }}" method="post" action="/admin/contacts/{{ contact.id }}/resume">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
+</form>
 {% endfor %}
-{% if pages > 1 %}<nav class="pagination" aria-label="Paginação">Página {{ page }} de {{ pages }}{% if page > 1 %} <a class="button small" href="?page={{ page - 1 }}&q={{ q }}&policy={{ policy }}&provider={{ provider }}&saved={{ saved }}">Anterior</a>{% endif %}{% if page < pages %} <a class="button small" href="?page={{ page + 1 }}&q={{ q }}&policy={{ policy }}&provider={{ provider }}&saved={{ saved }}">Próxima</a>{% endif %}</nav>{% endif %}
 {% endblock %}

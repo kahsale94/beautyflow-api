@@ -85,8 +85,32 @@ def test_agenda_uses_dynamic_hours_and_keeps_all_views():
     assert "businessHours: businessHours" in script
     assert "initialView: mobileCalendarQuery.matches ? 'timeGridDay' : 'timeGridWeek'" in script
     assert "dayGridMonth,timeGridWeek,timeGridDay,listWeek" in script
+    assert script.count("eventMinHeight: 52") == 2
+    assert "bf-calendar-event--detailed" in script
+    assert "bf-calendar-event-details" in script
+    assert "bf-calendar-event-service" in script
+    assert "bf-calendar-event-professional" in script
     assert "slotMinTime: '07:00:00'" not in script
     assert "slotMaxTime: '20:00:00'" not in script
+
+
+def test_contacts_page_has_spaced_bulk_actions_and_responsive_rows():
+    template = read_source("src/templates/admin/contacts/index.html")
+    stylesheet = read_source("src/static/admin/css/admin.css")
+
+    assert "contacts-list-card" in template
+    assert "contacts-list-header" in template
+    assert "contacts-bulk-actions" in template
+    assert "contacts-table-shell" in template
+    assert "contact-row-actions" in template
+    assert "contacts-pagination" in template
+    assert 'data-label="Contato"' in template
+    assert 'data-label="Identidade"' in template
+    assert 'data-label="Origem"' in template
+    assert ".contacts-table" in stylesheet
+    assert ".contacts-bulk-actions" in stylesheet
+    assert ".contact-row-actions" in stylesheet
+    assert ".contacts-pagination" in stylesheet
 
 
 def _render_appointment_details(status: str) -> str:

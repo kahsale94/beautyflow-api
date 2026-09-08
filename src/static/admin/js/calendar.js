@@ -411,11 +411,15 @@ document.addEventListener('DOMContentLoaded', function () {
             },
             timeGridWeek: {
                 dayHeaderFormat: { weekday: 'short', day: 'numeric' },
-                displayEventEnd: true
+                displayEventEnd: true,
+                eventMinHeight: 52,
+                eventShortHeight: 52
             },
             timeGridDay: {
                 dayHeaderFormat: { weekday: 'long', day: 'numeric' },
-                displayEventEnd: true
+                displayEventEnd: true,
+                eventMinHeight: 52,
+                eventShortHeight: 52
             },
             listWeek: {
                 displayEventEnd: true
@@ -495,8 +499,13 @@ document.addEventListener('DOMContentLoaded', function () {
             const props = eventProps(info);
             const startTime = info.timeText || '';
             const isMonth = info.view.type === 'dayGridMonth';
+            const isTimeGrid = info.view.type === 'timeGridWeek' || info.view.type === 'timeGridDay';
             const wrapper = document.createElement('div');
-            wrapper.className = isMonth ? 'bf-calendar-event bf-calendar-event--month' : 'bf-calendar-event bf-calendar-event--time';
+            wrapper.className = isMonth
+                ? 'bf-calendar-event bf-calendar-event--month'
+                : isTimeGrid
+                    ? 'bf-calendar-event bf-calendar-event--time bf-calendar-event--detailed'
+                    : 'bf-calendar-event bf-calendar-event--list';
 
             function appendText(className, text) {
                 if (!text) return;
@@ -504,6 +513,25 @@ document.addEventListener('DOMContentLoaded', function () {
                 item.className = className;
                 item.textContent = text;
                 wrapper.appendChild(item);
+            }
+
+            function appendAppointmentDetails(service, professional) {
+                const details = document.createElement('span');
+                details.className = 'bf-calendar-event-details';
+
+                const serviceItem = document.createElement('span');
+                serviceItem.className = 'bf-calendar-event-service';
+                serviceItem.textContent = service;
+                details.appendChild(serviceItem);
+
+                if (professional) {
+                    const professionalItem = document.createElement('span');
+                    professionalItem.className = 'bf-calendar-event-professional';
+                    professionalItem.textContent = professional;
+                    details.appendChild(professionalItem);
+                }
+
+                wrapper.appendChild(details);
             }
 
             if (isScheduleBlockEvent(info)) {
@@ -527,8 +555,9 @@ document.addEventListener('DOMContentLoaded', function () {
             appendText('bf-calendar-event-time', startTime);
             appendText('bf-calendar-event-title', client);
             if (!isMonth) {
-                appendText('bf-calendar-event-subtitle', `${service}${professional ? ` • ${professional}` : ''}`);
+                appendAppointmentDetails(service, professional);
             }
+            wrapper.setAttribute('aria-label', [startTime, client, service, professional].filter(Boolean).join(', '));
 
             return { domNodes: [wrapper] };
         },
