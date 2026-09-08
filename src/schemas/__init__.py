@@ -44,3 +44,10 @@ from .business_feature_schema import (
     ReminderPolicyMode,
     ReplacementClassesConfig,
 )
+from .recurring_schedule_schema import (
+    RecurringMaterializationConflict,
+    RecurringMaterializationResponse,
+    RecurringScheduleCreate,
+    RecurringScheduleResponse,
+    RecurringScheduleUpdate,
+)

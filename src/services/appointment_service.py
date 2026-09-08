@@ -343,6 +343,12 @@ class AppointmentService:
                 confirmation_pending = appointment.confirmation_pending,
                 capacity_slot = appointment.capacity_slot,
                 kind = appointment.kind,
+                series_id = appointment.series_id,
+                occurrence_start = (
+                    appointment.occurrence_start.astimezone(business_tz)
+                    if appointment.occurrence_start
+                    else None
+                ),
             )
 
         if isinstance(appointment_or_list, list):
@@ -424,7 +430,15 @@ class AppointmentService:
         business_tz = self._get_business_timezone(business_id)
         return self._validate_return(result, business_tz)
     
-    def create(self, business_id: int, data: AppointmentCreate):
+    def create(
+        self,
+        business_id: int,
+        data: AppointmentCreate,
+        *,
+        series_id: int | None = None,
+        occurrence_start: datetime | None = None,
+        force_automatic: bool = False,
+    ):
         if data.kind == AppointmentKind.trial and not self._feature_enabled(
             business_id,
             BusinessFeatureKey.trial_appointments,
@@ -432,7 +446,7 @@ class AppointmentService:
             raise AppointmentFeatureDisabledError()
 
         capacity_enabled = self._feature_enabled(business_id, BusinessFeatureKey.capacity_based_booking)
-        if capacity_enabled:
+        if capacity_enabled or force_automatic:
             business, _service, start_datetime, end_datetime = self._validate_common_appointment(
                 business_id,
                 data.client_id,
@@ -445,6 +459,7 @@ class AppointmentService:
                 start_datetime,
                 end_datetime,
                 data.professional_id,
+                force_automatic=force_automatic,
             )
             professional_id = assignment.professional_id
             capacity_slot = assignment.capacity_slot
@@ -473,6 +488,8 @@ class AppointmentService:
             confirmation_pending = business.appointment_confirmation_required,
             capacity_slot = capacity_slot,
             kind = data.kind,
+            series_id = series_id,
+            occurrence_start = occurrence_start,
         )
 
         self.appointment_repo.add(self.db, appointment)

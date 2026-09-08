@@ -17,6 +17,7 @@ from .whatsapp_routes import router as whatsapp_router
 from .covercut_webhook_routes import router as covercut_webhook_router
 from .contact_routes import router as contact_router
 from .business_feature_routes import router as business_feature_router
+from .recurring_schedule_routes import router as recurring_schedule_router
 
 router = APIRouter(prefix="/v1")
 
@@ -37,3 +38,4 @@ router.include_router(whatsapp_router)
 router.include_router(covercut_webhook_router)
 router.include_router(contact_router)
 router.include_router(business_feature_router)
+router.include_router(recurring_schedule_router)

@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy.sql import text
 from sqlalchemy.dialects.postgresql import ExcludeConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import Boolean, CheckConstraint, DateTime, Enum as SAEnum, Integer, func
+from sqlalchemy import Boolean, CheckConstraint, DateTime, Enum as SAEnum, ForeignKey, Integer, func, Index
 
 from .base_model import Base, intpk, business_fk, professional_fk, service_fk, client_fk
 
@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from .business_model import Business
     from .professional_model import Professional
     from .appointment_reminder_model import AppointmentReminder
+    from .recurring_schedule_model import RecurringSchedule
 
 
 class AppointmentStatus(str, PyEnum):
@@ -39,6 +40,13 @@ class Appointment(Base):
             using="gist",
             name="ex_appointments_business_professional_capacity_time_conflict",
         ),
+        Index(
+            "uq_appointments_series_occurrence_start",
+            "series_id",
+            "occurrence_start",
+            unique=True,
+            postgresql_where=text("series_id IS NOT NULL"),
+        ),
     )
 
     id: Mapped[intpk]
@@ -58,9 +66,14 @@ class Appointment(Base):
         default=AppointmentKind.standard,
         server_default=AppointmentKind.standard.value,
     )
+    series_id: Mapped[int | None] = mapped_column(
+        ForeignKey("recurring_schedules.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
+    occurrence_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     client: Mapped["Client"] = relationship(back_populates="appointments")
     professional: Mapped["Professional"] = relationship(back_populates="appointments")
     service: Mapped["Service"] = relationship(back_populates="appointments")
     business: Mapped["Business"] = relationship(back_populates="appointments")
     reminders: Mapped[list["AppointmentReminder"]] = relationship(back_populates="appointment", cascade="all, delete-orphan")
+    series: Mapped["RecurringSchedule | None"] = relationship(back_populates="occurrences")

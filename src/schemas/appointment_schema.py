@@ -32,5 +32,7 @@ class AppointmentResponse(BaseModel):
     confirmation_pending: bool
     capacity_slot: int
     kind: AppointmentKind
+    series_id: int | None = None
+    occurrence_start: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)

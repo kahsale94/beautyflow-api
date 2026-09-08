@@ -14,3 +14,4 @@ from .evolution_instance_repo import EvolutionInstanceRepository
 from .whatsapp_connection_repo import WhatsAppConnectionRepository, WhatsAppWebhookEventRepository
 from .contact_repo import ContactRepository
 from .business_feature_repo import BusinessFeatureRepository
+from .recurring_schedule_repo import RecurringScheduleRepository

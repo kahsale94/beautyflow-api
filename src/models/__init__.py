@@ -22,3 +22,4 @@ from .whatsapp_connection_model import (
     WhatsAppWebhookEvent,
 )
 from .contact_model import Contact
+from .recurring_schedule_model import RecurringSchedule, RecurringScheduleStatus

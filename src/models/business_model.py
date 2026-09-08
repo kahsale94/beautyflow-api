@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     from .whatsapp_connection_model import WhatsAppConnection
     from .contact_model import Contact
     from .business_feature_model import BusinessFeature
+    from .recurring_schedule_model import RecurringSchedule
 
 
 class BusinessType(str, PyEnum):
@@ -153,6 +154,9 @@ class Business(Base):
         back_populates="business", cascade="all, delete-orphan", overlaps="client,contact"
     )
     features: Mapped[list["BusinessFeature"]] = relationship(
+        back_populates="business", cascade="all, delete-orphan"
+    )
+    recurring_schedules: Mapped[list["RecurringSchedule"]] = relationship(
         back_populates="business", cascade="all, delete-orphan"
     )
 

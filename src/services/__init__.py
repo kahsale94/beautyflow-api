@@ -14,3 +14,4 @@ from .whatsapp_connection_service import WhatsAppConnectionService, get_whatsapp
 from .messaging_service import MessagingService, get_messaging_service
 from .covercut_webhook_service import CovercutWebhookService, get_covercut_webhook_service
 from .contact_service import ContactService, get_contact_service
+from .recurring_schedule_service import RecurringScheduleService, get_recurring_schedule_service
