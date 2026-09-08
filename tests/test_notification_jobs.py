@@ -96,6 +96,9 @@ class NotificationRepo:
     def add(self, db, job):
         self.jobs.append(job)
 
+    def get_by_id_for_integration(self, db, job_id, integration_id, for_update=False):
+        return next((item for item in self.jobs if item.id == job_id), None)
+
 
 class EnabledFeatures:
     def __init__(self, enabled=True):
@@ -175,6 +178,46 @@ def test_integration_sweep_queues_tomorrows_zero_appointment_notice_once():
     assert len(repo.jobs) == 1
     assert repo.jobs[0].business_id == 1
     assert repo.jobs[0].notification_type == "professional_no_appointments"
+
+
+def test_notification_deduplication_is_scoped_per_business():
+    service, repo = notification_service()
+
+    service.enqueue(1, "test", "same-key", "Empresa 1")
+    service.enqueue(2, "test", "same-key", "Empresa 2")
+
+    assert [(job.business_id, job.message) for job in repo.jobs] == [
+        (1, "Empresa 1"),
+        (2, "Empresa 2"),
+    ]
+
+
+def test_professional_event_obeys_feature_and_provider_failure_does_not_change_scheduling():
+    disabled, disabled_repo = notification_service(enabled=False)
+    professional = SimpleNamespace(id=4, phone="5511", email="ana@example.com")
+    assert disabled.enqueue_professional_event(
+        1, professional, "cancellation", "cancel:1", "Cancelado"
+    ) is None
+    assert not disabled_repo.jobs
+
+    service, repo = notification_service(enabled=True)
+    job = SimpleNamespace(
+        id=77,
+        business_id=1,
+        status=NotificationJobStatus.processing,
+        attempts=1,
+        failed_at=None,
+        locked_until=datetime.now(timezone.utc),
+        last_error=None,
+    )
+    repo.jobs.append(job)
+    appointment = SimpleNamespace(status=AppointmentStatus.scheduled)
+
+    service.mark_failed(job.id, 9, "provider timeout")
+
+    assert job.status == NotificationJobStatus.pending
+    assert job.last_error == "provider timeout"
+    assert appointment.status == AppointmentStatus.scheduled
 
 
 def test_outbox_repository_has_tenant_scope_retry_lock_and_idempotency():
