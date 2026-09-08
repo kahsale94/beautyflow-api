@@ -26,6 +26,7 @@ from src.services.replacement_entitlement_service import (
     ReplacementEntitlementService,
     get_replacement_entitlement_service,
 )
+from src.services.notification_job_service import NotificationJobService, get_notification_job_service
 from src.security import (require_user, require_super_admin, UserContext, get_business_scope, require_admin, IntegrationContext, 
 require_integration, get_business_phone, require_business_integration, BusinessIntegrationContext, require_user_or_business_integration)
 
@@ -64,3 +65,4 @@ RecurringScheduleServiceDep = Annotated[RecurringScheduleService, Depends(get_re
 ReplacementEntitlementServiceDep = Annotated[
     ReplacementEntitlementService, Depends(get_replacement_entitlement_service)
 ]
+NotificationJobServiceDep = Annotated[NotificationJobService, Depends(get_notification_job_service)]

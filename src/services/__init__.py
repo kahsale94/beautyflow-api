@@ -19,3 +19,4 @@ from .replacement_entitlement_service import (
     ReplacementEntitlementService,
     get_replacement_entitlement_service,
 )
+from .notification_job_service import NotificationJobService, get_notification_job_service

@@ -30,6 +30,7 @@ def test_single_clean_initial_migration_exists():
         "0017_capacity_lane_constraint.py",
         "0018_recurring_schedules.py",
         "0019_replacement_entitlements.py",
+        "0020_notification_outbox.py",
     ]
     assert all(len(Path(filename).stem) <= 32 for filename in migration_files)
 
@@ -172,3 +173,9 @@ def test_single_clean_initial_migration_exists():
     assert 'down_revision: Union[str, None] = "0018_recurring_schedules"' in source
     assert "uq_replacement_entitlements_source_appointment" in source
     assert "uq_appointments_replacement_entitlement_id" in source
+
+    source = read_source("alembic/versions/0020_notification_outbox.py")
+    assert 'revision: str = "0020_notification_outbox"' in source
+    assert 'down_revision: Union[str, None] = "0019_replacement_entitlements"' in source
+    assert "uq_notification_jobs_business_dedup" in source
+    assert "ix_notification_jobs_claim" in source

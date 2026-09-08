@@ -14,6 +14,10 @@ from src.repositories import AppointmentReminderRepository
 from src.models.appointment_model import AppointmentStatus
 from src.models import Appointment, AppointmentReminder, Business
 from src.models.appointment_reminder_model import AppointmentReminderStatus
+from src.models.appointment_model import AppointmentKind
+from src.models.business_feature_model import BusinessFeatureKey
+from src.schemas.business_feature_schema import ReminderPolicyMode
+from src.services.business_feature_service import BusinessFeatureService, get_business_feature_service
 
 
 class AppointmentReminderNotFoundError(Exception):
@@ -46,9 +50,11 @@ class AppointmentReminderService:
         self,
         db: Session,
         appointment_reminder_repo: AppointmentReminderRepository,
+        business_feature_service: BusinessFeatureService | None = None,
     ):
         self.db = db
         self.appointment_reminder_repo = appointment_reminder_repo
+        self.business_feature_service = business_feature_service
 
     def _now(self) -> datetime:
         return datetime.now(timezone.utc)
@@ -140,6 +146,26 @@ class AppointmentReminderService:
             f"na {business.name}: {service_name} com {professional_name}, "
             f"{start['weekday']} ({start['date']}) às {start['time']}."
         )
+
+    def _automatic_reminder_allowed(self, appointment: Appointment) -> bool:
+        if not self.business_feature_service:
+            return True
+        if not self.business_feature_service.is_enabled(
+            appointment.business_id, BusinessFeatureKey.reminder_policy
+        ):
+            return False
+        config = self.business_feature_service.get_config(
+            appointment.business_id, BusinessFeatureKey.reminder_policy
+        )
+        mode = ReminderPolicyMode(config.get("mode", ReminderPolicyMode.all.value))
+        if mode == ReminderPolicyMode.none:
+            return False
+        if mode == ReminderPolicyMode.trial_and_replacement:
+            return bool(
+                getattr(appointment, "kind", AppointmentKind.standard) == AppointmentKind.trial
+                or getattr(appointment, "replacement_entitlement_id", None) is not None
+            )
+        return True
 
     def _to_claim_payload(self, reminder: AppointmentReminder) -> dict[str, Any]:
         appointment = reminder.appointment
@@ -233,7 +259,7 @@ class AppointmentReminderService:
         return payload
 
     def schedule_for_appointment(self, appointment: Appointment, business: Business) -> AppointmentReminder | None:
-        if not self._is_schedulable(appointment):
+        if not self._is_schedulable(appointment) or not self._automatic_reminder_allowed(appointment):
             return None
 
         scheduled_for = self._calculate_scheduled_for(appointment, business)
@@ -378,6 +404,12 @@ class AppointmentReminderService:
                 reminder.last_error = "appointment_no_longer_schedulable"
                 continue
 
+            if not self._automatic_reminder_allowed(appointment):
+                reminder.status = AppointmentReminderStatus.skipped
+                reminder.locked_until = None
+                reminder.last_error = "automatic_reminder_policy"
+                continue
+
             reminder.appointment_start_datetime = appointment.start_datetime
             reminder.scheduled_for = self._calculate_scheduled_for(appointment, business)
             reminder.locked_until = None
@@ -496,7 +528,9 @@ class AppointmentReminderService:
 
 
 def get_appointment_reminder_service(db: DataBaseDep):
-    return AppointmentReminderService(
+    service = AppointmentReminderService(
         db,
         AppointmentReminderRepository(),
     )
+    service.business_feature_service = get_business_feature_service(db)
+    return service

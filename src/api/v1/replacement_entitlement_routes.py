@@ -6,10 +6,7 @@ from src.dependecies import (
     ReplacementEntitlementServiceDep,
     UserOrBusinessIntegrationDep,
 )
-from src.models.replacement_entitlement_model import (
-    ReplacementEntitlementReason,
-    ReplacementEntitlementStatus,
-)
+from src.models.replacement_entitlement_model import ReplacementEntitlementStatus
 from src.schemas import (
     ReplacementBookingCreate,
     ReplacementEntitlementCreate,

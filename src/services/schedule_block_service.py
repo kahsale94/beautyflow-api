@@ -8,10 +8,29 @@ from sqlalchemy.exc import IntegrityError
 
 from src.core import DataBaseDep
 from src.models import ScheduleBlock
+from src.models.appointment_model import AppointmentStatus
+from src.models.business_feature_model import BusinessFeatureKey
+from src.models.replacement_entitlement_model import ReplacementEntitlementReason
 from src.models.schedule_block_model import ScheduleBlockStatus
-from src.schemas import ScheduleBlockCreate, ScheduleBlockResponse
-from src.services.scheduling_lock import acquire_schedule_lock
-from src.repositories import AppointmentRepository, BusinessRepository, ProfessionalRepository, ScheduleBlockRepository
+from src.schemas import ScheduleBlockCreate, ScheduleBlockReallocationResponse, ScheduleBlockResponse
+from src.services.scheduling_lock import acquire_schedule_lock, acquire_schedule_locks
+from src.services.business_feature_service import BusinessFeatureService, get_business_feature_service
+from src.services.notification_job_service import NotificationJobService, get_notification_job_service
+from src.services.professional_assignment_service import (
+    NoProfessionalCapacityError,
+    ProfessionalAssignmentService,
+)
+from src.services.replacement_entitlement_service import (
+    ReplacementEntitlementService,
+    get_replacement_entitlement_service,
+)
+from src.repositories import (
+    AppointmentRepository,
+    AvailabilityRepository,
+    BusinessRepository,
+    ProfessionalRepository,
+    ScheduleBlockRepository,
+)
 
 
 class ScheduleBlockNotFoundError(Exception):
@@ -51,12 +70,20 @@ class ScheduleBlockService:
         appointment_repo: AppointmentRepository,
         professional_repo: ProfessionalRepository,
         business_repo: BusinessRepository,
+        assignment_service: ProfessionalAssignmentService | None = None,
+        feature_service: BusinessFeatureService | None = None,
+        replacement_service: ReplacementEntitlementService | None = None,
+        notification_service: NotificationJobService | None = None,
     ):
         self.db = db
         self.schedule_block_repo = schedule_block_repo
         self.appointment_repo = appointment_repo
         self.professional_repo = professional_repo
         self.business_repo = business_repo
+        self.assignment_service = assignment_service
+        self.feature_service = feature_service
+        self.replacement_service = replacement_service
+        self.notification_service = notification_service
 
     def _get_integrity_constraint_name(self, exc: IntegrityError) -> str | None:
         try:
@@ -239,6 +266,167 @@ class ScheduleBlockService:
         
         return self._validate_return(schedule_block, business_tz)
 
+    def _format_period(self, value: datetime, business_tz: ZoneInfo) -> str:
+        weekdays = (
+            "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira",
+            "sexta-feira", "sábado", "domingo",
+        )
+        local = value.astimezone(business_tz)
+        return f"{weekdays[local.weekday()]}, {local:%d/%m/%Y}, às {local:%H:%M}"
+
+    def create_with_reallocation(
+        self, business_id: int, data: ScheduleBlockCreate
+    ) -> ScheduleBlockReallocationResponse:
+        target_professional = self._validate_professional(business_id, data.professional_id)
+        self._get_business_or_raise(business_id)
+        business_tz = self._get_business_timezone(business_id)
+        start_datetime, end_datetime = self._build_period(business_id, data)
+        professionals = list(self.professional_repo.get_by_business(self.db, business_id))
+        acquire_schedule_locks(
+            self.db,
+            business_id,
+            [professional.id for professional in professionals],
+        )
+
+        active_blocks = self.schedule_block_repo.get_active_by_professional_period(
+            self.db, business_id, data.professional_id, start_datetime, end_datetime
+        )
+        if active_blocks:
+            raise ScheduleBlockTimeConflictError()
+        affected = sorted(
+            self.appointment_repo.get_scheduled_overlapping(
+                self.db,
+                business_id,
+                data.professional_id,
+                start_datetime,
+                end_datetime,
+                for_update=True,
+            ),
+            key=lambda item: (item.start_datetime, item.id),
+        )
+
+        block = ScheduleBlock(
+            business_id=business_id,
+            professional_id=data.professional_id,
+            start_datetime=start_datetime,
+            end_datetime=end_datetime,
+            all_day=data.all_day,
+            reason=data.reason,
+            status=ScheduleBlockStatus.active,
+        )
+        self.schedule_block_repo.add(self.db, block)
+
+        reassigned: list[int] = []
+        canceled: list[int] = []
+        entitlements: list[int] = []
+        candidate_ids = {
+            professional.id
+            for professional in professionals
+            if professional.id != data.professional_id
+        }
+        use_capacity = bool(
+            self.feature_service
+            and self.feature_service.is_enabled(
+                business_id, BusinessFeatureKey.capacity_based_booking
+            )
+        )
+        by_id = {professional.id: professional for professional in professionals}
+
+        for appointment in affected:
+            assignment = None
+            if self.assignment_service and candidate_ids:
+                try:
+                    assignment = self.assignment_service.assign(
+                        business_id,
+                        appointment.service_id,
+                        appointment.start_datetime.astimezone(business_tz),
+                        appointment.end_datetime.astimezone(business_tz),
+                        use_configured_capacity=use_capacity,
+                        professional_ids=candidate_ids,
+                        exclude_appointment_id=appointment.id,
+                    )
+                except NoProfessionalCapacityError:
+                    assignment = None
+
+            period_label = self._format_period(appointment.start_datetime, business_tz)
+            payload = {
+                "appointment_id": appointment.id,
+                "date": appointment.start_datetime.astimezone(business_tz).date().isoformat(),
+                "weekday": period_label.split(",", 1)[0],
+            }
+            if assignment:
+                appointment.professional_id = assignment.professional_id
+                appointment.capacity_slot = assignment.capacity_slot
+                reassigned.append(appointment.id)
+                if self.notification_service:
+                    new_professional = by_id[assignment.professional_id]
+                    self.notification_service.enqueue_professional_event(
+                        business_id,
+                        target_professional,
+                        "professional_appointment_removed",
+                        f"professional_removed:{appointment.id}:{data.professional_id}",
+                        f"O atendimento de {period_label} foi retirado da sua agenda.",
+                        appointment_id=appointment.id,
+                        payload=payload,
+                    )
+                    self.notification_service.enqueue_professional_event(
+                        business_id,
+                        new_professional,
+                        "professional_appointment_assigned",
+                        f"professional_assigned:{appointment.id}:{assignment.professional_id}",
+                        f"Um atendimento de {period_label} foi atribuído à sua agenda.",
+                        appointment_id=appointment.id,
+                        payload=payload,
+                    )
+                continue
+
+            appointment.status = AppointmentStatus.canceled
+            canceled.append(appointment.id)
+            if self.replacement_service and self.feature_service and self.feature_service.is_enabled(
+                business_id, BusinessFeatureKey.replacement_classes
+            ) and appointment.replacement_entitlement_id is None:
+                entitlement = self.replacement_service.grant_for_appointment(
+                    business_id,
+                    appointment.id,
+                    ReplacementEntitlementReason.professional_unavailable,
+                    commit=False,
+                )
+                entitlements.append(entitlement.id)
+                payload["replacement_entitlement_id"] = entitlement.id
+            if self.notification_service:
+                self.notification_service.enqueue_client_event(
+                    business_id,
+                    appointment.client,
+                    "client_appointment_canceled",
+                    f"client_canceled_by_block:{appointment.id}",
+                    f"Seu atendimento de {period_label} foi cancelado por indisponibilidade de agenda.",
+                    appointment_id=appointment.id,
+                    payload=payload,
+                )
+                self.notification_service.enqueue_professional_event(
+                    business_id,
+                    target_professional,
+                    "professional_appointment_canceled",
+                    f"professional_canceled:{appointment.id}:{data.professional_id}",
+                    f"O atendimento de {period_label} foi cancelado por indisponibilidade.",
+                    appointment_id=appointment.id,
+                    payload=payload,
+                )
+
+        try:
+            self.db.flush()
+            self._commit_or_raise_conflict()
+        except Exception:
+            self.db.rollback()
+            raise
+        self.db.refresh(block)
+        return ScheduleBlockReallocationResponse(
+            block=self._convert(block, business_tz),
+            reassigned_appointment_ids=reassigned,
+            canceled_appointment_ids=canceled,
+            replacement_entitlement_ids=entitlements,
+        )
+
     def cancel(self, business_id: int, schedule_block_id: int):
         schedule_block = self._get_block_or_raise(business_id, schedule_block_id)
 
@@ -251,10 +439,25 @@ class ScheduleBlockService:
         return
 
 def get_schedule_block_service(db: DataBaseDep):
+    appointment_repo = AppointmentRepository()
+    professional_repo = ProfessionalRepository()
+    schedule_block_repo = ScheduleBlockRepository()
+    feature_service = get_business_feature_service(db)
+    assignment_service = ProfessionalAssignmentService(
+        db,
+        professional_repo,
+        AvailabilityRepository(),
+        appointment_repo,
+        schedule_block_repo,
+    )
     return ScheduleBlockService(
         db,
-        ScheduleBlockRepository(),
-        AppointmentRepository(),
-        ProfessionalRepository(),
+        schedule_block_repo,
+        appointment_repo,
+        professional_repo,
         BusinessRepository(),
+        assignment_service,
+        feature_service,
+        get_replacement_entitlement_service(db),
+        get_notification_job_service(db),
     )

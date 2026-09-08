@@ -16,3 +16,4 @@ from .contact_repo import ContactRepository
 from .business_feature_repo import BusinessFeatureRepository
 from .recurring_schedule_repo import RecurringScheduleRepository
 from .replacement_entitlement_repo import ReplacementEntitlementRepository
+from .notification_job_repo import NotificationJobRepository

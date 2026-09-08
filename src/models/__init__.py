@@ -28,3 +28,4 @@ from .replacement_entitlement_model import (
     ReplacementEntitlementReason,
     ReplacementEntitlementStatus,
 )
+from .notification_job_model import NotificationJob, NotificationJobStatus

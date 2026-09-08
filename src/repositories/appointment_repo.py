@@ -15,7 +15,16 @@ class AppointmentRepository:
     def delete(self, db: Session, appointment: Appointment):
         db.delete(appointment)
 
-    def get_scheduled_overlapping(self, db: Session, business_id: int, professional_id: int, start_datetime: datetime, end_datetime: datetime):
+    def get_scheduled_overlapping(
+        self,
+        db: Session,
+        business_id: int,
+        professional_id: int,
+        start_datetime: datetime,
+        end_datetime: datetime,
+        *,
+        for_update: bool = False,
+    ):
         stmt = (select(Appointment).where(
             Appointment.business_id == business_id,
             Appointment.professional_id == professional_id,
@@ -25,6 +34,8 @@ class AppointmentRepository:
         )
             .order_by(Appointment.start_datetime)
         )
+        if for_update:
+            stmt = stmt.with_for_update()
         return db.scalars(stmt).all()
 
     def get_scheduled_by_professional_and_date(self, db: Session, business_id: int, professional_id: int, start_of_day: datetime, end_of_day: datetime):
@@ -106,3 +117,23 @@ class AppointmentRepository:
             .with_for_update()
         )
         return list(db.scalars(stmt).all())
+
+    def get_next_scheduled_occurrence(
+        self,
+        db: Session,
+        business_id: int,
+        series_id: int,
+        after: datetime,
+    ):
+        stmt = (
+            select(Appointment)
+            .where(
+                Appointment.business_id == business_id,
+                Appointment.series_id == series_id,
+                Appointment.status == AppointmentStatus.scheduled,
+                Appointment.start_datetime > after,
+            )
+            .order_by(Appointment.start_datetime, Appointment.id)
+            .limit(1)
+        )
+        return db.scalars(stmt).one_or_none()

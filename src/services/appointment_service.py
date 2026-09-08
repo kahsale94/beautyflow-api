@@ -20,6 +20,7 @@ from src.services.professional_assignment_service import (
     NoProfessionalCapacityError,
     ProfessionalAssignmentService,
 )
+from src.services.notification_job_service import NotificationJobService, get_notification_job_service
 
 
 class ProfessionalNotAvailableError(Exception):
@@ -99,6 +100,7 @@ class AppointmentService:
         appointment_reminder_service: AppointmentReminderService | None = None,
         business_feature_service: BusinessFeatureService | None = None,
         assignment_service: ProfessionalAssignmentService | None = None,
+        notification_service: NotificationJobService | None = None,
     ):
         self.db = db
         self.appointment_repo = appointment_repo
@@ -112,6 +114,7 @@ class AppointmentService:
         self.appointment_reminder_service = appointment_reminder_service
         self.business_feature_service = business_feature_service
         self.assignment_service = assignment_service
+        self.notification_service = notification_service
 
     def _get_integrity_constraint_name(self, exc: IntegrityError) -> str | None:
         try:
@@ -645,6 +648,19 @@ class AppointmentService:
 
         appointment.status = AppointmentStatus.canceled
         self._skip_pending_reminders(appointment.id, reason="appointment_canceled")
+        if self.notification_service:
+            business_tz = self._get_business_timezone(business_id)
+            local = appointment.start_datetime.astimezone(business_tz)
+            weekdays = ("segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado", "domingo")
+            self.notification_service.enqueue_professional_event(
+                business_id,
+                appointment.professional,
+                "professional_appointment_canceled",
+                f"professional_client_canceled:{appointment.id}:{appointment.professional_id}",
+                f"O atendimento de {weekdays[local.weekday()]}, {local:%d/%m/%Y}, às {local:%H:%M} foi cancelado.",
+                appointment_id=appointment.id,
+                payload={"appointment_id": appointment.id, "weekday": weekdays[local.weekday()]},
+            )
         self._commit_or_raise_conflict()
 
     def delete(self, business_id: int, appointment_id: int):
@@ -682,6 +698,30 @@ class AppointmentService:
 
         appointment.status = AppointmentStatus.no_show
         self._skip_pending_reminders(appointment.id, reason="appointment_no_show")
+        if getattr(appointment, "series_id", None) is not None and self.notification_service:
+            next_occurrence = self.appointment_repo.get_next_scheduled_occurrence(
+                self.db,
+                business_id,
+                appointment.series_id,
+                appointment.start_datetime,
+            )
+            if next_occurrence:
+                business_tz = self._get_business_timezone(business_id)
+                local = next_occurrence.start_datetime.astimezone(business_tz)
+                weekdays = ("segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado", "domingo")
+                self.notification_service.enqueue_client_event(
+                    business_id,
+                    appointment.client,
+                    "recurring_no_show_next_occurrence",
+                    f"recurring_no_show_next:{appointment.id}:{next_occurrence.id}",
+                    f"Registramos sua falta. Sua próxima aula é {weekdays[local.weekday()]}, {local:%d/%m/%Y}, às {local:%H:%M}.",
+                    appointment_id=appointment.id,
+                    payload={
+                        "next_appointment_id": next_occurrence.id,
+                        "next_start_datetime": next_occurrence.start_datetime.isoformat(),
+                        "weekday": weekdays[local.weekday()],
+                    },
+                )
         self._commit_or_raise_conflict()
 
 def get_appointment_service(db: DataBaseDep):
@@ -697,6 +737,8 @@ def get_appointment_service(db: DataBaseDep):
         appointment_repo,
         schedule_block_repo,
     )
+    reminder_service = AppointmentReminderService(db, AppointmentReminderRepository())
+    reminder_service.business_feature_service = feature_service
     return AppointmentService(
         db,
         appointment_repo,
@@ -707,7 +749,8 @@ def get_appointment_service(db: DataBaseDep):
         BusinessRepository(),
         ProfessionalServiceRepository(),
         schedule_block_repo,
-        AppointmentReminderService(db, AppointmentReminderRepository()),
+        reminder_service,
         feature_service,
         assignment_service,
+        get_notification_job_service(db),
     )

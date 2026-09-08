@@ -16,7 +16,11 @@ from .appointment_reminder_schema import (
     AppointmentReminderFailedRequest,
     AppointmentReminderSentRequest,
 )
-from .schedule_block_schema import ScheduleBlockCreate, ScheduleBlockResponse
+from .schedule_block_schema import (
+    ScheduleBlockCreate,
+    ScheduleBlockReallocationResponse,
+    ScheduleBlockResponse,
+)
 from .professional_schema import ProfessionalCreate, ProfessionalResponse, ProfessionalUpdate
 from .professional_service_schema import ProfessionalServiceCreate, ProfessionalServiceResponse
 from .integration_schema import IntegrationCreate, IntegrationResponse, IntegrationUpdate, IntegrationCreateResponse
@@ -56,4 +60,12 @@ from .replacement_entitlement_schema import (
     ReplacementEntitlementCreate,
     ReplacementEntitlementResponse,
     ReplacementUseResponse,
+)
+from .notification_job_schema import (
+    NotificationJobClaimItem,
+    NotificationJobClaimRequest,
+    NotificationJobClaimResponse,
+    NotificationJobFailedRequest,
+    NotificationJobSentRequest,
+    ProfessionalNoAppointmentsRequest,
 )

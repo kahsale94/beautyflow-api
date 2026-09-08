@@ -3,7 +3,7 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException
 
 from src.dependecies import AdminDep, BusinessScopeDep, ScheduleBlockServiceDep
-from src.schemas import ScheduleBlockCreate, ScheduleBlockResponse
+from src.schemas import ScheduleBlockCreate, ScheduleBlockReallocationResponse, ScheduleBlockResponse
 from src.services.schedule_block_service import (ScheduleBlockAlreadyCanceledError, ScheduleBlockAppointmentConflictError,
     ScheduleBlockInvalidBusinessTimezoneError, ScheduleBlockInvalidDatetimeError, ScheduleBlockInvalidDurationError,
     ScheduleBlockNotFoundError, ScheduleBlockProfessionalNotFoundError, ScheduleBlockTimeConflictError,
@@ -69,6 +69,26 @@ def create_schedule_block(data: ScheduleBlockCreate, business_id: BusinessScopeD
 
     except (ScheduleBlockProfessionalNotFoundError, ScheduleBlockInvalidDatetimeError, ScheduleBlockInvalidDurationError,
         ScheduleBlockInvalidBusinessTimezoneError, ScheduleBlockAppointmentConflictError, ScheduleBlockTimeConflictError, ValueError,
+    ) as exc:
+        _handle_schedule_block_errors(exc)
+
+
+@router.post("/with-reallocation", status_code=201, response_model=ScheduleBlockReallocationResponse)
+def create_schedule_block_with_reallocation(
+    data: ScheduleBlockCreate,
+    business_id: BusinessScopeDep,
+    service: ScheduleBlockServiceDep,
+    admin: AdminDep,
+):
+    try:
+        return service.create_with_reallocation(business_id, data)
+    except (
+        ScheduleBlockProfessionalNotFoundError,
+        ScheduleBlockInvalidDatetimeError,
+        ScheduleBlockInvalidDurationError,
+        ScheduleBlockInvalidBusinessTimezoneError,
+        ScheduleBlockTimeConflictError,
+        ValueError,
     ) as exc:
         _handle_schedule_block_errors(exc)
 

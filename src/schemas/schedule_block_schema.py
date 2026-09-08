@@ -31,3 +31,10 @@ class ScheduleBlockResponse(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ScheduleBlockReallocationResponse(BaseModel):
+    block: ScheduleBlockResponse
+    reassigned_appointment_ids: list[int]
+    canceled_appointment_ids: list[int]
+    replacement_entitlement_ids: list[int]
