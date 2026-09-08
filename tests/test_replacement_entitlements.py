@@ -1,4 +1,6 @@
 from datetime import datetime, timedelta, timezone
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier, Lock
 from types import SimpleNamespace
 
 import pytest
@@ -192,6 +194,88 @@ def test_entitlement_consumption_is_single_use_and_links_appointment_atomically(
     assert used.appointment.replacement_entitlement_id == entitlement.id
     with pytest.raises(ReplacementEntitlementInvalidStateError):
         replacement_service.use(1, entitlement.id, booking)
+
+
+def test_concurrent_consumers_cannot_use_the_same_entitlement_twice():
+    transaction_lock = Lock()
+    start_together = Barrier(2)
+
+    class LockingSession(Session):
+        def __init__(self):
+            super().__init__()
+            self.owns_lock = False
+
+        def acquire_row_lock(self):
+            transaction_lock.acquire()
+            self.owns_lock = True
+
+        def release_row_lock(self):
+            if self.owns_lock:
+                self.owns_lock = False
+                transaction_lock.release()
+
+        def commit(self):
+            super().commit()
+            self.release_row_lock()
+
+    class LockingEntitlements(Entitlements):
+        def get_by_id(self, db, business_id, entitlement_id, for_update=False):
+            if for_update:
+                start_together.wait(timeout=2)
+                db.acquire_row_lock()
+            return super().get_by_id(db, business_id, entitlement_id, for_update=for_update)
+
+    source_appointment = source()
+    appointment_repo = AppointmentRepo(source_appointment)
+    entitlements = LockingEntitlements()
+    bootstrap_session = Session()
+    bootstrap_service = ReplacementEntitlementService(
+        bootstrap_session,
+        entitlements,
+        appointment_repo,
+        Businesses(),
+        Features(),
+        AppointmentService(appointment_repo, entitlements),
+    )
+    entitlement = bootstrap_service.grant_for_appointment(
+        1, source_appointment.id, ReplacementEntitlementReason.manual
+    )
+    booking = ReplacementBookingCreate(
+        start_datetime=datetime.now(timezone.utc) + timedelta(days=4)
+    )
+
+    sessions = [LockingSession(), LockingSession()]
+    services = [
+        ReplacementEntitlementService(
+            session,
+            entitlements,
+            appointment_repo,
+            Businesses(),
+            Features(),
+            AppointmentService(appointment_repo, entitlements),
+        )
+        for session in sessions
+    ]
+
+    def consume(index):
+        try:
+            services[index].use(1, entitlement.id, booking)
+            return "used"
+        except ReplacementEntitlementInvalidStateError:
+            return "already_used"
+        finally:
+            sessions[index].release_row_lock()
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        outcomes = list(executor.map(consume, range(2)))
+
+    assert sorted(outcomes) == ["already_used", "used"]
+    replacement_appointments = [
+        item
+        for item in appointment_repo.items.values()
+        if getattr(item, "replacement_entitlement_id", None) == entitlement.id
+    ]
+    assert len(replacement_appointments) == 1
 
 
 def test_expired_and_no_show_sources_cannot_generate_replacement_cycles():
