@@ -78,7 +78,13 @@ class Appointment(Base):
     )
     occurrence_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     replacement_entitlement_id: Mapped[int | None] = mapped_column(
-        ForeignKey("replacement_entitlements.id", ondelete="RESTRICT"), nullable=True
+        ForeignKey(
+            "replacement_entitlements.id",
+            name="fk_appointments_replacement_entitlement_id",
+            ondelete="RESTRICT",
+            use_alter=True,
+        ),
+        nullable=True,
     )
 
     client: Mapped["Client"] = relationship(back_populates="appointments")
