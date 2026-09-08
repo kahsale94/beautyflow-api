@@ -3,7 +3,11 @@ from fastapi import APIRouter, Request
 
 from src.utils import form_value, normalize_phone
 from src.services.availability_service import AvailabilityAlreadyExistsError, AvailabilityNotFoundError
-from src.services.professional_service import ProfessionalAlreadyExistsError, ProfessionalNotFoundError
+from src.services.professional_service import (
+    ProfessionalAlreadyExistsError,
+    ProfessionalCapacityConflictError,
+    ProfessionalNotFoundError,
+)
 from src.dependecies import AvailabilityServiceDep, ProfessionalServiceDep, ProfessionalServiceLinkServiceDep, ServiceServiceDep
 from src.schemas import AvailabilityCreate, AvailabilityUpdate, ProfessionalCreate, ProfessionalServiceCreate, ProfessionalUpdate
 from src.services.professional_service_link_service import ProfessionalServiceLinkAlreadyExistsError, ProfessionalServiceLinkNotFoundError
@@ -43,6 +47,7 @@ async def create_professional_action(request: Request, professional_service: Pro
             name = form_value(form, "name", ""),
             email = form_value(form, "email", ""),
             phone = normalize_phone(phone),
+            simultaneous_capacity=form_int(form, "simultaneous_capacity", 1),
         )
         professional_service.create(session.business_id, data)
 
@@ -96,6 +101,7 @@ async def update_professional_action(professional_id: int, request: Request, pro
             name = form_value(form, "name"),
             email = form_value(form, "email"),
             phone = normalize_phone(phone) if phone else None,
+            simultaneous_capacity=form_int(form, "simultaneous_capacity"),
         )
         professional_service.update(session.business_id, professional_id, data)
 
@@ -107,6 +113,14 @@ async def update_professional_action(professional_id: int, request: Request, pro
     
     except ProfessionalAlreadyExistsError:
         return redirect_with_flash(return_to, "Profissional já cadastrado.", "error", request=request)
+
+    except ProfessionalCapacityConflictError:
+        return redirect_with_flash(
+            return_to,
+            "A capacidade não pode ser reduzida porque existem agendamentos futuros simultâneos.",
+            "error",
+            request=request,
+        )
 
     return redirect_with_flash(return_to, "Profissional atualizado com sucesso.", request=request)
 

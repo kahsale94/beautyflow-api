@@ -225,4 +225,58 @@
         <button class="button primary" type="submit">Salvar empresa</button>
     </div>
 </form>
+
+<form method="post" action="/admin/business/features" class="stack settings-form">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
+    <section class="card settings-card stack">
+        <div>
+            <h2 class="section-title">Recursos da empresa</h2>
+            <p class="muted">Ative capacidades operacionais sem vincular as regras ao tipo da empresa.</p>
+        </div>
+        <div class="checkbox-grid">
+            {% set capacity = business_features['capacity_based_booking'] %}
+            <label class="check-card">
+                <input type="checkbox" name="feature_capacity_based_booking" {% if capacity.enabled %}checked{% endif %} />
+                <span><strong>Agendamento por capacidade</strong><small>Distribui clientes automaticamente entre profissionais elegíveis.</small></span>
+            </label>
+            {% set recurring = business_features['recurring_schedules'] %}
+            <label class="check-card">
+                <input type="checkbox" name="feature_recurring_schedules" {% if recurring.enabled %}checked{% endif %} />
+                <span><strong>Horários recorrentes</strong><small>Permite manter horários fixos do studio.</small></span>
+            </label>
+            {% set replacements = business_features['replacement_classes'] %}
+            <label class="check-card">
+                <input type="checkbox" name="feature_replacement_classes" {% if replacements.enabled %}checked{% endif %} />
+                <span><strong>Reposições</strong><small>Controla direitos de reposição com origem e validade.</small></span>
+            </label>
+            {% set trial = business_features['trial_appointments'] %}
+            <label class="check-card">
+                <input type="checkbox" name="feature_trial_appointments" {% if trial.enabled %}checked{% endif %} />
+                <span><strong>Aula experimental</strong><small>Habilita agendamentos com finalidade experimental.</small></span>
+            </label>
+            {% set professional_notifications = business_features['professional_schedule_notifications'] %}
+            <label class="check-card">
+                <input type="checkbox" name="feature_professional_schedule_notifications" {% if professional_notifications.enabled %}checked{% endif %} />
+                <span><strong>Notificações de profissionais</strong><small>Avisa mudanças relevantes e dias de trabalho sem aulas.</small></span>
+            </label>
+        </div>
+        <div class="form-grid compact-grid">
+            <label>Prazo máximo da reposição (dias)
+                <input name="replacement_expiration_days" type="number" min="1" max="365"
+                    value="{{ replacements.config.get('expiration_days', 30) }}" />
+            </label>
+            {% set reminder = business_features['reminder_policy'] %}
+            <label>Política de lembretes
+                <select name="reminder_policy" required>
+                    <option value="all" {% if reminder.config.get('mode') == 'all' %}selected{% endif %}>Todos os agendamentos</option>
+                    <option value="trial_and_replacement" {% if reminder.config.get('mode') == 'trial_and_replacement' %}selected{% endif %}>Somente experimental e reposição</option>
+                    <option value="none" {% if reminder.config.get('mode') == 'none' %}selected{% endif %}>Nenhum automático</option>
+                </select>
+            </label>
+        </div>
+        <div class="settings-actions">
+            <button class="button primary" type="submit">Salvar recursos</button>
+        </div>
+    </section>
+</form>
 {% endblock %}

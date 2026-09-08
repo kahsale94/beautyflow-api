@@ -1,0 +1,35 @@
+{% extends "admin/base.html" %}
+{% from "admin/_components.html" import control_panel %}
+
+{% block title %}Reposições - Beautyflow{% endblock %}
+
+{% block content %}
+<header class="page-header"><div><h1>Reposições</h1><p class="muted">Direitos rastreáveis por origem, validade e uso.</p></div></header>
+{% if not feature_enabled %}
+<section class="card"><p>Este recurso está desativado. <a href="/admin/business">Configurar recursos da empresa</a>.</p></section>
+{% else %}
+<section class="admin-page-controls">
+{% call control_panel("Ações", "Conceda manualmente uma reposição elegível.") %}
+<form method="post" action="/admin/replacement-entitlements" class="stack">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
+    <label>Agendamento de origem<select name="source_appointment_id" required>{% for item in appointments.values() %}<option value="{{ item.id }}">#{{ item.id }} — {{ clients.get(item.client_id).name or clients.get(item.client_id).phone if clients.get(item.client_id) else 'Cliente' }} — {{ item.start_datetime|datetime_br }}</option>{% endfor %}</select></label>
+    <label>Motivo<select name="reason" required>{% for reason in reasons %}<option value="{{ reason.value }}">{{ reason|admin_label }}</option>{% endfor %}</select></label>
+    <button class="button primary" type="submit">Conceder reposição</button>
+</form>
+{% endcall %}
+</section>
+
+<section class="card"><h2>Direitos de reposição</h2>
+{% if entitlements %}<div class="table-shell"><table class="table admin-data-table"><thead><tr><th>Status</th><th>Cliente</th><th>Origem</th><th>Motivo</th><th>Validade</th><th>Reposição</th><th>Ações</th></tr></thead><tbody>
+{% for item in entitlements %}<tr>
+    <td><span class="badge {{ item.status.value }}">{{ item.status|admin_label }}</span></td>
+    <td>{{ clients.get(item.client_id).name or clients.get(item.client_id).phone if clients.get(item.client_id) else item.client_id }}</td>
+    <td>#{{ item.source_appointment_id }}</td><td>{{ item.reason|admin_label }}</td>
+    <td>{{ item.expires_at|datetime_br }}</td>
+    <td>{% if item.replacement_appointment_id %}#{{ item.replacement_appointment_id }}{% else %}—{% endif %}</td>
+    <td>{% if item.status.value == 'available' %}<form method="post" action="/admin/replacement-entitlements/{{ item.id }}/forfeit" data-confirm="Renunciar a este direito de reposição?"><input type="hidden" name="_csrf_token" value="{{ csrf_token }}"/><button class="button danger small">Renunciar</button></form>{% endif %}</td>
+</tr>{% endfor %}
+</tbody></table></div>{% else %}<p class="empty">Nenhuma reposição registrada.</p>{% endif %}
+</section>
+{% endif %}
+{% endblock %}

@@ -169,3 +169,57 @@ def test_scheduled_appointment_modal_keeps_actions():
     assert "/cancel" in rendered
     assert "/complete" in rendered
     assert "/reminders/manual" in rendered
+
+
+def test_admin_exposes_feature_settings_capacity_and_domain_pages_with_csrf():
+    business_route = read_source("src/admin/routes/business.py")
+    business_template = read_source("src/templates/admin/business/settings.html")
+    professional_route = read_source("src/admin/routes/professionals.py")
+    professional_templates = (
+        read_source("src/templates/admin/professionals/index.html")
+        + read_source("src/templates/admin/professionals/detail.html")
+    )
+    recurring_route = read_source("src/admin/routes/recurring_schedules.py")
+    recurring_template = read_source("src/templates/admin/recurring_schedules/index.html")
+    replacement_route = read_source("src/admin/routes/replacement_entitlements.py")
+    replacement_template = read_source("src/templates/admin/replacement_entitlements/index.html")
+    base = read_source("src/templates/admin/base.html")
+
+    assert 'action="/admin/business/features"' in business_template
+    assert "feature_capacity_based_booking" in business_template
+    assert "replacement_expiration_days" in business_template
+    assert "reminder_policy" in business_template
+    assert "validate_csrf(request)" in business_route
+    assert "simultaneous_capacity" in professional_route
+    assert "simultaneous_capacity" in professional_templates
+    assert "ProfessionalCapacityConflictError" in professional_route
+    assert "validate_csrf(request)" in recurring_route
+    assert "validate_csrf(request)" in replacement_route
+    assert "Não obrig" not in recurring_template
+    assert "Profissional" not in recurring_template
+    assert "source_appointment_id" in replacement_route
+    assert "replacement_appointment_id" in replacement_template
+    assert "/admin/recurring-schedules" in base
+    assert "/admin/replacement-entitlements" in base
+
+
+def test_agenda_has_semantic_origin_no_show_capacity_and_explicit_reallocation():
+    route = read_source("src/admin/routes/appointments.py")
+    details = read_source("src/templates/admin/appointments/_details.html")
+    calendar = read_source("src/templates/admin/appointments/calendar.html")
+    script = read_source("src/static/admin/js/calendar.js")
+
+    assert '"appointmentKind"' in route
+    assert '"seriesId"' in route
+    assert '"isReplacement"' in route
+    assert '"capacitySummary"' in route
+    assert "create_with_reallocation" in route
+    assert 'name="with_reallocation"' in calendar
+    assert 'name="kind"' in calendar
+    assert "atribuição automática" in calendar
+    assert "/no-show" in details
+    assert "Horário recorrente" in details
+    assert "Reposição" in details
+    assert "appointment-origin-recurring" in script
+    assert "appointment-origin-replacement" in script
+    assert "no_show" in script

@@ -1,0 +1,68 @@
+{% extends "admin/base.html" %}
+{% from "admin/_components.html" import control_panel %}
+
+{% block title %}Horários recorrentes - Beautyflow{% endblock %}
+
+{% block content %}
+<header class="page-header">
+    <div>
+        <h1>Horários recorrentes</h1>
+        <p class="muted">Horários fixos pertencem ao studio; o profissional é definido em cada aula.</p>
+    </div>
+</header>
+
+{% if not feature_enabled %}
+<section class="card"><p>Este recurso está desativado. <a href="/admin/business">Configurar recursos da empresa</a>.</p></section>
+{% else %}
+<section class="admin-page-controls">
+    {% call control_panel("Ações", "Cadastre um novo horário fixo.") %}
+    <form method="post" action="/admin/recurring-schedules" class="stack">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
+        <div class="form-grid compact-grid">
+            <label>Cliente<select name="client_id" required>{% for item in clients %}<option value="{{ item.id }}">{{ item.name or item.phone }}</option>{% endfor %}</select></label>
+            <label>Serviço<select name="service_id" required>{% for item in services %}<option value="{{ item.id }}">{{ item.name }}</option>{% endfor %}</select></label>
+            <label>Dia da semana<select name="weekday" required>{% for value, label in weekdays %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></label>
+            <label>Horário<input name="start_time" type="time" required /></label>
+            <label>Início da vigência<input name="effective_from" type="date" required /></label>
+            <label>Fim da vigência<input name="effective_until" type="date" /></label>
+        </div>
+        <button class="button primary" type="submit">Criar horário fixo</button>
+    </form>
+    {% endcall %}
+</section>
+
+<section class="card">
+    <h2>Horários do studio</h2>
+    {% if schedules %}
+    <div class="table-shell"><table class="table admin-data-table"><thead><tr><th>Cliente</th><th>Serviço</th><th>Dia/horário</th><th>Vigência</th><th>Status</th><th>Ações</th></tr></thead><tbody>
+    {% for schedule in schedules %}
+    <tr>
+        <td>{{ clients_by_id.get(schedule.client_id).name or clients_by_id.get(schedule.client_id).phone if clients_by_id.get(schedule.client_id) else schedule.client_id }}</td>
+        <td>{{ services_by_id.get(schedule.service_id).name if services_by_id.get(schedule.service_id) else schedule.service_id }}</td>
+        <td>{{ schedule.weekday_name }} às {{ schedule.start_time.strftime('%H:%M') }}</td>
+        <td>{{ schedule.effective_from.strftime('%d/%m/%Y') }}{% if schedule.effective_until %} a {{ schedule.effective_until.strftime('%d/%m/%Y') }}{% endif %}</td>
+        <td><span class="badge {{ schedule.status.value }}">{{ schedule.status|admin_label }}</span>{% if schedule.last_materialization_error %}<small class="danger">{{ schedule.last_materialization_error }}</small>{% endif %}</td>
+        <td class="actions"><div class="actions-buttons">
+            {% if schedule.status.value != 'canceled' %}<details><summary class="button config small">Editar</summary>
+                <form method="post" action="/admin/recurring-schedules/{{ schedule.id }}" class="stack compact-form">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
+                    <label>Cliente<select name="client_id" required>{% for item in clients %}<option value="{{ item.id }}" {% if item.id == schedule.client_id %}selected{% endif %}>{{ item.name or item.phone }}</option>{% endfor %}</select></label>
+                    <label>Serviço<select name="service_id" required>{% for item in services %}<option value="{{ item.id }}" {% if item.id == schedule.service_id %}selected{% endif %}>{{ item.name }}</option>{% endfor %}</select></label>
+                    <label>Dia<select name="weekday" required>{% for value, label in weekdays %}<option value="{{ value }}" {% if value == schedule.weekday %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+                    <label>Horário<input name="start_time" type="time" value="{{ schedule.start_time.strftime('%H:%M') }}" required /></label>
+                    <label>Início<input name="effective_from" type="date" value="{{ schedule.effective_from.isoformat() }}" required /></label>
+                    <label>Fim<input name="effective_until" type="date" value="{{ schedule.effective_until.isoformat() if schedule.effective_until else '' }}" /></label>
+                    <button class="button primary small" type="submit">Salvar</button>
+                </form>
+            </details>{% endif %}
+            {% if schedule.status.value == 'active' %}<form method="post" action="/admin/recurring-schedules/{{ schedule.id }}/pause"><input type="hidden" name="_csrf_token" value="{{ csrf_token }}"/><button class="button secondary small">Pausar</button></form>{% endif %}
+            {% if schedule.status.value == 'paused' %}<form method="post" action="/admin/recurring-schedules/{{ schedule.id }}/resume"><input type="hidden" name="_csrf_token" value="{{ csrf_token }}"/><button class="button success small">Retomar</button></form>{% endif %}
+            {% if schedule.status.value != 'canceled' %}<form method="post" action="/admin/recurring-schedules/{{ schedule.id }}/cancel" data-confirm="Cancelar este horário fixo e suas ocorrências futuras?"><input type="hidden" name="_csrf_token" value="{{ csrf_token }}"/><button class="button danger small">Cancelar</button></form>{% endif %}
+        </div></td>
+    </tr>
+    {% endfor %}
+    </tbody></table></div>
+    {% else %}<p class="empty">Nenhum horário recorrente cadastrado.</p>{% endif %}
+</section>
+{% endif %}
+{% endblock %}

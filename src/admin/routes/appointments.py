@@ -7,11 +7,12 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
 from src.schemas import AppointmentCreate, AppointmentUpdate, ScheduleBlockCreate
+from src.models.business_feature_model import BusinessFeatureKey
 from src.utils import form_bool, form_decimal, form_int, form_value, local_datetime_from_form
-from src.dependecies import (AppointmentReminderServiceDep, AppointmentServiceDep, BusinessServiceDep, ClientServiceDep,
+from src.dependecies import (AppointmentReminderServiceDep, AppointmentServiceDep, BusinessFeatureServiceDep, BusinessServiceDep, ClientServiceDep,
     ProfessionalServiceDep, ProfessionalServiceLinkServiceDep, ScheduleBlockServiceDep, ServiceServiceDep,
 )
-from src.services.appointment_service import (AppointmentAlreadyCanceledError, AppointmentAlreadyCompletedError, AppointmentBlockedByScheduleBlockError,
+from src.services.appointment_service import (AppointmentAlreadyCanceledError, AppointmentAlreadyCompletedError, AppointmentAlreadyNoShowError, AppointmentBlockedByScheduleBlockError,
     AppointmentNotFoundError, AppointmentTimeConflictError, ClientNotFoundError, AppointmentConfirmationPendingError, DatetimeFormatError,
     ProfessionalNotAvailableError, ProfessionalServiceMismatchError, ServiceNotAvailableError,
 )
@@ -167,6 +168,8 @@ def _appointment_error_message(exc: Exception) -> str:
         return "Agendamento já cancelado."
     if isinstance(exc, AppointmentAlreadyCompletedError):
         return "Agendamento já concluído."
+    if isinstance(exc, AppointmentAlreadyNoShowError):
+        return "Agendamento já marcado como falta."
     if isinstance(exc, AppointmentConfirmationPendingError):
         return "Confirme o agendamento antes de concluí-lo."
 
@@ -206,7 +209,8 @@ def _schedule_block_error_redirect(request: Request, exc: Exception):
 
 @router.get("")
 def calendar_page(request: Request, client_service: ClientServiceDep, professional_service: ProfessionalServiceDep, service_service: ServiceServiceDep,
-    link_service: ProfessionalServiceLinkServiceDep, business_service: BusinessServiceDep, session: AdminSessionDep):
+    link_service: ProfessionalServiceLinkServiceDep, business_service: BusinessServiceDep,
+    feature_service: BusinessFeatureServiceDep, session: AdminSessionDep):
     business = business_service.get_by_id(session.business_id)
     business_timezone = _safe_timezone_name(business.timezone)
     tz = _safe_timezone(business_timezone)
@@ -217,6 +221,7 @@ def calendar_page(request: Request, client_service: ClientServiceDep, profession
     professionals = professional_service.get_all(session.business_id)
     services = service_service.get_all(session.business_id)
     calendar_display = _calendar_display_config(business.opening_hours)
+    features = {item.feature_key: item for item in feature_service.get_all(session.business_id)}
 
     return render(
         request,
@@ -242,6 +247,8 @@ def calendar_page(request: Request, client_service: ClientServiceDep, profession
                 link_service,
             ),
             "schedule_block_reasons": SCHEDULE_BLOCK_REASON_LABELS,
+            "capacity_enabled": features[BusinessFeatureKey.capacity_based_booking].enabled,
+            "trial_enabled": features[BusinessFeatureKey.trial_appointments].enabled,
         },
         session=session,
         active="appointments",
@@ -250,6 +257,7 @@ def calendar_page(request: Request, client_service: ClientServiceDep, profession
 @router.get("/events")
 def calendar_events(start: str, end: str, request: Request, appointment_service: AppointmentServiceDep, schedule_block_service: ScheduleBlockServiceDep,
     business_service: BusinessServiceDep, client_service: ClientServiceDep, professional_service: ProfessionalServiceDep, service_service: ServiceServiceDep,
+    link_service: ProfessionalServiceLinkServiceDep, feature_service: BusinessFeatureServiceDep,
     session: AdminSessionDep, professional_id: int | None=None):
     business = business_service.get_by_id(session.business_id)
     business_timezone = _safe_timezone_name(business.timezone)
@@ -272,6 +280,22 @@ def calendar_events(start: str, end: str, request: Request, appointment_service:
     clients = {item.id: item for item in client_service.get_all(session.business_id)}
     professionals = {item.id: item for item in professional_service.get_all(session.business_id)}
     services = {item.id: item for item in service_service.get_all(session.business_id)}
+    service_professional_ids = _service_professional_ids(
+        session.business_id, professionals.values(), link_service
+    )
+    capacity_enabled = feature_service.is_enabled(
+        session.business_id, BusinessFeatureKey.capacity_based_booking
+    )
+    capacity_groups: dict[tuple, dict[str, object]] = {}
+    if capacity_enabled:
+        for item in appointments:
+            if _enum_value(item.status) == "canceled":
+                continue
+            key = (item.start_datetime, item.end_datetime, item.service_id)
+            group = capacity_groups.setdefault(key, {"occupied": 0, "by_professional": {}})
+            group["occupied"] = int(group["occupied"]) + 1
+            by_professional = group["by_professional"]
+            by_professional[item.professional_id] = by_professional.get(item.professional_id, 0) + 1
 
     events = []
     for appointment in appointments:
@@ -279,6 +303,26 @@ def calendar_events(start: str, end: str, request: Request, appointment_service:
         professional = professionals.get(appointment.professional_id)
         service = services.get(appointment.service_id)
         status = _enum_value(appointment.status)
+        kind = _enum_value(appointment.kind)
+        capacity_label = None
+        professional_capacity = []
+        if capacity_enabled:
+            key = (appointment.start_datetime, appointment.end_datetime, appointment.service_id)
+            group = capacity_groups.get(key, {"occupied": 0, "by_professional": {}})
+            eligible_ids = service_professional_ids.get(appointment.service_id, [])
+            total_capacity = sum(
+                professionals[item].simultaneous_capacity
+                for item in eligible_ids if item in professionals
+            )
+            capacity_label = f"{group['occupied']}/{total_capacity} alunos"
+            professional_capacity = [
+                {
+                    "professional": professionals[item].name,
+                    "occupied": group["by_professional"].get(item, 0),
+                    "capacity": professionals[item].simultaneous_capacity,
+                }
+                for item in eligible_ids if item in professionals
+            ]
 
         title = f"{client.name if client and client.name else client.phone if client else 'Cliente'} - {service.name if service else 'Serviço'}"
 
@@ -295,6 +339,11 @@ def calendar_events(start: str, end: str, request: Request, appointment_service:
                     "client": client.name if client and client.name else client.phone if client else "",
                     "professional": professional.name if professional else "",
                     "service": service.name if service else "",
+                    "appointmentKind": kind,
+                    "seriesId": appointment.series_id,
+                    "isReplacement": appointment.replacement_entitlement_id is not None,
+                    "capacitySummary": capacity_label,
+                    "professionalCapacity": professional_capacity,
                 },
             }
         )
@@ -374,7 +423,10 @@ async def create_schedule_block_action(request: Request, schedule_block_service:
             all_day=all_day,
             reason=form_value(form, "reason"),
         )
-        schedule_block_service.create(session.business_id, data)
+        if form_bool(form, "with_reallocation"):
+            schedule_block_service.create_with_reallocation(session.business_id, data)
+        else:
+            schedule_block_service.create(session.business_id, data)
 
     except (ValidationError, ValueError) as exc:
         return _schedule_block_error_redirect(request, exc)
@@ -482,6 +534,7 @@ async def create_appointment_action(request: Request, appointment_service: Appoi
             professional_id=form_int(form, "professional_id"),
             service_id=form_int(form, "service_id"),
             start_datetime=local_datetime_from_form(start_value, business_timezone),
+            kind=form_value(form, "kind", "standard"),
         )
         appointment_service.create(session.business_id, data)
 
@@ -500,12 +553,21 @@ async def update_appointment_action(appointment_id: int, request: Request, appoi
     business = business_service.get_by_id(session.business_id)
     business_timezone = _safe_timezone_name(business.timezone)
     try:
+        current = appointment_service.get_by_id(session.business_id, appointment_id)
+        if current.series_id is not None:
+            return redirect_with_flash(
+                "/admin/appointments",
+                "Edite o horário recorrente; ocorrências não aceitam edição livre.",
+                "error",
+                request=request,
+            )
         start_value = form_value(form, "start_datetime", "")
         data = AppointmentUpdate(
             client_id=form_int(form, "client_id"),
             professional_id=form_int(form, "professional_id"),
             service_id=form_int(form, "service_id"),
             start_datetime=local_datetime_from_form(start_value, business_timezone),
+            kind=form_value(form, "kind", "standard"),
         )
         appointment_service.update(session.business_id, appointment_id, data)
 
@@ -543,6 +605,23 @@ async def complete_appointment_action(appointment_id: int, request: Request, app
         return _appointment_error_redirect(request, exc)
 
     return redirect_with_flash("/admin/appointments", "Agendamento concluído.", request=request)
+
+
+@router.post("/{appointment_id}/no-show")
+async def mark_appointment_no_show_action(
+    appointment_id: int,
+    request: Request,
+    appointment_service: AppointmentServiceDep,
+    session: AdminSessionDep,
+):
+    await validate_csrf(request)
+    try:
+        appointment_service.mark_no_show(session.business_id, appointment_id)
+    except Exception as exc:
+        return _appointment_error_redirect(request, exc)
+    return redirect_with_flash(
+        "/admin/appointments", "Falta registrada.", request=request
+    )
 
 @router.post("/{appointment_id}/reminders/manual")
 async def send_manual_reminder_action(appointment_id: int, request: Request, appointment_service: AppointmentServiceDep,

@@ -9,6 +9,12 @@
         {% endif %}
     </p>
     <p>
+        <strong>Tipo:</strong>
+        {% if appointment.kind and appointment.kind.value == 'trial' %}<span class="badge info">Experimental</span>{% else %}<span class="badge">Regular</span>{% endif %}
+        {% if appointment.series_id %}<span class="badge info">Horário recorrente</span>{% endif %}
+        {% if appointment.replacement_entitlement_id %}<span class="badge success">Reposição</span>{% endif %}
+    </p>
+    <p>
         <strong>Cliente:</strong> {{ client.name if client and client.name else client.phone if client else '-' }}
     </p>
     <p>
@@ -98,6 +104,7 @@
 </div>
 
 {% if appointment_is_editable %}
+{% if appointment.series_id %}<p class="muted">Ocorrência de horário recorrente: altere a série para mudar cliente, serviço ou horário.</p>{% endif %}
 <form id="appointment-update-form-{{ appointment.id }}" method="post" action="/admin/appointments/{{ appointment.id }}"
     class="stack compact-form" data-appointment-service-filter>
     <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
@@ -160,13 +167,20 @@
             Concluir Agendamento
         </button>
     </form>
+    <form method="post" action="/admin/appointments/{{ appointment.id }}/no-show"
+        data-confirm="Registrar falta neste agendamento?">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
+        <button class="button secondary" type="submit" {% if appointment.confirmation_pending %}disabled{% endif %}>
+            Faltou
+        </button>
+    </form>
 </div>
 <button form="appointment-update-form-{{ appointment.id }}" class="button primary modal-save-button" type="submit"
-    data-appointment-submit>
+    data-appointment-submit {% if appointment.series_id %}disabled title="Edite o horário recorrente"{% endif %}>
     Salvar alterações
 </button>
 {% else %}
 <p class="appointment-readonly-notice" role="status">
-    Este agendamento está {{ 'cancelado' if appointment.status.value == 'canceled' else 'concluído' }} e disponível somente para consulta.
+    Este agendamento está {{ 'cancelado' if appointment.status.value == 'canceled' else 'marcado como falta' if appointment.status.value == 'no_show' else 'concluído' }} e disponível somente para consulta.
 </p>
 {% endif %}

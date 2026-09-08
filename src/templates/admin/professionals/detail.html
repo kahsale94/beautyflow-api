@@ -21,6 +21,10 @@
             <input name="email" required type="email" value="{{ professional.email }}" /></label>
         <label>Telefone
             <input name="phone" type="tel" maxlength="20" value="{{ professional.phone or '' }}" /></label>
+        <label>Capacidade simultânea
+            <input name="simultaneous_capacity" type="number" min="1" value="{{ professional.simultaneous_capacity }}" required />
+            <small>Quantidade máxima de clientes que este profissional pode atender simultaneamente.</small>
+        </label>
         <button class="button primary align-end" type="submit">Salvar dados</button>
     </form>
 </section>

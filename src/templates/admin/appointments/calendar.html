@@ -39,13 +39,22 @@
                         {% endfor %}
                     </select>
                 </label>
-                <label>Profissional
-                    <select name="professional_id" required data-appointment-professional>
+                <label>Profissional{% if capacity_enabled %} <small>opcional; atribuição automática</small>{% endif %}
+                    <select name="professional_id" {% if not capacity_enabled %}required{% endif %} data-appointment-professional>
+                        {% if capacity_enabled %}<option value="">Escolher automaticamente</option>{% endif %}
                         {% for professional in professionals %}
                         <option value="{{ professional.id }}">{{ professional.name }}</option>
                         {% endfor %}
                     </select>
                 </label>
+                {% if trial_enabled %}
+                <label>Tipo
+                    <select name="kind" required>
+                        <option value="standard">Regular</option>
+                        <option value="trial">Experimental</option>
+                    </select>
+                </label>
+                {% endif %}
                 <label>Serviço
                     <select name="service_id" required data-appointment-service>
                         {% for service in services %}
@@ -122,6 +131,13 @@
                     <span>
                         Fechar o dia inteiro
                         <small>Quando ligado, a quantidade de horas será ignorada.</small>
+                    </span>
+                </label>
+                <label class="schedule-block-toggle grid-span-2">
+                    <input type="checkbox" name="with_reallocation" value="true" />
+                    <span>
+                        Redistribuir agendamentos afetados
+                        <small>Tenta manter o mesmo horário com outros profissionais e cria reposição somente quando não houver vaga.</small>
                     </span>
                 </label>
             </div>

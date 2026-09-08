@@ -12,6 +12,8 @@ from .users import router as users_router
 from .integrations import router as integrations_router
 from .account import router as account_router
 from .contacts import router as contacts_router
+from .recurring_schedules import router as recurring_schedules_router
+from .replacement_entitlements import router as replacement_entitlements_router
 
 router = APIRouter(prefix="/admin")
 
@@ -27,3 +29,5 @@ router.include_router(users_router)
 router.include_router(integrations_router)
 router.include_router(account_router)
 router.include_router(contacts_router)
+router.include_router(recurring_schedules_router)
+router.include_router(replacement_entitlements_router)

@@ -222,6 +222,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (compactStatus.includes('cancel')) return 'canceled';
         if (compactStatus.includes('complete') || compactStatus.includes('conclu')) return 'completed';
+        if (compactStatus.includes('no_show') || compactStatus.includes('falt')) return 'no_show';
         return 'scheduled';
     }
 
@@ -235,6 +236,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 return '#86efac';
             case 'canceled':
                 return '#fca5a5';
+            case 'no_show':
+                return '#fdba74';
             default:
                 return '#2dd4bf';
         }
@@ -285,7 +288,7 @@ document.addEventListener('DOMContentLoaded', function () {
         element.style.backgroundColor = eventColor;
         element.style.borderColor = eventColor;
         element.style.color = '#0f172a';
-        element.classList.remove('appointment-status-scheduled', 'appointment-status-completed', 'appointment-status-canceled');
+        element.classList.remove('appointment-status-scheduled', 'appointment-status-completed', 'appointment-status-canceled', 'appointment-status-no_show');
         element.classList.add(`appointment-status-${normalized}`);
     }
 
@@ -297,7 +300,7 @@ document.addEventListener('DOMContentLoaded', function () {
         element.style.backgroundColor = scheduleBlockEventColor;
         element.style.borderColor = scheduleBlockEventColor;
         element.style.color = '#0f172a';
-        element.classList.remove('appointment-status-scheduled', 'appointment-status-completed', 'appointment-status-canceled');
+        element.classList.remove('appointment-status-scheduled', 'appointment-status-completed', 'appointment-status-canceled', 'appointment-status-no_show');
         element.classList.add('schedule-block-event', `schedule-block-status-${normalized}`);
     }
 
@@ -478,6 +481,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const normalized = normalizedStatus(props.status || eventData.status);
             const eventColor = appointmentColor(normalized);
+            const semanticClasses = [
+                props.appointmentKind === 'trial' ? 'appointment-kind-trial' : 'appointment-kind-standard',
+                props.seriesId ? 'appointment-origin-recurring' : '',
+                props.isReplacement ? 'appointment-origin-replacement' : ''
+            ].filter(Boolean);
 
             return {
                 ...eventData,
@@ -487,7 +495,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 classNames: [
                     ...incomingClasses.filter(className => !String(className).startsWith('appointment-status-')),
                     'bf-calendar-event-shell',
-                    `appointment-status-${normalized}`
+                    `appointment-status-${normalized}`,
+                    ...semanticClasses
                 ],
                 extendedProps: {
                     ...props,
@@ -556,6 +565,10 @@ document.addEventListener('DOMContentLoaded', function () {
             appendText('bf-calendar-event-title', client);
             if (!isMonth) {
                 appendAppointmentDetails(service, professional);
+                appendText('bf-calendar-event-capacity', props.capacitySummary || '');
+                if (props.appointmentKind === 'trial') appendText('bf-calendar-event-badge', 'Experimental');
+                if (props.seriesId) appendText('bf-calendar-event-badge', 'Recorrente');
+                if (props.isReplacement) appendText('bf-calendar-event-badge', 'Reposição');
             }
             wrapper.setAttribute('aria-label', [startTime, client, service, professional].filter(Boolean).join(', '));
 
@@ -590,7 +603,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
             return [
                 'bf-calendar-event-shell',
-                `appointment-status-${statusClassName(eventStatus(info))}`
+                `appointment-status-${statusClassName(eventStatus(info))}`,
+                props.appointmentKind === 'trial' ? 'appointment-kind-trial' : 'appointment-kind-standard',
+                props.seriesId ? 'appointment-origin-recurring' : '',
+                props.isReplacement ? 'appointment-origin-replacement' : ''
             ];
         },
         events: function (info, successCallback, failureCallback) {

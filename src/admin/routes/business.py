@@ -5,10 +5,12 @@ from zoneinfo import available_timezones
 from fastapi import APIRouter, HTTPException, Query, Request
 
 from src.clients import CepLookupError, CepNotFoundError, CepServiceUnavailableError, lookup_cep_async
-from src.dependecies import BusinessServiceDep
+from src.dependecies import BusinessFeatureServiceDep, BusinessServiceDep
+from src.models.business_feature_model import BusinessFeatureKey
 from src.models.business_model import BusinessAttendancePlan, BusinessPaymentMethod, BusinessType
 from src.utils import format_cep, form_bool, form_int, form_value, join_address_number, split_address_number
-from src.schemas import BusinessOpeningHourCreate, BusinessUpdate
+from src.schemas import BusinessFeatureUpdate, BusinessOpeningHourCreate, BusinessUpdate
+from src.services.business_feature_service import BusinessFeatureConfigError
 from src.services.business_service import BusinessAlreadyExistsError, BusinessNotFoundError
 
 from ..templating import render, redirect_with_flash
@@ -149,7 +151,12 @@ async def business_cep_options(cep: str, session: AdminSessionDep):
     }
 
 @router.get("")
-def business_settings_page(request: Request, service: BusinessServiceDep, session: AdminSessionDep):
+def business_settings_page(
+    request: Request,
+    service: BusinessServiceDep,
+    feature_service: BusinessFeatureServiceDep,
+    session: AdminSessionDep,
+):
     business = service.get_by_id(session.business_id)
     opening_hours_by_weekday = {item.weekday: item for item in business.opening_hours}
     address_parts = split_address_number(business.address)
@@ -170,6 +177,10 @@ def business_settings_page(request: Request, service: BusinessServiceDep, sessio
             "business_payment_methods_selected": selected_payment_methods,
             "business_types": list(BusinessType),
             "opening_hours_by_weekday": opening_hours_by_weekday,
+            "business_features": {
+                item.feature_key.value: item
+                for item in feature_service.get_all(session.business_id)
+            },
         },
         session=session,
         active="business",
@@ -240,3 +251,55 @@ async def update_business_settings_action(request: Request, service: BusinessSer
         return redirect_with_flash("/admin/business", "Já existe empresa com esse nome ou slug.", "error", request=request)
 
     return redirect_with_flash("/admin/business", "Dados da empresa atualizados.", request=request)
+
+
+@router.post("/features")
+async def update_business_features_action(
+    request: Request,
+    feature_service: BusinessFeatureServiceDep,
+    session: AdminSessionDep,
+):
+    await validate_csrf(request)
+    form = await request.form()
+    feature_keys = (
+        BusinessFeatureKey.capacity_based_booking,
+        BusinessFeatureKey.recurring_schedules,
+        BusinessFeatureKey.replacement_classes,
+        BusinessFeatureKey.trial_appointments,
+        BusinessFeatureKey.professional_schedule_notifications,
+    )
+    try:
+        for key in feature_keys:
+            config = {}
+            if key == BusinessFeatureKey.capacity_based_booking:
+                config = {"professional_assignment": "automatic"}
+            elif key == BusinessFeatureKey.replacement_classes:
+                config = {
+                    "expiration_days": form_int(form, "replacement_expiration_days", 30)
+                }
+            feature_service.set_feature(
+                session.business_id,
+                key,
+                BusinessFeatureUpdate(
+                    enabled=form_bool(form, f"feature_{key.value}"),
+                    config=config,
+                ),
+            )
+        feature_service.set_feature(
+            session.business_id,
+            BusinessFeatureKey.reminder_policy,
+            BusinessFeatureUpdate(
+                enabled=True,
+                config={"mode": form_value(form, "reminder_policy", "all")},
+            ),
+        )
+    except (ValidationError, ValueError, BusinessFeatureConfigError) as exc:
+        return redirect_with_flash(
+            "/admin/business",
+            str(exc) or "Configuração de recursos inválida.",
+            "error",
+            request=request,
+        )
+    return redirect_with_flash(
+        "/admin/business", "Recursos da empresa atualizados.", request=request
+    )
