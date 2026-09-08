@@ -85,7 +85,13 @@ class NotificationRepo:
         self.jobs = []
 
     def get_by_dedup_key(self, db, business_id, dedup_key):
-        return next((item for item in self.jobs if item.dedup_key == dedup_key), None)
+        return next(
+            (
+                item for item in self.jobs
+                if item.business_id == business_id and item.dedup_key == dedup_key
+            ),
+            None,
+        )
 
     def add(self, db, job):
         self.jobs.append(job)
@@ -102,6 +108,10 @@ class EnabledFeatures:
 class Businesses:
     def get_by_id(self, db, business_id):
         return SimpleNamespace(id=business_id, is_active=True, timezone="America/Sao_Paulo")
+
+    def get_by_integration(self, db, integration_id):
+        assert integration_id == 9
+        return [SimpleNamespace(id=1, is_active=True, timezone="America/Sao_Paulo")]
 
 
 class Professionals:
@@ -157,6 +167,16 @@ def test_professional_with_appointment_is_not_notified_and_feature_is_enforced()
         service.queue_professionals_without_appointments(1, date(2026, 9, 15))
 
 
+def test_integration_sweep_queues_tomorrows_zero_appointment_notice_once():
+    service, repo = notification_service()
+
+    assert service.queue_professionals_without_appointments_for_integration(9) == 1
+    assert service.queue_professionals_without_appointments_for_integration(9) == 0
+    assert len(repo.jobs) == 1
+    assert repo.jobs[0].business_id == 1
+    assert repo.jobs[0].notification_type == "professional_no_appointments"
+
+
 def test_outbox_repository_has_tenant_scope_retry_lock_and_idempotency():
     source = open("src/repositories/notification_job_repo.py", encoding="utf-8").read()
     model = open("src/models/notification_job_model.py", encoding="utf-8").read()
@@ -165,3 +185,8 @@ def test_outbox_repository_has_tenant_scope_retry_lock_and_idempotency():
     assert "with_for_update(skip_locked=True" in source
     assert "uq_notification_jobs_business_dedup" in model
     assert "locked_until" in model and "external_message_id" in model
+    business_repo = open("src/repositories/business_repo.py", encoding="utf-8").read()
+    routes = open("src/api/v1/notification_job_routes.py", encoding="utf-8").read()
+    assert "BusinessIntegration.integration_id == integration_id" in business_repo
+    assert "BusinessIntegration.is_active == True" in business_repo
+    assert "queue_professionals_without_appointments_for_integration" in routes

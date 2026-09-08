@@ -183,6 +183,22 @@ class NotificationJobService:
             self.db.rollback()
         return created
 
+    def queue_professionals_without_appointments_for_integration(
+        self, integration_id: int
+    ) -> int:
+        created = 0
+        for business in self.business_repo.get_by_integration(self.db, integration_id):
+            if not self.feature_service.is_enabled(
+                business.id, BusinessFeatureKey.professional_schedule_notifications
+            ):
+                continue
+            business_tz = ZoneInfo(business.timezone)
+            target_date = datetime.now(business_tz).date() + timedelta(days=1)
+            created += self.queue_professionals_without_appointments(
+                business.id, target_date
+            )
+        return created
+
     def claim_due(self, integration_id: int, limit: int = 20) -> list[dict[str, Any]]:
         now = datetime.now(timezone.utc)
         jobs = self.notification_repo.claim_due(

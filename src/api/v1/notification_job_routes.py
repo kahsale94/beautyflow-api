@@ -35,6 +35,7 @@ def claim_notification_jobs(
     service: NotificationJobServiceDep,
     data: NotificationJobClaimRequest | None = None,
 ):
+    service.queue_professionals_without_appointments_for_integration(integration.id)
     return {"jobs": service.claim_due(integration.id, data.limit if data else 20)}
 
 

@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func
 
-from src.models import Business
+from src.models import Business, BusinessIntegration
 
 class BusinessRepository:
 
@@ -48,5 +48,21 @@ class BusinessRepository:
     def get_all(self, db: Session):
         stmt = select(Business).where(
             Business.is_active == True,
+        )
+        return db.scalars(stmt).all()
+
+    def get_by_integration(self, db: Session, integration_id: int):
+        stmt = (
+            select(Business)
+            .join(
+                BusinessIntegration,
+                BusinessIntegration.business_id == Business.id,
+            )
+            .where(
+                Business.is_active == True,
+                BusinessIntegration.integration_id == integration_id,
+                BusinessIntegration.is_active == True,
+            )
+            .order_by(Business.id)
         )
         return db.scalars(stmt).all()
