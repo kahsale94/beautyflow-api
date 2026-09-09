@@ -348,6 +348,18 @@ def test_new_staging_domain_workflows_are_backend_authoritative():
     assert "n8n beautyflow token - staging" in notifications
 
 
+def test_recurring_materialization_staging_runs_periodically_through_backend():
+    path = ROOT / "workflows/recurring-materialization-staging.workflow.ts"
+    raw_source = path.read_text(encoding="utf-8")
+    source = workflow_body(raw_source)
+
+    assert "n8n-nodes-base.scheduleTrigger" in source
+    assert "hoursInterval: 1" in source
+    assert "/recurring-schedules/materialize-due" in source
+    assert "n8n beautyflow token - staging" in source
+    assert "active: false" in raw_source
+
+
 def test_production_workflows_remain_on_the_legacy_evolution_path():
     production = (ROOT / "workflows/main-prod.workflow.ts").read_text(encoding="utf-8")
 

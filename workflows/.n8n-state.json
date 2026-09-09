@@ -119,6 +119,11 @@
       "lastSyncedHash": "b79b03f4c134b019e5a38784ce512d978822146f7115f051ddab305c1de0bc6b",
       "lastSyncedAt": "2026-09-08T19:55:39.732Z",
       "filename": "notification-jobs-staging.workflow.ts"
+    },
+    "g37NTLLfR2JGaQTq": {
+      "lastSyncedHash": "9c9eeb326da932b89e3ba26602131f3ce1b52352adc87c17d131d78cd7894a2d",
+      "lastSyncedAt": "2026-09-09T16:05:33.243Z",
+      "filename": "recurring-materialization-staging.workflow.ts"
     }
   }
 }
