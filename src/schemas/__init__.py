@@ -51,6 +51,7 @@ from .business_feature_schema import (
 from .recurring_schedule_schema import (
     RecurringMaterializationConflict,
     RecurringMaterializationResponse,
+    RecurringMaterializationSweepResponse,
     RecurringScheduleCreate,
     RecurringScheduleResponse,
     RecurringScheduleUpdate,

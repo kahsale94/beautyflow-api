@@ -19,14 +19,25 @@ from src.schemas import AppointmentCreate
 from src.schemas.recurring_schedule_schema import (
     RecurringMaterializationConflict,
     RecurringMaterializationResponse,
+    RecurringMaterializationSweepResponse,
     RecurringScheduleCreate,
     RecurringScheduleResponse,
     RecurringScheduleUpdate,
 )
 from src.services.appointment_service import (
     AppointmentBlockedByScheduleBlockError,
+    AppointmentInvalidSlotIntervalError,
+    AppointmentMaximumScheduleWindowError,
+    AppointmentMinimumNoticeError,
     AppointmentService,
     AppointmentTimeConflictError,
+    BusinessNotAvailableForBookingError,
+    ClientNotFoundError,
+    DatetimeFormatError,
+    InvalidBusinessTimezoneError,
+    ProfessionalNotAvailableError,
+    ProfessionalServiceMismatchError,
+    ServiceNotAvailableError,
     get_appointment_service,
 )
 from src.services.business_feature_service import BusinessFeatureService, get_business_feature_service
@@ -292,25 +303,92 @@ class RecurringScheduleService:
                         reason="database_conflict",
                     )
                 )
-            except (AppointmentTimeConflictError, AppointmentBlockedByScheduleBlockError):
+            except (
+                AppointmentTimeConflictError,
+                AppointmentBlockedByScheduleBlockError,
+                AppointmentInvalidSlotIntervalError,
+                AppointmentMaximumScheduleWindowError,
+                AppointmentMinimumNoticeError,
+                BusinessNotAvailableForBookingError,
+                ClientNotFoundError,
+                DatetimeFormatError,
+                InvalidBusinessTimezoneError,
+                ProfessionalNotAvailableError,
+                ProfessionalServiceMismatchError,
+                ServiceNotAvailableError,
+                ValueError,
+            ) as exc:
                 self.db.rollback()
+                reason = (
+                    "capacity_or_schedule_block_conflict"
+                    if isinstance(
+                        exc,
+                        (
+                            AppointmentTimeConflictError,
+                            AppointmentBlockedByScheduleBlockError,
+                            ProfessionalNotAvailableError,
+                        ),
+                    )
+                    else "scheduling_rule_conflict"
+                )
                 conflicts.append(
                     RecurringMaterializationConflict(
                         occurrence_start=occurrence_start,
-                        reason="capacity_or_schedule_block_conflict",
+                        reason=reason,
                     )
                 )
 
         series = self._get_series(business_id, series_id, for_update=True)
         series.last_materialized_at = datetime.now(timezone.utc)
-        series.last_materialization_error = (
-            f"{len(conflicts)} occurrence(s) could not be materialized" if conflicts else None
-        )
+        if len(conflicts) == 1:
+            series.last_materialization_error = (
+                "1 ocorrência não pôde ser criada; revise agenda, disponibilidade e capacidade."
+            )
+        elif conflicts:
+            series.last_materialization_error = (
+                f"{len(conflicts)} ocorrências não puderam ser criadas; revise agenda, disponibilidade e capacidade."
+            )
+        else:
+            series.last_materialization_error = None
         self.db.commit()
         return RecurringMaterializationResponse(
             series_id=series_id,
             created=created,
             skipped_existing=skipped,
+            conflicts=conflicts,
+        )
+
+    def materialize_due_for_integration(
+        self, integration_id: int
+    ) -> RecurringMaterializationSweepResponse:
+        businesses = self.business_repo.get_by_integration(self.db, integration_id)
+        series_processed = 0
+        created = 0
+        skipped_existing = 0
+        conflicts = 0
+
+        for business in businesses:
+            if not self.feature_service.is_enabled(
+                business.id, BusinessFeatureKey.recurring_schedules
+            ):
+                continue
+            active_series = self.recurring_repo.get_by_business(
+                self.db,
+                business.id,
+                status=RecurringScheduleStatus.active,
+            )
+            for series in active_series:
+                result = self.materialize(business.id, series.id)
+                series_processed += 1
+                created += result.created
+                skipped_existing += result.skipped_existing
+                conflicts += len(result.conflicts)
+
+        return RecurringMaterializationSweepResponse(
+            businesses_scanned=len(businesses),
+            series_processed=series_processed,
+            created=created,
+            skipped_existing=skipped_existing,
             conflicts=conflicts,
         )
 

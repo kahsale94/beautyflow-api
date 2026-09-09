@@ -3,12 +3,14 @@ from fastapi import APIRouter, HTTPException
 from src.dependecies import (
     AdminDep,
     BusinessScopeDep,
+    IntegrationDep,
     RecurringScheduleServiceDep,
     UserOrBusinessIntegrationDep,
 )
 from src.models.recurring_schedule_model import RecurringScheduleStatus
 from src.schemas import (
     RecurringMaterializationResponse,
+    RecurringMaterializationSweepResponse,
     RecurringScheduleCreate,
     RecurringScheduleResponse,
     RecurringScheduleUpdate,
@@ -36,6 +38,14 @@ def _handle_error(exc: Exception) -> None:
     if isinstance(exc, ValueError):
         raise HTTPException(status_code=422, detail=str(exc))
     raise exc
+
+
+@router.post("/materialize-due", response_model=RecurringMaterializationSweepResponse)
+def materialize_due_recurring_schedules(
+    integration: IntegrationDep,
+    service: RecurringScheduleServiceDep,
+):
+    return service.materialize_due_for_integration(integration.id)
 
 
 @router.get("/", response_model=list[RecurringScheduleResponse])

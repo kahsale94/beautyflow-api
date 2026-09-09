@@ -3,6 +3,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from src.admin.routes.appointments import _calendar_display_config
+from src.admin.routes.recurring_schedules import _materialization_error_message
 from src.admin.templating import templates
 
 
@@ -194,6 +195,9 @@ def test_admin_exposes_feature_settings_capacity_and_domain_pages_with_csrf():
     assert "simultaneous_capacity" in professional_templates
     assert "ProfessionalCapacityConflictError" in professional_route
     assert "validate_csrf(request)" in recurring_route
+    assert '"materialize": recurring_service.materialize' in recurring_route
+    assert "Tentar pendentes" in recurring_template
+    assert "materialization_error_message" in recurring_template
     assert "validate_csrf(request)" in replacement_route
     assert "Não obrig" not in recurring_template
     assert "Profissional" not in recurring_template
@@ -223,3 +227,23 @@ def test_agenda_has_semantic_origin_no_show_capacity_and_explicit_reallocation()
     assert "appointment-origin-recurring" in script
     assert "appointment-origin-replacement" in script
     assert "no_show" in script
+
+
+def test_calendar_event_classes_read_extended_properties_before_rendering():
+    script = read_source("src/static/admin/js/calendar.js")
+    callback = script.split("eventClassNames: function (info) {", 1)[1].split(
+        "events: function (info, successCallback, failureCallback) {", 1
+    )[0]
+
+    assert "const props = eventProps(info);" in callback
+    assert callback.index("const props = eventProps(info);") < callback.index(
+        "props.appointmentKind"
+    )
+
+
+def test_legacy_recurring_materialization_error_is_presented_in_portuguese():
+    assert _materialization_error_message(
+        "2 occurrence(s) could not be materialized"
+    ) == (
+        "2 ocorrências não puderam ser criadas; revise agenda, disponibilidade e capacidade."
+    )

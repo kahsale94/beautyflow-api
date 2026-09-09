@@ -18,6 +18,18 @@ from ..templating import WEEKDAYS, redirect_with_flash, render
 router = APIRouter(prefix="/recurring-schedules", tags=["Admin ➔ Recurring Schedules"])
 
 
+def _materialization_error_message(message: str | None) -> str | None:
+    if not message:
+        return None
+    suffix = " occurrence(s) could not be materialized"
+    if message.endswith(suffix):
+        count = message.removesuffix(suffix)
+        if count == "1":
+            return "1 ocorrência não pôde ser criada; revise agenda, disponibilidade e capacidade."
+        return f"{count} ocorrências não puderam ser criadas; revise agenda, disponibilidade e capacidade."
+    return message
+
+
 def _error_redirect(request: Request, exc: Exception):
     if isinstance(exc, RecurringScheduleFeatureDisabledError):
         message = "Ative horários recorrentes nos recursos da empresa."
@@ -59,6 +71,7 @@ def recurring_schedules_page(
             "services": services,
             "clients_by_id": {item.id: item for item in clients},
             "services_by_id": {item.id: item for item in services},
+            "materialization_error_message": _materialization_error_message,
             "weekdays": WEEKDAYS,
             "feature_enabled": feature_enabled,
         },
@@ -137,6 +150,7 @@ async def recurring_schedule_lifecycle_action(
         "pause": recurring_service.pause,
         "resume": recurring_service.resume,
         "cancel": recurring_service.cancel,
+        "materialize": recurring_service.materialize,
     }
     operation = operations.get(action)
     if not operation:
@@ -145,6 +159,9 @@ async def recurring_schedule_lifecycle_action(
         operation(session.business_id, series_id)
     except Exception as exc:
         return _error_redirect(request, exc)
-    return redirect_with_flash(
-        "/admin/recurring-schedules", "Estado do horário recorrente atualizado.", request=request
+    message = (
+        "Criação das próximas ocorrências executada."
+        if action == "materialize"
+        else "Estado do horário recorrente atualizado."
     )
+    return redirect_with_flash("/admin/recurring-schedules", message, request=request)

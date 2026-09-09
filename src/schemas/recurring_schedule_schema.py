@@ -58,3 +58,11 @@ class RecurringMaterializationResponse(BaseModel):
     created: int
     skipped_existing: int
     conflicts: list[RecurringMaterializationConflict] = Field(default_factory=list)
+
+
+class RecurringMaterializationSweepResponse(BaseModel):
+    businesses_scanned: int
+    series_processed: int
+    created: int
+    skipped_existing: int
+    conflicts: int

@@ -41,7 +41,7 @@
         <td>{{ services_by_id.get(schedule.service_id).name if services_by_id.get(schedule.service_id) else schedule.service_id }}</td>
         <td>{{ schedule.weekday_name }} às {{ schedule.start_time.strftime('%H:%M') }}</td>
         <td>{{ schedule.effective_from.strftime('%d/%m/%Y') }}{% if schedule.effective_until %} a {{ schedule.effective_until.strftime('%d/%m/%Y') }}{% endif %}</td>
-        <td><span class="badge {{ schedule.status.value }}">{{ schedule.status|admin_label }}</span>{% if schedule.last_materialization_error %}<small class="danger">{{ schedule.last_materialization_error }}</small>{% endif %}</td>
+        <td><span class="badge {{ schedule.status.value }}">{{ schedule.status|admin_label }}</span>{% if schedule.last_materialization_error %}<small class="danger">{{ materialization_error_message(schedule.last_materialization_error) }}</small>{% endif %}</td>
         <td class="actions"><div class="actions-buttons">
             {% if schedule.status.value != 'canceled' %}<details><summary class="button config small">Editar</summary>
                 <form method="post" action="/admin/recurring-schedules/{{ schedule.id }}" class="stack compact-form">
@@ -56,6 +56,7 @@
                 </form>
             </details>{% endif %}
             {% if schedule.status.value == 'active' %}<form method="post" action="/admin/recurring-schedules/{{ schedule.id }}/pause"><input type="hidden" name="_csrf_token" value="{{ csrf_token }}"/><button class="button secondary small">Pausar</button></form>{% endif %}
+            {% if schedule.status.value == 'active' %}<form method="post" action="/admin/recurring-schedules/{{ schedule.id }}/materialize"><input type="hidden" name="_csrf_token" value="{{ csrf_token }}"/><button class="button config small">Tentar pendentes</button></form>{% endif %}
             {% if schedule.status.value == 'paused' %}<form method="post" action="/admin/recurring-schedules/{{ schedule.id }}/resume"><input type="hidden" name="_csrf_token" value="{{ csrf_token }}"/><button class="button success small">Retomar</button></form>{% endif %}
             {% if schedule.status.value != 'canceled' %}<form method="post" action="/admin/recurring-schedules/{{ schedule.id }}/cancel" data-confirm="Cancelar este horário fixo e suas ocorrências futuras?"><input type="hidden" name="_csrf_token" value="{{ csrf_token }}"/><button class="button danger small">Cancelar</button></form>{% endif %}
         </div></td>

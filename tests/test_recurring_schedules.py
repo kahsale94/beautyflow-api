@@ -8,6 +8,7 @@ from src.services.recurring_schedule_service import (
     RecurringScheduleFeatureDisabledError,
     RecurringScheduleService,
 )
+from src.services.appointment_service import AppointmentTimeConflictError
 
 
 class Session:
@@ -38,6 +39,9 @@ class Businesses:
 
     def get_by_id(self, db, business_id):
         return self.business if self.business.id == business_id else None
+
+    def get_by_integration(self, db, integration_id):
+        return [self.business] if integration_id == 7 else []
 
 
 class Related:
@@ -77,6 +81,11 @@ class Appointments:
         self.recurrences.occurrences[(business_id, series_id, occurrence_start)] = item
         self.created.append((business_id, data, series_id, occurrence_start, force_automatic))
         return item
+
+
+class ConflictingAppointments(Appointments):
+    def create(self, business_id, data, *, series_id, occurrence_start, force_automatic):
+        raise AppointmentTimeConflictError()
 
 
 def recurring_service(enabled=True):
@@ -136,6 +145,44 @@ def test_recurring_operations_are_feature_gated():
 
     with pytest.raises(RecurringScheduleFeatureDisabledError):
         service.list(1)
+
+
+def test_periodic_materialization_keeps_the_rolling_window_idempotent():
+    service, series, appointments = recurring_service()
+
+    first = service.materialize_due_for_integration(7)
+    second = service.materialize_due_for_integration(7)
+
+    assert first.businesses_scanned == 1
+    assert first.series_processed == 1
+    assert first.created == 3
+    assert first.conflicts == 0
+    assert second.created == 0
+    assert second.skipped_existing == 3
+    assert len(appointments.created) == 3
+
+
+def test_periodic_materialization_is_scoped_to_the_authenticated_integration():
+    service, _series, appointments = recurring_service()
+
+    result = service.materialize_due_for_integration(99)
+
+    assert result.businesses_scanned == 0
+    assert result.series_processed == 0
+    assert appointments.created == []
+
+
+def test_materialization_conflicts_are_observable_in_portuguese():
+    service, series, appointments = recurring_service()
+    service.appointment_service = ConflictingAppointments(appointments.recurrences)
+
+    result = service.materialize(1, series.id)
+
+    assert len(result.conflicts) == 3
+    assert result.conflicts[0].reason == "capacity_or_schedule_block_conflict"
+    assert series.last_materialization_error == (
+        "3 ocorrências não puderam ser criadas; revise agenda, disponibilidade e capacidade."
+    )
 
 
 def test_recurring_repository_queries_are_tenant_scoped():

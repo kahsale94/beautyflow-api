@@ -592,6 +592,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 .join(' • ');
         },
         eventClassNames: function (info) {
+            const props = eventProps(info);
+
             if (isScheduleBlockEvent(info)) {
                 const blockStatus = scheduleBlockStatus(info).replace(/[^a-z0-9_-]/g, '-');
                 return [
