@@ -200,6 +200,7 @@ def test_message_webhook_verifies_hmac_normalizes_and_deduplicates_text():
             "event": "message",
             "direction": "inbound",
             "from_number_id": "pnid-7",
+            "from_number": "5511888888888",
             "contact": {"wa_id": "5511999999999", "name": "Ana", "user_id": "BR.1"},
             "message": {"id": "wamid.1", "type": "text", "text": "Oi"},
         },
@@ -219,6 +220,7 @@ def test_message_webhook_verifies_hmac_normalizes_and_deduplicates_text():
     assert forwarded[0]["headers"]["x-beautyflow-webhook-secret"] == "n8n-secret"
     assert forwarded[0]["payload"]["connection_key"] == "covercut:pnid-7"
     assert forwarded[0]["payload"]["business_id"] == 7
+    assert forwarded[0]["payload"]["contact"]["phone"] == "5511999999999"
     assert forwarded[0]["payload"]["message"] == {
         "id": "wamid.1",
         "type": "text",

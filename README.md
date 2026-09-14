@@ -478,6 +478,12 @@ only for validation during a rotation window. A fallback entry can be either
 `kid:secret` or just `secret`; bare secrets support legacy tokens that were
 issued before `kid` existed.
 
+Deployed environments (`production` and `staging`) require every current and
+fallback HMAC key to meet the algorithm minimum in bytes: 32 for HS256, 48 for
+HS384, and 64 for HS512. A key being replaced because it is below that minimum
+must not be retained as a fallback; existing tokens from that family are
+intentionally revoked and their users must authenticate again.
+
 Recommended rotation process:
 
 1. Deploy code that supports rotation while keeping the existing current secret.

@@ -28,6 +28,23 @@ def get_env_list(name: str) -> list[str]:
     value = os.getenv(name, "")
     return [item.strip() for item in value.split(",") if item.strip()]
 
+def validate_jwt_secret_lengths(algorithm: str, secret_values: dict[str, str]) -> None:
+    minimum_bytes = {
+        "HS256": 32,
+        "HS384": 48,
+        "HS512": 64,
+    }[algorithm]
+    weak_secrets = [
+        name
+        for name, value in secret_values.items()
+        if len(value.encode("utf-8")) < minimum_bytes
+    ]
+    if weak_secrets:
+        raise RuntimeError(
+            f"Segredos JWT devem ter ao menos {minimum_bytes} bytes para {algorithm}: "
+            + ", ".join(weak_secrets)
+        )
+
 ALGORITHM = get_required_env("ALGORITHM")
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 DATABASE_URL = get_required_env("DATABASE_URL")
@@ -131,7 +148,7 @@ if unknown_whatsapp_providers:
 if WHATSAPP_DEFAULT_PROVIDER not in WHATSAPP_ENABLED_PROVIDERS:
     raise RuntimeError("WHATSAPP_DEFAULT_PROVIDER deve estar habilitado em WHATSAPP_ENABLED_PROVIDERS")
 
-if ENVIRONMENT == "production":
+if ENVIRONMENT in {"production", "staging"}:
     secret_values = {
         "USER_SECRET_KEY": USER_SECRET_KEY,
         "INTEGRATION_SECRET_KEY": INTEGRATION_SECRET_KEY,
@@ -145,10 +162,9 @@ if ENVIRONMENT == "production":
         for index, entry in enumerate(fallback_entries, start=1):
             secret_values[f"{name}[{index}]"] = entry.split(":", 1)[1].strip() if ":" in entry else entry
 
-    weak_secrets = [name for name, value in secret_values.items() if len(value) < 32]
-    if weak_secrets:
-        raise RuntimeError(f"Segredos JWT devem ter ao menos 32 caracteres: {', '.join(weak_secrets)}")
+    validate_jwt_secret_lengths(ALGORITHM, secret_values)
 
+if ENVIRONMENT == "production":
     if not USER_REFRESH_COOKIE_SECURE or not ADMIN_COOKIE_SECURE:
         raise RuntimeError("Cookies de autenticação devem ser Secure em produção")
 

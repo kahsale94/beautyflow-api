@@ -1,15 +1,21 @@
 import hashlib
 import hmac
+import os
+import subprocess
+import sys
+import warnings
 from datetime import datetime, timedelta, timezone
 
 import pytest
 import jwt
+from jwt.warnings import InsecureKeyLengthWarning
 from fastapi import HTTPException
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
 from src.admin.dependencies import create_csrf_token, is_valid_csrf_token
 from src.core import ALGORITHM
+from src.core.config import validate_jwt_secret_lengths
 from src.models import Base, Business, User, UserRefreshToken
 from src.models.user_model import UserRole
 from src.security import (
@@ -29,6 +35,50 @@ INTEGRATION_CURRENT_SECRET = "integration-current-secret-more-than-32-chars"
 INTEGRATION_OLD_SECRET = "integration-previous-secret-more-than-32-chars"
 BUSINESS_CURRENT_SECRET = "business-current-secret-with-more-than-32"
 BUSINESS_OLD_SECRET = "business-previous-secret-with-more-than-32"
+
+
+@pytest.mark.parametrize(
+    ("algorithm", "minimum_bytes"),
+    [("HS256", 32), ("HS384", 48), ("HS512", 64)],
+)
+def test_hmac_key_validation_uses_algorithm_minimum_in_bytes(algorithm, minimum_bytes):
+    validate_jwt_secret_lengths(algorithm, {"VALID": "x" * minimum_bytes})
+
+    with pytest.raises(RuntimeError, match=rf"{minimum_bytes} bytes para {algorithm}: WEAK"):
+        validate_jwt_secret_lengths(algorithm, {"WEAK": "x" * (minimum_bytes - 1)})
+
+
+def test_staging_rejects_weak_current_jwt_keys():
+    env = os.environ.copy()
+    env.update(
+        {
+            "ENVIRONMENT": "staging",
+            "ALGORITHM": "HS256",
+            "DATABASE_URL": "sqlite:///:memory:",
+            "USER_SECRET_KEY": "x" * 30,
+            "INTEGRATION_SECRET_KEY": "x" * 32,
+            "BUSINESS_INTEGRATION_SECRET_KEY": "x" * 32,
+            "USER_SECRET_KEY_FALLBACKS": "",
+            "INTEGRATION_SECRET_KEY_FALLBACKS": "",
+            "BUSINESS_INTEGRATION_SECRET_KEY_FALLBACKS": "",
+            "USER_ACCESS_TOKEN_EXPIRE_MINUTES": "30",
+            "USER_REFRESH_TOKEN_EXPIRE_DAYS": "7",
+            "INTEGRATION_TOKEN_EXPIRE_DAYS": "30",
+            "BUSINESS_INTEGRATION_TOKEN_EXPIRE_MINUTES": "30",
+        }
+    )
+
+    result = subprocess.run(
+        [sys.executable, "-c", "import src.core.config"],
+        cwd=os.getcwd(),
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode != 0
+    assert "32 bytes para HS256: USER_SECRET_KEY" in result.stderr
 
 
 def _build_key_sets(with_fallbacks: bool = True) -> dict[str, key_rotation.JwtKeySet]:
@@ -83,11 +133,13 @@ def _digest(secret: str, value: str) -> str:
     ],
 )
 def test_new_tokens_are_signed_with_current_key_and_kid(rotated_keys, issuer, expected_type, expected_kid, current_secret):
-    token = issuer()
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", InsecureKeyLengthWarning)
+        token = issuer()
 
-    assert jwt.get_unverified_header(token)["kid"] == expected_kid
-    assert jwt.decode(token, current_secret, algorithms=[ALGORITHM])["type"] == expected_type
-    assert TokenManager.decode(token)["type"] == expected_type
+        assert jwt.get_unverified_header(token)["kid"] == expected_kid
+        assert jwt.decode(token, current_secret, algorithms=[ALGORITHM])["type"] == expected_type
+        assert TokenManager.decode(token)["type"] == expected_type
 
 
 @pytest.mark.parametrize(

@@ -245,7 +245,10 @@ class CovercutWebhookService:
             "provider_user_id": contact.get("user_id") or message.get("from_user_id") or payload.get("from_user_id"),
             "parent_provider_user_id": contact.get("parent_user_id"),
             "wa_id": contact.get("wa_id"),
-            "phone": contact.get("phone_number") or payload.get("from_number"),
+            # ``from_number`` identifies the connected business number, not the
+            # customer who sent the message. ContactService falls back to wa_id
+            # when the provider does not include a separate contact phone.
+            "phone": contact.get("phone_number"),
             "username": contact.get("username"),
             "name": contact.get("name") or contact.get("full_name") or contact.get("first_name"),
         }
