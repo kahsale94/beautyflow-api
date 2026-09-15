@@ -1,3 +1,38 @@
+{% from "admin/_icons.html" import icon as admin_icon %}
+
+{% macro beautyflow_brand(class_name="", home_url="/admin/") -%}
+{% set default_logo = "admin/brand/logo.svg" %}
+{% set light_logo = "admin/brand/logo-light.svg" %}
+{% set dark_logo = "admin/brand/logo-dark.svg" %}
+{% set has_default_logo = static_asset_exists(default_logo) %}
+{% set has_light_logo = static_asset_exists(light_logo) %}
+{% set has_dark_logo = static_asset_exists(dark_logo) %}
+<a class="brand{% if class_name %} {{ class_name }}{% endif %}" href="{{ home_url }}" aria-label="Beautyflow — início">
+    {% if has_default_logo %}
+    <img class="brand-logo brand-logo-default{% if has_dark_logo %} brand-logo-default-hide-light{% endif %}{% if has_light_logo %} brand-logo-default-hide-dark{% endif %}" src="{{ url_for('static', path=default_logo) }}?v={{ static_version(default_logo) }}"
+        alt="Beautyflow" />
+    {% endif %}
+    {% if has_dark_logo %}
+    <img class="brand-logo brand-logo-for-light" src="{{ url_for('static', path=dark_logo) }}?v={{ static_version(dark_logo) }}"
+        alt="Beautyflow" />
+    {% endif %}
+    {% if has_light_logo %}
+    <img class="brand-logo brand-logo-for-dark" src="{{ url_for('static', path=light_logo) }}?v={{ static_version(light_logo) }}"
+        alt="Beautyflow" />
+    {% endif %}
+    <span class="brand-wordmark{% if has_default_logo %} brand-wordmark-hidden{% else %}{% if has_dark_logo %} brand-wordmark-hide-light{% endif %}{% if has_light_logo %} brand-wordmark-hide-dark{% endif %}{% endif %}">Beautyflow</span>
+</a>
+{%- endmacro %}
+
+{% macro theme_toggle(compact=false) -%}
+<button class="theme-toggle{% if compact %} theme-toggle-compact{% endif %}" type="button" data-theme-toggle
+    aria-pressed="false" aria-label="Ativar tema escuro" title="Ativar tema escuro">
+    <span class="theme-toggle-icon theme-toggle-icon-moon">{{ admin_icon("moon") }}</span>
+    <span class="theme-toggle-icon theme-toggle-icon-sun">{{ admin_icon("sun") }}</span>
+    {% if not compact %}<span class="theme-toggle-label" data-theme-toggle-label>Tema escuro</span>{% endif %}
+</button>
+{%- endmacro %}
+
 {% macro control_panel(title, description=None, icon=None, initially_open=false, class_name="") -%}
 <details class="card admin-control-panel{% if class_name %} {{ class_name }}{% endif %}"{% if initially_open %} open{% endif %}>
     <summary class="admin-control-panel-summary">

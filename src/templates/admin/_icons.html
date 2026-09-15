@@ -1,0 +1,45 @@
+{% macro icon(name, class_name="icon") -%}
+<svg class="{{ class_name }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+    {% if name == "overview" %}
+    <rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/>
+    <rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>
+    {% elif name == "calendar" %}
+    <rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/>
+    <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/>
+    {% elif name == "clients" %}
+    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+    <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+    {% elif name == "contacts" %}
+    <path d="M21 15a4 4 0 0 1-4 4H8l-5 3 1.7-5.1A7 7 0 0 1 3 12V8a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/>
+    <path d="M8 9h8M8 13h5"/>
+    {% elif name == "services" %}
+    <path d="m14.5 4.5-5 5M9.5 4.5l5 5"/><circle cx="7" cy="7" r="3"/><circle cx="17" cy="7" r="3"/>
+    <path d="m9.2 9.2 9.3 9.3M14.8 9.2 5.5 18.5"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/>
+    {% elif name == "professionals" %}
+    <circle cx="12" cy="8" r="4"/><path d="M5 21a7 7 0 0 1 14 0M18.5 3.5l.5 1.2 1.2.5-1.2.5-.5 1.2-.5-1.2-1.2-.5 1.2-.5z"/>
+    {% elif name == "recurring" %}
+    <path d="M20 7h-6V1M4 17h6v6"/><path d="M20 7a8 8 0 0 0-13.7-2.7L4 7M4 17a8 8 0 0 0 13.7 2.7L20 17"/>
+    {% elif name == "replacement" %}
+    <path d="M4 7h11a5 5 0 0 1 0 10H9"/><path d="m8 3-4 4 4 4M12 14l-3 3 3 3"/>
+    {% elif name == "business" %}
+    <path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5M9 10h.01M15 10h.01M9 13h.01M15 13h.01"/>
+    {% elif name == "integrations" %}
+    <path d="M12 22v-5M9 8V2M15 8V2M7 8h10v4a5 5 0 0 1-10 0z"/><path d="M8 22h8"/>
+    {% elif name == "users" %}
+    <circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M16 11l2 2 4-4"/>
+    {% elif name == "account" %}
+    <circle cx="12" cy="8" r="4"/><path d="M5 21a7 7 0 0 1 14 0"/>
+    {% elif name == "switch" %}
+    <path d="M7 7h13l-3-3M17 17H4l3 3"/>
+    {% elif name == "logout" %}
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
+    {% elif name == "moon" %}
+    <path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2z"/>
+    {% elif name == "sun" %}
+    <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41"/>
+    {% elif name == "close" %}
+    <path d="M18 6 6 18M6 6l12 12"/>
+    {% endif %}
+</svg>
+{%- endmacro %}

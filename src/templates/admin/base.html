@@ -1,16 +1,27 @@
+{% from "admin/_components.html" import beautyflow_brand, theme_toggle %}
+{% from "admin/_icons.html" import icon %}
 <!doctype html>
 <html lang="pt-BR">
 
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#f7f6fb" data-theme-color />
     <title>{% block title %}Beautyflow - Painel administrativo{% endblock %}</title>
+    <script
+        src="{{ url_for('static', path='admin/js/theme.js') }}?v={{ static_version('admin/js/theme.js') }}"></script>
     <link rel="stylesheet"
         href="{{ url_for('static', path='admin/css/admin.css') }}?v={{ static_version('admin/css/admin.css') }}" />
+    {% if static_asset_exists('admin/brand/favicon.svg') %}
+    <link rel="icon" href="{{ url_for('static', path='admin/brand/favicon.svg') }}?v={{ static_version('admin/brand/favicon.svg') }}"
+        type="image/svg+xml" />
+    {% endif %}
     {% block head %}{% endblock %}
 </head>
 
 <body>
+    <a class="skip-link" href="#admin-main-content">Ir para o conteúdo</a>
     {% if session %}
     <header class="mobile-admin-topbar">
         <button
@@ -22,51 +33,76 @@
             <span class="sidebar-toggle-icon" aria-hidden="true"></span>
             <span>Menu</span>
         </button>
-        <a class="brand mobile-brand" href="/admin/">Beautyflow</a>
+        {{ beautyflow_brand("mobile-brand") }}
+        {{ theme_toggle(true) }}
     </header>
 
     <div class="sidebar-backdrop" data-sidebar-close hidden></div>
 
     <aside id="admin-sidebar" class="sidebar" aria-label="Menu do administrador">
-        <a class="brand" href="/admin/">Beautyflow</a>
-        <nav class="nav">
-            <a class="nav-link {{ 'active' if active == 'dashboard' else '' }}" href="/admin/">Visão geral</a>
-            <a class="nav-link {{ 'active' if active == 'appointments' else '' }}"
-                href="/admin/appointments">Agenda</a>
-            <a class="nav-link {{ 'active' if active == 'clients' else '' }}" href="/admin/clients">Clientes</a>
-            <a class="nav-link {{ 'active' if active == 'contacts' else '' }}" href="/admin/contacts">Contatos WhatsApp</a>
-            <a class="nav-link {{ 'active' if active == 'services' else '' }}" href="/admin/services">Serviços</a>
-            <a class="nav-link {{ 'active' if active == 'professionals' else '' }}"
-                href="/admin/professionals">Profissionais</a>
-            <a class="nav-link {{ 'active' if active == 'recurring_schedules' else '' }}"
-                href="/admin/recurring-schedules">Horários recorrentes</a>
-            <a class="nav-link {{ 'active' if active == 'replacement_entitlements' else '' }}"
-                href="/admin/replacement-entitlements">Reposições</a>
-            <a class="nav-link {{ 'active' if active == 'business' else '' }}" href="/admin/business">Empresa</a>
-            <a class="nav-link {{ 'active' if active == 'users' else '' }}" href="/admin/users">Usuários</a>
-            <a class="nav-link {{ 'active' if active == 'integrations' else '' }}"
-                href="/admin/integrations">Integrações</a>
-            <a class="nav-link {{ 'active' if active == 'account' else '' }}"
-                href="/admin/account/password">Minha senha</a>
+        <div class="sidebar-header">
+            {{ beautyflow_brand("sidebar-brand") }}
+            <button class="sidebar-close" type="button" data-sidebar-close aria-label="Fechar menu" title="Fechar menu">
+                {{ icon("close") }}
+            </button>
+        </div>
+        <nav class="nav" aria-label="Navegação principal">
+            <div class="nav-section">
+                <p class="nav-section-label">Operação</p>
+                <a class="nav-link {{ 'active' if active == 'dashboard' else '' }}" href="/admin/"
+                    {% if active == 'dashboard' %}aria-current="page"{% endif %}>{{ icon("overview") }}<span>Visão geral</span></a>
+                <a class="nav-link {{ 'active' if active == 'appointments' else '' }}" href="/admin/appointments"
+                    {% if active == 'appointments' %}aria-current="page"{% endif %}>{{ icon("calendar") }}<span>Agenda</span></a>
+                <a class="nav-link {{ 'active' if active == 'clients' else '' }}" href="/admin/clients"
+                    {% if active == 'clients' %}aria-current="page"{% endif %}>{{ icon("clients") }}<span>Clientes</span></a>
+                <a class="nav-link {{ 'active' if active == 'contacts' else '' }}" href="/admin/contacts"
+                    {% if active == 'contacts' %}aria-current="page"{% endif %}>{{ icon("contacts") }}<span>Contatos WhatsApp</span></a>
+            </div>
+            <div class="nav-section">
+                <p class="nav-section-label">Negócio</p>
+                <a class="nav-link {{ 'active' if active == 'services' else '' }}" href="/admin/services"
+                    {% if active == 'services' %}aria-current="page"{% endif %}>{{ icon("services") }}<span>Serviços</span></a>
+                <a class="nav-link {{ 'active' if active == 'professionals' else '' }}" href="/admin/professionals"
+                    {% if active == 'professionals' %}aria-current="page"{% endif %}>{{ icon("professionals") }}<span>Profissionais</span></a>
+                <a class="nav-link {{ 'active' if active == 'recurring_schedules' else '' }}" href="/admin/recurring-schedules"
+                    {% if active == 'recurring_schedules' %}aria-current="page"{% endif %}>{{ icon("recurring") }}<span>Horários recorrentes</span></a>
+                <a class="nav-link {{ 'active' if active == 'replacement_entitlements' else '' }}" href="/admin/replacement-entitlements"
+                    {% if active == 'replacement_entitlements' %}aria-current="page"{% endif %}>{{ icon("replacement") }}<span>Reposições</span></a>
+            </div>
+            <div class="nav-section">
+                <p class="nav-section-label">Configurações</p>
+                <a class="nav-link {{ 'active' if active == 'business' else '' }}" href="/admin/business"
+                    {% if active == 'business' %}aria-current="page"{% endif %}>{{ icon("business") }}<span>Empresa</span></a>
+                <a class="nav-link {{ 'active' if active == 'integrations' else '' }}" href="/admin/integrations"
+                    {% if active == 'integrations' %}aria-current="page"{% endif %}>{{ icon("integrations") }}<span>Integrações</span></a>
+                <a class="nav-link {{ 'active' if active == 'users' else '' }}" href="/admin/users"
+                    {% if active == 'users' %}aria-current="page"{% endif %}>{{ icon("users") }}<span>Usuários</span></a>
+                <a class="nav-link {{ 'active' if active == 'account' else '' }}" href="/admin/account/password"
+                    {% if active == 'account' %}aria-current="page"{% endif %}>{{ icon("account") }}<span>Minha conta</span></a>
+            </div>
             {% if session.is_super_admin %}
-            <a class="nav-link {{ 'active' if active == 'businesses' else '' }}" href="/admin/businesses">Selecionar
-                empresa</a>
+            <div class="nav-section">
+                <p class="nav-section-label">Superadmin</p>
+                <a class="nav-link {{ 'active' if active == 'businesses' else '' }}" href="/admin/businesses"
+                    {% if active == 'businesses' %}aria-current="page"{% endif %}>{{ icon("switch") }}<span>Selecionar empresa</span></a>
+            </div>
             {% endif %}
         </nav>
         <div class="sidebar-footer">
+            {{ theme_toggle() }}
             <div class="sidebar-user" aria-label="Usuário logado">
                 <span class="sidebar-user-email" title="{{ session.user.email }}">{{ session.user.email }}</span>
                 <span class="sidebar-user-role">{{ session.user.role|admin_label }}</span>
             </div>
             <form method="post" action="/admin/logout" class="logout-form">
                 <input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
-                <button class="button ghost" type="submit">Sair</button>
+                <button class="button ghost" type="submit">{{ icon("logout") }}<span>Sair do painel</span></button>
             </form>
         </div>
     </aside>
     {% endif %}
 
-    <main class="main {{ 'with-sidebar' if session else 'auth-main' }}">
+    <main id="admin-main-content" class="main {{ 'with-sidebar' if session else 'auth-main' }}" tabindex="-1">
         {% if flash %}
         <div class="flash {{ flash.category }}" role="status" aria-live="polite">{{ flash.message }}</div>
         {% endif %} {% block content %}{% endblock %}
@@ -74,7 +110,7 @@
 
     <div id="modal" class="modal" hidden>
         <div class="modal-backdrop" data-close-modal></div>
-        <section class="modal-card">
+        <section class="modal-card" role="dialog" aria-modal="true" aria-label="Detalhes" tabindex="-1">
             <button
                 type="button"
                 class="modal-close"

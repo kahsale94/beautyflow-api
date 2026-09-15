@@ -135,8 +135,20 @@ document.addEventListener('DOMContentLoaded', function () {
     const monthStrip = document.getElementById('calendar-month-strip');
     const hoursModeSelect = document.getElementById('calendar-hours-mode');
     const mobileCalendarQuery = window.matchMedia('(max-width: 760px)');
-    const scheduleBlockEventColor = '#cbd5e1';
     const hoursModeStorageKey = 'beautyflow.admin.calendar.hours-mode.v1';
+
+    function designToken(name, fallback) {
+        const value = window.getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+        return value || fallback;
+    }
+
+    function scheduleBlockColor() {
+        return designToken('--calendar-block', 'rgb(203, 210, 220)');
+    }
+
+    function eventTextColor() {
+        return designToken('--calendar-event-text', 'rgb(19, 32, 37)');
+    }
 
     function readHoursMode() {
         try {
@@ -251,13 +263,13 @@ document.addEventListener('DOMContentLoaded', function () {
     function appointmentColor(status) {
         switch (normalizedStatus(status)) {
             case 'completed':
-                return '#86efac';
+                return designToken('--calendar-completed', 'rgb(152, 232, 177)');
             case 'canceled':
-                return '#fca5a5';
+                return designToken('--calendar-canceled', 'rgb(245, 168, 178)');
             case 'no_show':
-                return '#fdba74';
+                return designToken('--calendar-no-show', 'rgb(249, 201, 120)');
             default:
-                return '#2dd4bf';
+                return designToken('--calendar-scheduled', 'rgb(94, 224, 203)');
         }
     }
 
@@ -305,7 +317,7 @@ document.addEventListener('DOMContentLoaded', function () {
         element.style.setProperty('--bf-calendar-event-bg', eventColor);
         element.style.backgroundColor = eventColor;
         element.style.borderColor = eventColor;
-        element.style.color = '#0f172a';
+        element.style.color = eventTextColor();
         element.classList.remove('appointment-status-scheduled', 'appointment-status-completed', 'appointment-status-canceled', 'appointment-status-no_show');
         element.classList.add(`appointment-status-${normalized}`);
     }
@@ -314,10 +326,11 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!element) return;
         const normalized = String(status || 'active').replace(/[^a-z0-9_-]/g, '-');
 
-        element.style.setProperty('--bf-calendar-event-bg', scheduleBlockEventColor);
-        element.style.backgroundColor = scheduleBlockEventColor;
-        element.style.borderColor = scheduleBlockEventColor;
-        element.style.color = '#0f172a';
+        const eventColor = scheduleBlockColor();
+        element.style.setProperty('--bf-calendar-event-bg', eventColor);
+        element.style.backgroundColor = eventColor;
+        element.style.borderColor = eventColor;
+        element.style.color = eventTextColor();
         element.classList.remove('appointment-status-scheduled', 'appointment-status-completed', 'appointment-status-canceled', 'appointment-status-no_show');
         element.classList.add('schedule-block-event', `schedule-block-status-${normalized}`);
     }
@@ -331,7 +344,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (typeof event.setProp === 'function') {
             event.setProp('backgroundColor', eventColor);
             event.setProp('borderColor', eventColor);
-            event.setProp('textColor', '#0f172a');
+            event.setProp('textColor', eventTextColor());
             event.setProp('classNames', [
                 'bf-calendar-event-shell',
                 `appointment-status-${normalized}`
@@ -478,9 +491,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 const blockStatus = String(props.status || eventData.status || 'active').replace(/[^a-z0-9_-]/g, '-');
                 return {
                     ...eventData,
-                    backgroundColor: scheduleBlockEventColor,
-                    borderColor: scheduleBlockEventColor,
-                    textColor: '#0f172a',
+                    backgroundColor: scheduleBlockColor(),
+                    borderColor: scheduleBlockColor(),
+                    textColor: eventTextColor(),
                     classNames: [
                         ...incomingClasses.filter(className => !String(className).startsWith('schedule-block-status-')),
                         'bf-calendar-event-shell',
@@ -509,7 +522,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 ...eventData,
                 backgroundColor: eventColor,
                 borderColor: eventColor,
-                textColor: '#0f172a',
+                textColor: eventTextColor(),
                 classNames: [
                     ...incomingClasses.filter(className => !String(className).startsWith('appointment-status-')),
                     'bf-calendar-event-shell',
@@ -687,6 +700,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
     calendar.render();
     renderMonthStrip(calendar);
+
+    document.addEventListener('beautyflow:themechange', function () {
+        calendar.getEvents().forEach(function (event) {
+            if (isScheduleBlockEvent(event)) {
+                const eventColor = scheduleBlockColor();
+                event.setProp('backgroundColor', eventColor);
+                event.setProp('borderColor', eventColor);
+                event.setProp('textColor', eventTextColor());
+            } else {
+                applyAppointmentStatusToEvent(event, eventStatus(event));
+            }
+        });
+        calendar.updateSize();
+    });
 
     if (hoursModeSelect instanceof HTMLSelectElement) {
         hoursModeSelect.addEventListener('change', function () {

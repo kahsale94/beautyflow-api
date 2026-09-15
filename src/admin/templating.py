@@ -80,6 +80,20 @@ def static_version(path: str) -> str:
 
 templates.env.globals["static_version"] = static_version
 
+
+@lru_cache(maxsize=64)
+def static_asset_exists(path: str) -> bool:
+    asset_path = (STATIC_ROOT / path).resolve()
+
+    try:
+        asset_path.relative_to(STATIC_ROOT.resolve())
+        return asset_path.is_file()
+    except ValueError:
+        return False
+
+templates.env.globals["static_asset_exists"] = static_asset_exists
+
+
 def safe_timezone(timezone_name: str | None):
     try:
         return ZoneInfo(timezone_name or DEFAULT_ADMIN_TIMEZONE)
