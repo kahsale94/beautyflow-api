@@ -59,7 +59,7 @@ def test_business_opening_hours_is_available_in_admin_and_api():
     assert "Plano de atendimento" in template_source
     assert "Métodos de pagamento" in template_source
     assert 'name="payment_methods"' in template_source
-    assert "Horário de Funcionamento" in template_source
+    assert "Horário de funcionamento" in template_source
     assert "business_weekday_{{ weekday }}_enabled" in template_source
     assert "business_opening_hours" in migration_source
     assert "businessattendanceplan" in attendance_migration_source

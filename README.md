@@ -568,7 +568,7 @@ Other checks used by CI:
 
 ```bash
 python -m compileall -q src tests alembic
-deno check src/static/admin/js/admin.js src/static/admin/js/calendar.js
+deno check src/static/admin/js/theme.js src/static/admin/js/admin.js src/static/admin/js/calendar.js
 alembic upgrade head
 alembic check
 docker compose config --quiet

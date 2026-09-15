@@ -3,7 +3,7 @@ import hashlib
 from starlette.requests import Request
 from starlette.responses import Response
 
-from src.admin.templating import STATIC_ROOT, admin_label, static_version
+from src.admin.templating import STATIC_ROOT, admin_label, static_asset_exists, static_version
 from src.core.error_reporting import build_error_payload
 from src.core.http_header import apply_security_headers
 from src.repositories import ScheduleBlockRepository
@@ -30,6 +30,13 @@ def test_static_asset_version_matches_file_content():
     expected = hashlib.sha256((STATIC_ROOT / path).read_bytes()).hexdigest()[:12]
 
     assert static_version(path) == expected
+
+
+def test_static_asset_exists_is_scoped_to_the_static_root():
+    assert static_asset_exists("admin/css/admin.css") is True
+    assert static_asset_exists("admin/brand/logo.svg") is False
+    assert static_asset_exists("../../README.md") is False
+
 
 def test_admin_labels_are_presented_in_portuguese():
     assert admin_label("scheduled") == "Agendado"

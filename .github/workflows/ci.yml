@@ -95,7 +95,7 @@ jobs:
           PY
 
       - name: Validate JavaScript
-        run: deno check src/static/admin/js/admin.js src/static/admin/js/calendar.js
+        run: deno check src/static/admin/js/theme.js src/static/admin/js/admin.js src/static/admin/js/calendar.js
 
       - name: Audit production dependencies
         run: pip-audit -r requirements-prod.txt

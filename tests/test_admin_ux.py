@@ -80,7 +80,7 @@ def test_agenda_uses_dynamic_hours_and_keeps_all_views():
     calendar = read_source("src/templates/admin/appointments/calendar.html")
     script = read_source("src/static/admin/js/calendar.js")
 
-    assert ">Agenda</a>" in base
+    assert '<span>Agenda</span>' in base
     assert "Calendário" not in base
     assert "Abrir agenda" in dashboard
     assert "{% block title %}Agenda - Beautyflow{% endblock %}" in calendar
@@ -319,3 +319,96 @@ def test_legacy_recurring_materialization_error_is_presented_in_portuguese():
     ) == (
         "2 ocorrências não puderam ser criadas; revise agenda, disponibilidade e capacidade."
     )
+
+
+def test_admin_shell_has_grouped_navigation_icons_and_accessible_active_state():
+    base = read_source("src/templates/admin/base.html")
+    icons = read_source("src/templates/admin/_icons.html")
+
+    for section in ("Operação", "Negócio", "Configurações", "Superadmin"):
+        assert section in base
+    for active in (
+        "dashboard",
+        "appointments",
+        "clients",
+        "contacts",
+        "services",
+        "professionals",
+        "recurring_schedules",
+        "replacement_entitlements",
+        "business",
+        "integrations",
+        "users",
+        "account",
+        "businesses",
+    ):
+        assert f"active == '{active}'" in base
+    assert base.count('aria-current="page"') == 13
+    assert 'class="skip-link"' in base
+    assert 'class="nav-link' in base
+    assert '<svg class="{{ class_name }}"' in icons
+    assert "emoji" not in icons.lower()
+
+
+def test_theme_is_applied_before_styles_and_covers_admin_vendors():
+    base = read_source("src/templates/admin/base.html")
+    components = read_source("src/templates/admin/_components.html")
+    theme_script = read_source("src/static/admin/js/theme.js")
+    calendar_script = read_source("src/static/admin/js/calendar.js")
+    stylesheet = read_source("src/static/admin/css/admin.css")
+
+    assert base.index("admin/js/theme.js") < base.index("admin/css/admin.css")
+    assert 'meta name="color-scheme"' in base
+    assert "data-theme-toggle" in components
+    assert "beautyflow.admin.theme.v1" in theme_script
+    assert "prefers-color-scheme: dark" in theme_script
+    assert "window.localStorage.getItem" in theme_script
+    assert "window.localStorage.setItem" in theme_script
+    assert "beautyflow:themechange" in theme_script
+    assert ':root[data-theme="dark"]' in stylesheet
+    assert "--fc-page-bg-color: var(--surface)" in stylesheet
+    assert ".flatpickr-calendar" in stylesheet
+    assert "--calendar-scheduled" in calendar_script
+    assert "beautyflow:themechange" in calendar_script
+
+
+def test_branding_uses_optional_official_assets_with_text_fallback():
+    base = read_source("src/templates/admin/base.html")
+    components = read_source("src/templates/admin/_components.html")
+    login = read_source("src/templates/admin/login.html")
+    brand_readme = read_source("src/static/admin/brand/README.md")
+
+    assert "static_asset_exists('admin/brand/favicon.svg')" in base
+    assert "admin/brand/logo.svg" in components
+    assert "admin/brand/logo-light.svg" in components
+    assert "admin/brand/logo-dark.svg" in components
+    assert '<span class="brand-wordmark' in components
+    assert 'beautyflow_brand("auth-brand"' in login
+    assert "arquivos oficiais" in brand_readme
+
+
+def test_secondary_domain_tables_are_responsive_and_descriptive():
+    recurring = read_source("src/templates/admin/recurring_schedules/index.html")
+    replacements = read_source("src/templates/admin/replacement_entitlements/index.html")
+    stylesheet = read_source("src/static/admin/css/admin.css")
+
+    for label in ("Cliente", "Serviço", "Dia e horário", "Vigência", "Status", "Ações"):
+        assert f'data-label="{label}"' in recurring
+    for label in ("Status", "Cliente", "Origem", "Motivo", "Validade", "Reposição", "Ações"):
+        assert f'data-label="{label}"' in replacements
+    assert "recurring-schedules-table" in recurring
+    assert "replacement-table" in replacements
+    assert ".feature-notice" in stylesheet
+    assert ".row-action-disclosure" in stylesheet
+
+
+def test_admin_modal_manages_focus_and_restores_the_trigger():
+    base = read_source("src/templates/admin/base.html")
+    script = read_source("src/static/admin/js/admin.js")
+
+    assert 'role="dialog"' in base
+    assert 'aria-modal="true"' in base
+    assert "activeModalTrigger" in script
+    assert "closeAdminModal" in script
+    assert "event.key !== 'Tab'" in script
+    assert "dialog.setAttribute('aria-labelledby'" in script
