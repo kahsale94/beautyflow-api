@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException
 
 from src.schemas import (AvailabilityCreate, AvailabilityUpdate, AvailabilityResponse, AvailabilitySlotsResponse,
     AvailabilityCheckAndSuggestRequest, AvailabilityCheckAndSuggestResponse,
+    AvailabilitySuggestionResponse,
     StudioAvailabilityCheckRequest, StudioAvailabilityCheckResponse,
 )
 from src.dependecies import AvailabilityServiceDep, BusinessScopeDep, UserOrBusinessIntegrationDep, AdminDep
@@ -14,6 +15,28 @@ from src.services.availability_service import (ProfessionalNotFoundError, Invali
 
 
 router = APIRouter(prefix="/availabilities", tags=["V1 ➔ Availabilities"])
+
+
+@router.get("/studio/slots", response_model=list[AvailabilitySuggestionResponse])
+def get_studio_availability_slots(
+    service_id: int,
+    date: date,
+    business_id: BusinessScopeDep,
+    service: AvailabilityServiceDep,
+    actor: UserOrBusinessIntegrationDep,
+):
+    try:
+        return service.get_studio_slots(business_id, service_id, date)
+    except CapacityBasedBookingDisabledError:
+        raise HTTPException(status_code=403, detail="Agendamento por capacidade não está habilitado.")
+    except ServiceNotFoundError:
+        raise HTTPException(status_code=404, detail="Serviço não encontrado!")
+    except BusinessNotAvailableForBookingError:
+        raise HTTPException(status_code=403, detail="Agendamento desabilitado para esta empresa!")
+    except AvailabilityNotFoundError:
+        raise HTTPException(status_code=404, detail="Disponibilidade não encontrada dentro da janela de agendamento!")
+    except ProfessionalUnavailableError:
+        raise HTTPException(status_code=404, detail="Data indisponível!")
 
 
 @router.post("/studio/check-and-suggest", response_model=StudioAvailabilityCheckResponse)

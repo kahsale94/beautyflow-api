@@ -133,8 +133,26 @@ document.addEventListener('DOMContentLoaded', function () {
     const refreshButton = document.getElementById('calendar-refresh-button');
     const statusElement = document.getElementById('calendar-status');
     const monthStrip = document.getElementById('calendar-month-strip');
+    const hoursModeSelect = document.getElementById('calendar-hours-mode');
     const mobileCalendarQuery = window.matchMedia('(max-width: 760px)');
     const scheduleBlockEventColor = '#cbd5e1';
+    const hoursModeStorageKey = 'beautyflow.admin.calendar.hours-mode.v1';
+
+    function readHoursMode() {
+        try {
+            return window.localStorage.getItem(hoursModeStorageKey) === 'full' ? 'full' : 'business';
+        } catch (_error) {
+            return 'business';
+        }
+    }
+
+    function writeHoursMode(value) {
+        try {
+            window.localStorage.setItem(hoursModeStorageKey, value);
+        } catch (_error) {
+            // The calendar remains usable when storage is unavailable.
+        }
+    }
 
     const desktopToolbar = {
         left: 'prev,next today',
@@ -173,14 +191,14 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     const businessHours = parseBusinessHours(calendarEl.dataset.businessHours);
-    const calendarHoursOptions = businessHours.length
-        ? {
-            businessHours: businessHours,
-            slotMinTime: calendarEl.dataset.slotMinTime,
-            slotMaxTime: calendarEl.dataset.slotMaxTime,
-            scrollTime: calendarEl.dataset.scrollTime
-        }
-        : {};
+    const initialHoursMode = readHoursMode();
+    const calendarHoursOptions = {
+        ...(businessHours.length ? {businessHours: businessHours} : {}),
+        slotMinTime: initialHoursMode === 'full' ? '00:00:00' : (calendarEl.dataset.slotMinTime || '00:00:00'),
+        slotMaxTime: initialHoursMode === 'full' ? '24:00:00' : (calendarEl.dataset.slotMaxTime || '24:00:00'),
+        scrollTime: initialHoursMode === 'full' ? '00:00:00' : (calendarEl.dataset.scrollTime || calendarEl.dataset.slotMinTime || '00:00:00')
+    };
+    if (hoursModeSelect instanceof HTMLSelectElement) hoursModeSelect.value = initialHoursMode;
 
     function normalizeShortMonth(value) {
         return value.replace('.', '').replace(/^./, char => char.toUpperCase());
@@ -669,6 +687,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
     calendar.render();
     renderMonthStrip(calendar);
+
+    if (hoursModeSelect instanceof HTMLSelectElement) {
+        hoursModeSelect.addEventListener('change', function () {
+            const mode = hoursModeSelect.value === 'full' ? 'full' : 'business';
+            writeHoursMode(mode);
+            calendar.setOption('slotMinTime', mode === 'full' ? '00:00:00' : (calendarEl.dataset.slotMinTime || '00:00:00'));
+            calendar.setOption('slotMaxTime', mode === 'full' ? '24:00:00' : (calendarEl.dataset.slotMaxTime || '24:00:00'));
+            calendar.setOption('scrollTime', mode === 'full' ? '00:00:00' : (calendarEl.dataset.scrollTime || calendarEl.dataset.slotMinTime || '00:00:00'));
+        });
+    }
 
     function syncCalendarResponsiveness() {
         const isMobile = mobileCalendarQuery.matches;

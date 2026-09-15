@@ -51,8 +51,10 @@ The deterministic response order is:
 2. resolve or create the Contact;
 3. stop on an active temporary human takeover;
 4. apply the persistent Contact policy;
-5. allow contextual classification to decide ownership only for `AUTO`;
-6. route an eligible conversation into the commercial flow.
+5. route every eligible `BOT` or `AUTO` conversation through the same
+   deterministic/semantic intent classifier;
+6. activate temporary takeover only after an explicit handoff confirmation has
+   been sent.
 
 Existing Clients are backfilled as Contacts with `BOT`. Saved CoverCut contacts
 without a matching Client default to `HUMAN`; spontaneous inbound identities
@@ -67,6 +69,28 @@ handoff is separate from personal-context classification, and commercial spam
 uses a separate audit path/state. The outbound gateway rechecks policy and
 takeover immediately before sending, including legacy phone-only reminder
 calls when the identity already has a Contact.
+
+Ownership reads on inbound forwarding, contact resolution and outbound sends
+are fail-closed: when Redis cannot be checked, the backend returns a retryable
+service error and does not forward or send a bot message. A failed CoverCut
+receipt stays retryable under the existing deduplication record. Activating or
+clearing takeover removes only operational conversation state (`state`,
+`chat_buffer`, `outside_hours_context` and versioned `conversation_meta`);
+`chat_memory` remains available as history. Buffered inbound messages are
+appended with atomic `RPUSH + LTRIM + EXPIRE` through the authenticated contact
+endpoint, with a 120-second TTL and a 100-message bound. Manual chat-history
+writes use the same atomic operation with a sliding 24-hour TTL and the same
+bound; agent-managed writes are followed by an authenticated maintenance call
+that reapplies `LTRIM + EXPIRE`. Neither list can therefore grow forever or
+become immortal after an interrupted n8n execution.
+Staging conversation state uses `connection_key + contact:{id}` as its stable
+namespace after ownership resolution. The pre-resolution echo suppression key
+still uses the provider conversation identity because no Contact is available at
+that point.
+
+The outside-hours scheduler intentionally retains its existing Redis `KEYS`
+scan during staging. This consolidation does not expand that pattern; a future
+indexed queue migration should be evaluated before the keyspace becomes large.
 
 The signed `smb_app_state_sync` event upserts saved contacts without creating
 Clients. `user_id_update` changes the BSUID on the same Contact. `history` is
@@ -208,7 +232,8 @@ or business verification required by Meta for its account and template use.
 12. Send another inbound message; confirm the bot remains silent.
 13. Click “Retomar bot”; confirm takeover clears without changing the policy.
 14. Exercise an unknown `AUTO` contact with commercial and personal messages;
-    confirm only the contextual fallback decides those paths.
+    confirm deterministic risk signals plus the semantic resolver decide those
+    paths conservatively without changing persistent ownership.
 15. Ask explicitly for a person from a BOT contact; confirm handoff activates
     takeover while the personal-context and spam paths remain separate.
 16. When possible, test a BSUID-only identity; confirm no fake phone is stored

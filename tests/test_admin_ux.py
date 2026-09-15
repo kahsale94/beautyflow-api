@@ -2,6 +2,9 @@ from datetime import datetime, time, timezone
 from pathlib import Path
 from types import SimpleNamespace
 
+from src.admin.routes import clients as clients_routes
+from src.admin.routes import professionals as professionals_routes
+from src.admin.routes import services as services_routes
 from src.admin.routes.appointments import _calendar_display_config
 from src.admin.routes.recurring_schedules import _materialization_error_message
 from src.admin.templating import templates
@@ -93,6 +96,75 @@ def test_agenda_uses_dynamic_hours_and_keeps_all_views():
     assert "bf-calendar-event-professional" in script
     assert "slotMinTime: '07:00:00'" not in script
     assert "slotMaxTime: '20:00:00'" not in script
+
+
+def test_agenda_hours_toggle_is_persistent_and_keeps_business_hours_highlighting():
+    calendar = read_source("src/templates/admin/appointments/calendar.html")
+    script = read_source("src/static/admin/js/calendar.js")
+
+    assert 'id="calendar-hours-mode"' in calendar
+    assert "Horário da empresa" in calendar
+    assert "Dia inteiro" in calendar
+    assert "beautyflow.admin.calendar.hours-mode.v1" in script
+    assert "window.localStorage.getItem" in script
+    assert "window.localStorage.setItem" in script
+    assert "calendar.setOption('slotMinTime'" in script
+    assert "calendar.setOption('slotMaxTime'" in script
+    assert "businessHours: businessHours" in script
+
+
+def test_admin_list_pages_expose_allowlisted_sort_controls():
+    route_sources = {
+        "contacts": read_source("src/admin/routes/contacts.py"),
+        "clients": read_source("src/admin/routes/clients.py"),
+        "services": read_source("src/admin/routes/services.py"),
+        "professionals": read_source("src/admin/routes/professionals.py"),
+    }
+    template_paths = {
+        "contacts": "src/templates/admin/contacts/index.html",
+        "clients": "src/templates/admin/clients/index.html",
+        "services": "src/templates/admin/services/index.html",
+        "professionals": "src/templates/admin/professionals/index.html",
+    }
+
+    for name, path in template_paths.items():
+        template = read_source(path)
+        assert 'name="sort"' in template, name
+        assert "Ordenar por" in template, name
+        assert 'value="name_asc"' in template, name
+        assert "else \"name_asc\"" in route_sources[name] or "else \"newest\"" in route_sources[name]
+
+    contacts_template = read_source(template_paths["contacts"])
+    assert "&sort={{ sort }}" in contacts_template
+    services_template = read_source(template_paths["services"])
+    assert 'value="price_asc"' in services_template
+    assert 'value="duration_desc"' in services_template
+
+
+def test_admin_non_paginated_list_routes_apply_sort_allowlists(monkeypatch):
+    class ListService:
+        def __init__(self):
+            self.calls = []
+
+        def get_all(self, business_id, *, sort):
+            self.calls.append((business_id, sort))
+            return []
+
+    cases = (
+        (clients_routes, clients_routes.clients_page, "name_desc", "name_asc"),
+        (services_routes, services_routes.services_page, "price_desc", "name_asc"),
+        (professionals_routes, professionals_routes.professionals_page, "oldest", "name_asc"),
+    )
+    session = SimpleNamespace(business_id=7)
+
+    for module, handler, allowed_sort, fallback_sort in cases:
+        monkeypatch.setattr(module, "render", lambda request, template, context, **kwargs: context)
+        service = ListService()
+
+        handler(object(), service, session, sort=allowed_sort)
+        handler(object(), service, session, sort="unsafe_column desc")
+
+        assert service.calls == [(7, allowed_sort), (7, fallback_sort)]
 
 
 def test_contacts_page_has_spaced_bulk_actions_and_responsive_rows():

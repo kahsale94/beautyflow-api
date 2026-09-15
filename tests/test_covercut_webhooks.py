@@ -10,6 +10,7 @@ import pytest
 from src.services.covercut_webhook_service import (
     CovercutWebhookAuthenticationError,
     CovercutWebhookConflictError,
+    CovercutWebhookOwnershipUnavailableError,
     CovercutWebhookPayloadError,
     CovercutWebhookService,
 )
@@ -177,11 +178,16 @@ class FakeOwnershipService:
         self.active = active
         self.activations = []
 
-    def is_active(self, business_id, connection_id, contact_id):
+    def is_active_strict(self, business_id, connection_id, contact_id):
         return self.active
 
     def activate(self, business_id, connection_id, contact_id, source, **kwargs):
         self.activations.append((business_id, connection_id, contact_id, source, kwargs))
+
+
+class BrokenOwnershipService(FakeOwnershipService):
+    def is_active_strict(self, business_id, connection_id, contact_id):
+        raise RuntimeError("redis unavailable")
 
 
 def run(coroutine):
@@ -226,6 +232,43 @@ def test_message_webhook_verifies_hmac_normalizes_and_deduplicates_text():
         "type": "text",
         "text": "Oi",
     }
+
+
+def test_inbound_fails_closed_and_retry_remains_idempotent_when_ownership_is_unavailable():
+    forwarded = []
+
+    async def handler(request: httpx.Request):
+        forwarded.append(json.loads(request.content))
+        return httpx.Response(200, json={"ok": True})
+
+    raw = json.dumps({
+        "event": "message",
+        "direction": "inbound",
+        "from_number_id": "pnid-7",
+        "contact": {"user_id": "BR.retry", "wa_id": "5511999999999"},
+        "message": {"id": "wamid.retry", "type": "text", "text": "Oi"},
+    }).encode()
+    events = FakeEventRepository()
+    common = {
+        "connections": [connection(status="connected")],
+        "transport": httpx.MockTransport(handler),
+        "event_repo": events,
+        "contact_service": FakeContactService(),
+    }
+
+    with pytest.raises(CovercutWebhookOwnershipUnavailableError):
+        run(build_service(**common, ownership_service=BrokenOwnershipService()).handle_message(
+            raw, signature=signed(raw), timestamp="1778884885"
+        ))
+
+    assert forwarded == []
+    assert next(iter(events.events.values())).status == "failed"
+
+    result = run(build_service(**common, ownership_service=FakeOwnershipService()).handle_message(
+        raw, signature=signed(raw), timestamp="1778884885"
+    ))
+    assert result == {"accepted": True, "forwarded": True}
+    assert len(forwarded) == 1
 
 
 def test_bsuid_only_inbound_is_forwarded_without_fabricated_phone():

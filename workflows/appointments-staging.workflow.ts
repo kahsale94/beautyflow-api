@@ -2,7 +2,7 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 
 // <workflow-map>
 // Workflow : appointments-staging
-// Nodes   : 42  |  Connections: 61
+// Nodes   : 43  |  Connections: 63
 //
 // NODE INDEX
 // ──────────────────────────────────────────────────────────────────
@@ -13,6 +13,7 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 // Cancel                             httpRequest                [onError→out(1)]
 // NoShow                             httpRequest                [onError→out(1)]
 // Post                               httpRequest                [onError→out(1)]
+// ValidateAppointmentForUpdate       httpRequest                [onError→out(1)]
 // Patch                              httpRequest                [onError→out(1)]
 // Action1                            switch
 // FinalReturn                        set
@@ -97,12 +98,14 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 //                      → ReturnContext (↩ loop)
 //                     .out(1) → ErrorReport21 (↩ loop)
 //         .out(1) → ErrorReport20
-//       .out(1) → Patch
-//          → PreContext (↩ loop)
-//         .out(1) → ErrorReport19
+//       .out(1) → ValidateAppointmentForUpdate
+//          → Patch
+//            → PreContext (↩ loop)
+//           .out(1) → ErrorReport19
+//         .out(1) → ErrorReport18
 //       .out(2) → GetById
 //          → PreContext (↩ loop)
-//         .out(1) → ErrorReport18
+//         .out(1) → ErrorReport18 (↩ loop)
 //       .out(3) → Id
 //          → GetById (↩ loop)
 //         .out(1) → GetByClient
@@ -473,6 +476,29 @@ export class AppointmentsStagingWorkflow {
     kind: data.data.appointment.kind || 'standard',
   }).filter(([_, value]) => value !== undefined && value !== null && String(value).trim() !== ''));
 })() }}`,
+        options: {},
+    };
+
+    @node({
+        id: 'a24d9a8f-6f73-42d5-ac6e-f96cc22b24aa',
+        name: 'validate appointment for update',
+        type: 'n8n-nodes-base.httpRequest',
+        version: 4.4,
+        position: [2064, 6608],
+        onError: 'continueErrorOutput',
+    })
+    ValidateAppointmentForUpdate = {
+        method: 'GET',
+        url: "={{ $('data handler').first().json.api.url }}/appointments/{{ $('data handler').first().json.data.appointment.id }}",
+        sendHeaders: true,
+        headerParameters: {
+            parameters: [
+                {
+                    name: 'Authorization',
+                    value: "={{ $('data handler').first().json.api.token }}",
+                },
+            ],
+        },
         options: {},
     };
 
@@ -1318,6 +1344,8 @@ return {
         onError: 'continueErrorOutput',
     })
     ConfirmationEmail = {
+        resource: 'message',
+        operation: 'send',
         sendTo: "={{ $('prepare email notification').item.json.recipient }}",
         subject:
             "=Novo agendamento confirmado - {{ $('prepare email notification').item.json.clientName }} - [{{ $('prepare email notification').item.json.eventKey }}]",
@@ -1359,6 +1387,8 @@ return {
         onError: 'continueErrorOutput',
     })
     UpdateEmail = {
+        resource: 'message',
+        operation: 'send',
         sendTo: "={{ $('prepare email notification').item.json.recipient }}",
         subject:
             "=Agendamento atualizado - {{ $('prepare email notification').item.json.clientName }} - [{{ $('prepare email notification').item.json.eventKey }}]",
@@ -1400,6 +1430,8 @@ return {
         onError: 'continueErrorOutput',
     })
     DeleteEmail = {
+        resource: 'message',
+        operation: 'send',
         sendTo: "={{ $('prepare email notification').item.json.recipient }}",
         subject:
             "=Agendamento cancelado - {{ $('prepare email notification').item.json.clientName }} - [{{ $('prepare email notification').item.json.eventKey }}]",
@@ -2319,7 +2351,7 @@ return {
         this.Webhook.out(0).to(this.DataHandler.in(0));
         this.DataHandler.out(0).to(this.Action.in(0));
         this.Action.out(0).to(this.Post.in(0));
-        this.Action.out(1).to(this.Patch.in(0));
+        this.Action.out(1).to(this.ValidateAppointmentForUpdate.in(0));
         this.Action.out(2).to(this.GetById.in(0));
         this.Action.out(3).to(this.Id.in(0));
         this.Action.out(4).to(this.GetById.in(0));
@@ -2327,6 +2359,8 @@ return {
         this.Post.out(1).to(this.ErrorReport20.in(0));
         this.Patch.out(0).to(this.PreContext.in(0));
         this.Patch.out(1).to(this.ErrorReport19.in(0));
+        this.ValidateAppointmentForUpdate.out(0).to(this.Patch.in(0));
+        this.ValidateAppointmentForUpdate.out(1).to(this.ErrorReport18.in(0));
         this.Cancel.out(0).to(this.PrepareEmailNotification.in(0));
         this.Cancel.out(1).to(this.ErrorReport21.in(0));
         this.Action1.out(0).to(this.PrepareEmailNotification.in(0));

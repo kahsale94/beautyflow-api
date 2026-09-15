@@ -1,5 +1,5 @@
 from pathlib import Path
-from datetime import datetime, time
+from datetime import date, datetime, time, timedelta
 from types import SimpleNamespace
 from zoneinfo import ZoneInfo
 
@@ -170,3 +170,46 @@ def test_slots_do_not_ignore_another_clients_appointment():
 
     assert exclude_id is None
     assert appointment.start_datetime not in slots
+
+
+def test_studio_date_slots_validate_business_feature_and_return_backend_slots():
+    target_date = date.today() + timedelta(days=1)
+    business = SimpleNamespace(
+        id=1,
+        is_active=True,
+        booking_enabled=True,
+        timezone="America/Sao_Paulo",
+        maximum_schedule_days=30,
+    )
+    requested_service = SimpleNamespace(
+        id=5,
+        business_id=1,
+        is_active=True,
+        duration_minutes=45,
+    )
+    service = AvailabilityService(
+        object(),
+        SimpleNamespace(),
+        SimpleNamespace(),
+        SimpleNamespace(),
+        SimpleNamespace(get_by_id=lambda db, business_id, service_id: requested_service),
+        SimpleNamespace(),
+        SimpleNamespace(),
+        business_repo=SimpleNamespace(get_by_id=lambda db, business_id: business),
+        business_feature_service=SimpleNamespace(is_enabled=lambda business_id, feature: True),
+        assignment_service=SimpleNamespace(),
+    )
+    start = datetime.combine(target_date, time(14), tzinfo=ZoneInfo("America/Sao_Paulo"))
+    service._studio_slot_datetimes_for_date = lambda business_id, item, day, now: [start]
+
+    result = service.get_studio_slots(1, 5, target_date)
+
+    assert len(result) == 1
+    assert result[0].start_datetime == start
+    assert result[0].end_datetime == start + timedelta(minutes=45)
+
+
+def test_studio_slots_api_contract_precedes_dynamic_professional_route():
+    route_source = read_source("src/api/v1/availability_routes.py")
+    assert '@router.get("/studio/slots"' in route_source
+    assert route_source.index('@router.get("/studio/slots"') < route_source.index('@router.get("/{professional_id}"')

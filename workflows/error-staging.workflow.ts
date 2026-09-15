@@ -2,7 +2,7 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 
 // <workflow-map>
 // Workflow : error-staging
-// Nodes   : 17  |  Connections: 23
+// Nodes   : 17  |  Connections: 21
 //
 // NODE INDEX
 // ──────────────────────────────────────────────────────────────────
@@ -13,15 +13,15 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 // CallTrigger                        executeWorkflowTrigger
 // Switch_                            switch
 // NormalizeError                     code
-// SplitOut                           splitOut
-// LoopResponse                       splitInBatches
+// ClientOutputPolicy                 code
+// ClientDeliveryComplete             noOp
 // SendResponse                       httpRequest                [onError→out(1)]
 // SendResponse1                      httpRequest                [onError→out(1)]
 // ClientReponse                      set
 // BusinessReponse                    set
 // DevReponse                         set
-// SplitOut1                          splitOut
-// LoopResponse1                      splitInBatches
+// BusinessOutputPolicy               code
+// BusinessDeliveryComplete           noOp
 // SendResponse2                      httpRequest                [onError→out(1)]
 // ErrorContext                       set
 //
@@ -32,19 +32,17 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 //      → NormalizeError
 //        → Switch_
 //          → ClientReponse
-//            → SplitOut
-//              → LoopResponse
-//                → ErrorContext
-//               .out(1) → SendResponse
-//                  → LoopResponse (↩ loop)
-//                 .out(1) → ErrorContext (↩ loop)
+//            → ClientOutputPolicy
+//              → SendResponse
+//                → ClientDeliveryComplete
+//                  → ErrorContext
+//               .out(1) → ErrorContext (↩ loop)
 //         .out(1) → BusinessReponse
-//            → SplitOut1
-//              → LoopResponse1
-//                → ErrorContext (↩ loop)
-//               .out(1) → SendResponse1
-//                  → LoopResponse1 (↩ loop)
-//                 .out(1) → ErrorContext (↩ loop)
+//            → BusinessOutputPolicy
+//              → SendResponse1
+//                → BusinessDeliveryComplete
+//                  → ErrorContext (↩ loop)
+//               .out(1) → ErrorContext (↩ loop)
 //         .out(2) → DevReponse
 //            → SendResponse2
 //              → ErrorContext (↩ loop)
@@ -728,26 +726,25 @@ return [
 
     @node({
         id: '43f1c82f-c3f9-44d4-9b0f-3bee2026ba53',
-        name: 'split out',
-        type: 'n8n-nodes-base.splitOut',
-        version: 1,
+        name: 'client output policy',
+        type: 'n8n-nodes-base.code',
+        version: 2,
         position: [1408, -48],
     })
-    SplitOut = {
-        fieldToSplitOut: 'response',
-        options: {},
+    ClientOutputPolicy = {
+        jsCode: `const current = $input.first().json || {};
+const response = String(current.response || '').replace(/\\r\\n?/g, '\\n').replace(/\\n{3,}/g, '\\n\\n').trim();
+return [{ json: { ...current, response } }];`,
     };
 
     @node({
         id: 'ee443402-f5b7-47b6-a6ad-ff3b29ca43bc',
-        name: 'loop response',
-        type: 'n8n-nodes-base.splitInBatches',
-        version: 3,
+        name: 'client delivery complete',
+        type: 'n8n-nodes-base.noOp',
+        version: 1,
         position: [1616, -48],
     })
-    LoopResponse = {
-        options: {},
-    };
+    ClientDeliveryComplete = {};
 
     @node({
         id: '88b2fe05-8033-456b-ad2d-9c6684ea45d6',
@@ -829,8 +826,8 @@ return [
                 {
                     id: '43099950-bb55-4647-830f-b0aa10e7d3c3',
                     name: 'response',
-                    value: "={{ $('normalize error').item.json.normalized.customerMessage.split(/\\n\\n+/).filter(Boolean) }}",
-                    type: 'array',
+                    value: "={{ String($('normalize error').item.json.normalized.customerMessage || '').trim() }}",
+                    type: 'string',
                 },
             ],
         },
@@ -850,8 +847,8 @@ return [
                 {
                     id: '43099950-bb55-4647-830f-b0aa10e7d3c3',
                     name: 'response',
-                    value: "={{ $('normalize error').item.json.normalized.ownerMessage.split(/\\n\\n+/).filter(Boolean) }}",
-                    type: 'array',
+                    value: "={{ String($('normalize error').item.json.normalized.ownerMessage || '').trim() }}",
+                    type: 'string',
                 },
             ],
         },
@@ -916,26 +913,25 @@ return [
 
     @node({
         id: 'b43c4f9f-d626-48e1-a150-0bfa597a780a',
-        name: 'split out 1',
-        type: 'n8n-nodes-base.splitOut',
-        version: 1,
+        name: 'business output policy',
+        type: 'n8n-nodes-base.code',
+        version: 2,
         position: [1408, 256],
     })
-    SplitOut1 = {
-        fieldToSplitOut: 'response',
-        options: {},
+    BusinessOutputPolicy = {
+        jsCode: `const current = $input.first().json || {};
+const response = String(current.response || '').replace(/\\r\\n?/g, '\\n').replace(/\\n{3,}/g, '\\n\\n').trim();
+return [{ json: { ...current, response } }];`,
     };
 
     @node({
         id: '7e198873-df7b-43dd-8a9f-b459c03c4eac',
-        name: 'loop response 1',
-        type: 'n8n-nodes-base.splitInBatches',
-        version: 3,
+        name: 'business delivery complete',
+        type: 'n8n-nodes-base.noOp',
+        version: 1,
         position: [1616, 256],
     })
-    LoopResponse1 = {
-        options: {},
-    };
+    BusinessDeliveryComplete = {};
 
     @node({
         id: '99362849-7960-4672-add1-6a7bce98c933',
@@ -989,22 +985,20 @@ return [
         this.CallTrigger.out(0).to(this.DataHandler.in(0));
         this.DataHandler.out(0).to(this.NormalizeError.in(0));
         this.NormalizeError.out(0).to(this.Switch_.in(0));
-        this.SplitOut.out(0).to(this.LoopResponse.in(0));
-        this.LoopResponse.out(0).to(this.ErrorContext.in(0));
-        this.LoopResponse.out(1).to(this.SendResponse.in(0));
-        this.SendResponse.out(0).to(this.LoopResponse.in(0));
+        this.ClientOutputPolicy.out(0).to(this.SendResponse.in(0));
+        this.SendResponse.out(0).to(this.ClientDeliveryComplete.in(0));
         this.SendResponse.out(1).to(this.ErrorContext.in(0));
+        this.ClientDeliveryComplete.out(0).to(this.ErrorContext.in(0));
         this.Switch_.out(0).to(this.ClientReponse.in(0));
         this.Switch_.out(1).to(this.BusinessReponse.in(0));
         this.Switch_.out(2).to(this.DevReponse.in(0));
-        this.SendResponse1.out(0).to(this.LoopResponse1.in(0));
+        this.SendResponse1.out(0).to(this.BusinessDeliveryComplete.in(0));
         this.SendResponse1.out(1).to(this.ErrorContext.in(0));
-        this.ClientReponse.out(0).to(this.SplitOut.in(0));
-        this.BusinessReponse.out(0).to(this.SplitOut1.in(0));
+        this.BusinessDeliveryComplete.out(0).to(this.ErrorContext.in(0));
+        this.ClientReponse.out(0).to(this.ClientOutputPolicy.in(0));
+        this.BusinessReponse.out(0).to(this.BusinessOutputPolicy.in(0));
         this.DevReponse.out(0).to(this.SendResponse2.in(0));
-        this.SplitOut1.out(0).to(this.LoopResponse1.in(0));
-        this.LoopResponse1.out(0).to(this.ErrorContext.in(0));
-        this.LoopResponse1.out(1).to(this.SendResponse1.in(0));
+        this.BusinessOutputPolicy.out(0).to(this.SendResponse1.in(0));
         this.SendResponse2.out(0).to(this.ErrorContext.in(0));
         this.SendResponse2.out(1).to(this.ErrorContext.in(0));
     }

@@ -54,6 +54,10 @@ class CovercutWebhookConflictError(Exception):
     pass
 
 
+class CovercutWebhookOwnershipUnavailableError(Exception):
+    pass
+
+
 def verify_covercut_signature(raw_body: bytes, signature: str | None, secret: str | None) -> None:
     if not secret:
         raise CovercutWebhookConfigurationError()
@@ -441,7 +445,13 @@ class CovercutWebhookService:
             return {"accepted": True, "ignored": "bot_or_unknown_echo"}
 
         if resolved_contact and self.ownership_service:
-            takeover = self.ownership_service.is_active(connection.business_id, connection.id, resolved_contact.id)
+            try:
+                takeover = self.ownership_service.is_active_strict(
+                    connection.business_id, connection.id, resolved_contact.id
+                )
+            except Exception as exc:
+                self._finish_event(event, "failed", connection)
+                raise CovercutWebhookOwnershipUnavailableError() from exc
             if resolved_contact.bot_policy == "HUMAN" or takeover:
                 self._finish_event(event, "ignored", connection)
                 return {"accepted": True, "ignored": "human_owned", "contact_id": resolved_contact.id}

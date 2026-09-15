@@ -56,3 +56,15 @@ class ContactTakeoverRequest(BaseModel):
     conversation_key: str | None = Field(default=None, min_length=1, max_length=255, pattern=r"^[^*?\[\]]+$")
 
     model_config = ConfigDict(extra="forbid")
+
+
+class ContactBufferAppendRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=10000)
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class ContactMemoryAppendRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=30000)
+
+    model_config = ConfigDict(extra="forbid")

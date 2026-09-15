@@ -1,7 +1,7 @@
 
 from typing import Sequence
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from src.models import Client
@@ -30,9 +30,18 @@ class ClientRepository:
         )
         return db.scalars(stmt).all()
 
-    def get_by_business(self, db: Session, business_id: int) -> Sequence[Client]:
+    def get_by_business(self, db: Session, business_id: int, sort: str | None = None) -> Sequence[Client]:
         stmt = select(Client).where(
             Client.is_active == True,
             Client.business_id == business_id,
         )
+        name = func.lower(func.coalesce(Client.name, ""))
+        ordering = {
+            "name_asc": (name.asc(), Client.id.asc()),
+            "name_desc": (name.desc(), Client.id.desc()),
+            "oldest": (Client.id.asc(),),
+            "newest": (Client.id.desc(),),
+        }.get(sort)
+        if ordering:
+            stmt = stmt.order_by(*ordering)
         return db.scalars(stmt).all()

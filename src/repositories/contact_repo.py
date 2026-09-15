@@ -39,6 +39,7 @@ class ContactRepository:
         self, db: Session, business_id: int, *, page: int, page_size: int,
         query: str | None = None, policy: str | None = None,
         provider: str | None = None, saved: bool | None = None,
+        sort: str = "newest",
     ) -> tuple[list[Contact], int]:
         filters = [Contact.business_id == business_id]
         if query:
@@ -51,7 +52,14 @@ class ContactRepository:
         if saved is not None:
             filters.append(Contact.is_saved == saved)
         total = int(db.scalar(select(func.count()).select_from(Contact).where(*filters)) or 0)
-        items = list(db.scalars(select(Contact).where(*filters).order_by(Contact.updated_at.desc(), Contact.id.desc()).offset((page - 1) * page_size).limit(page_size)).all())
+        name = func.lower(func.coalesce(Contact.name, Contact.phone, Contact.username, ""))
+        ordering = {
+            "name_asc": (name.asc(), Contact.id.asc()),
+            "name_desc": (name.desc(), Contact.id.desc()),
+            "oldest": (Contact.updated_at.asc(), Contact.id.asc()),
+            "newest": (Contact.updated_at.desc(), Contact.id.desc()),
+        }.get(sort, (Contact.updated_at.desc(), Contact.id.desc()))
+        items = list(db.scalars(select(Contact).where(*filters).order_by(*ordering).offset((page - 1) * page_size).limit(page_size)).all())
         return items, total
 
     def list_by_ids(self, db: Session, business_id: int, contact_ids: list[int]) -> list[Contact]:

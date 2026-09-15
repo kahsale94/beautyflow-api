@@ -13,8 +13,9 @@ from ..dependencies import AdminSessionDep, validate_csrf
 router = APIRouter(prefix="/services", tags=["Admin ➔ Services"])
 
 @router.get("")
-def services_page(request: Request, service: ServiceServiceDep, session: AdminSessionDep, q: str | None = None):
-    services = service.get_all(session.business_id)
+def services_page(request: Request, service: ServiceServiceDep, session: AdminSessionDep, q: str | None = None, sort: str = "name_asc"):
+    sort = sort if sort in {"name_asc", "name_desc", "newest", "oldest", "price_asc", "price_desc", "duration_asc", "duration_desc"} else "name_asc"
+    services = service.get_all(session.business_id, sort=sort)
     if q:
         q_lower = q.lower().strip()
         services = [item for item in services if q_lower in item.name.lower()]
@@ -22,7 +23,7 @@ def services_page(request: Request, service: ServiceServiceDep, session: AdminSe
     return render(
         request,
         "admin/services/index.html",
-        {"services": services, "q": q or ""},
+        {"services": services, "q": q or "", "sort": sort},
         session=session,
         active="services",
     )

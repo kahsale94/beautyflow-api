@@ -69,8 +69,8 @@ class ProfessionalService:
 
         return professional
 
-    def get_all(self, business_id: int):
-        result = self.professional_repo.get_by_business(self.db, business_id)
+    def get_all(self, business_id: int, sort: str | None = None):
+        result = self.professional_repo.get_by_business(self.db, business_id, sort) if sort else self.professional_repo.get_by_business(self.db, business_id)
         if (
             not all(item.is_active for item in result)
             or not all(item.business_id == business_id for item in result)

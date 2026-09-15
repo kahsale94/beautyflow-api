@@ -11,6 +11,14 @@ class WhatsAppConnectionRepository:
     def delete(self, db: Session, connection: WhatsAppConnection) -> None:
         db.delete(connection)
 
+    def get_by_id(self, db: Session, business_id: int, connection_id: int) -> WhatsAppConnection | None:
+        return db.scalars(
+            select(WhatsAppConnection).where(
+                WhatsAppConnection.id == connection_id,
+                WhatsAppConnection.business_id == business_id,
+            )
+        ).one_or_none()
+
     def get_by_business(
         self,
         db: Session,

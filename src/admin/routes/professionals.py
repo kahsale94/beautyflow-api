@@ -19,8 +19,9 @@ from ..templating import WEEKDAYS, render, redirect_with_flash
 router = APIRouter(prefix="/professionals", tags=["Admin ➔ Professionals"])
 
 @router.get("")
-def professionals_page(request: Request, professional_service: ProfessionalServiceDep, session: AdminSessionDep, q: str | None = None):
-    professionals = professional_service.get_all(session.business_id)
+def professionals_page(request: Request, professional_service: ProfessionalServiceDep, session: AdminSessionDep, q: str | None = None, sort: str = "name_asc"):
+    sort = sort if sort in {"name_asc", "name_desc", "newest", "oldest"} else "name_asc"
+    professionals = professional_service.get_all(session.business_id, sort=sort)
     if q:
         q_lower = q.lower().strip()
         professionals = [
@@ -31,7 +32,7 @@ def professionals_page(request: Request, professional_service: ProfessionalServi
     return render(
         request,
         "admin/professionals/index.html",
-        {"professionals": professionals, "q": q or ""},
+        {"professionals": professionals, "q": q or "", "sort": sort},
         session=session,
         active="professionals",
     )

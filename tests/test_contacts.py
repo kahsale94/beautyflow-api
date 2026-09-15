@@ -68,7 +68,7 @@ class FakeConnectionRepository:
 
 
 class FakeOwnership:
-    def is_active(self, business_id, connection_id, contact_id):
+    def is_active_strict(self, business_id, connection_id, contact_id):
         return False
 
 
@@ -217,6 +217,7 @@ class FakeRedis:
         self.values = {}
         self.deleted = []
         self.set_args = None
+        self.pipeline_calls = []
 
     def setex(self, key, ttl, value):
         self.set_args = (key, ttl, value)
@@ -236,6 +237,36 @@ class FakeRedis:
     def close(self):
         return None
 
+    def pipeline(self, transaction=True):
+        outer = self
+
+        class Pipeline:
+            def setex(self, key, ttl, value):
+                outer.setex(key, ttl, value)
+                return self
+
+            def delete(self, *keys):
+                outer.delete(*keys)
+                return self
+
+            def rpush(self, key, value):
+                outer.pipeline_calls.append(("rpush", key, value))
+                return self
+
+            def ltrim(self, key, start, end):
+                outer.pipeline_calls.append(("ltrim", key, start, end))
+                return self
+
+            def expire(self, key, ttl):
+                outer.pipeline_calls.append(("expire", key, ttl))
+                return self
+
+            def execute(self):
+                outer.pipeline_calls.append(("execute",))
+
+        assert transaction is True
+        return Pipeline()
+
 
 def test_takeover_key_is_provider_neutral_ttl_bound_and_cleans_pending_state():
     client = FakeRedis()
@@ -249,7 +280,68 @@ def test_takeover_key_is_provider_neutral_ttl_bound_and_cleans_pending_state():
     assert client.set_args == ("beautyflow_bot.v2.7.8.9.human_takeover", 86400, "phone")
     assert "beautyflow_bot.covercut:pnid-7.contact:9.state" in client.deleted
     assert "beautyflow_bot.covercut:pnid-7.contact:9.chat_buffer" in client.deleted
+    assert "beautyflow_bot.covercut:pnid-7.contact:9.conversation_meta" in client.deleted
+    assert "beautyflow_bot.covercut:pnid-7.contact:9.chat_memory" not in client.deleted
     assert ownership.is_active_strict(7, 8, 9) is True
+
+
+def test_resume_clears_operational_context_but_preserves_history():
+    client = FakeRedis()
+    ownership = ConversationOwnershipService("redis://test", client_factory=lambda *args, **kwargs: client)
+
+    ownership.clear(
+        7, 8, 9,
+        connection_key="covercut:pnid-7",
+        conversation_key="contact:9",
+    )
+
+    assert "beautyflow_bot.v2.7.8.9.human_takeover" in client.deleted
+    assert "beautyflow_bot.covercut:pnid-7.contact:9.conversation_meta" in client.deleted
+    assert "beautyflow_bot.covercut:pnid-7.contact:9.chat_memory" not in client.deleted
+
+
+def test_buffer_append_sets_list_ttl_atomically():
+    client = FakeRedis()
+    ownership = ConversationOwnershipService("redis://test", client_factory=lambda *args, **kwargs: client)
+
+    ownership.append_buffer("covercut:pnid-7", "contact:9", "Olá")
+
+    key = "beautyflow_bot.covercut:pnid-7.contact:9.chat_buffer"
+    assert client.pipeline_calls == [
+        ("rpush", key, "Olá"),
+        ("ltrim", key, -100, -1),
+        ("expire", key, 120),
+        ("execute",),
+    ]
+
+
+def test_history_append_is_bounded_and_refreshes_ttl_atomically():
+    client = FakeRedis()
+    ownership = ConversationOwnershipService("redis://test", client_factory=lambda *args, **kwargs: client)
+
+    ownership.append_history("covercut:pnid-7", "contact:9", '{"type":"human"}')
+
+    key = "beautyflow_bot.covercut:pnid-7.contact:9.chat_memory"
+    assert client.pipeline_calls == [
+        ("rpush", key, '{"type":"human"}'),
+        ("ltrim", key, -100, -1),
+        ("expire", key, 86400),
+        ("execute",),
+    ]
+
+
+def test_history_maintenance_bounds_agent_managed_memory():
+    client = FakeRedis()
+    ownership = ConversationOwnershipService("redis://test", client_factory=lambda *args, **kwargs: client)
+
+    ownership.maintain_history("covercut:pnid-7", "contact:9")
+
+    key = "beautyflow_bot.covercut:pnid-7.contact:9.chat_memory"
+    assert client.pipeline_calls == [
+        ("ltrim", key, -100, -1),
+        ("expire", key, 86400),
+        ("execute",),
+    ]
 
 
 def test_takeover_batch_lookup_avoids_one_redis_call_per_contact():

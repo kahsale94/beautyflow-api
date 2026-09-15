@@ -6,6 +6,7 @@ from src.services.covercut_webhook_service import (
     CovercutWebhookAuthenticationError,
     CovercutWebhookConfigurationError,
     CovercutWebhookConflictError,
+    CovercutWebhookOwnershipUnavailableError,
     CovercutWebhookPayloadError,
 )
 
@@ -29,6 +30,8 @@ def _raise_webhook_error(exc: Exception) -> None:
         raise HTTPException(status_code=409, detail="Evento de webhook conflitante.")
     if isinstance(exc, CovercutWebhookConfigurationError):
         raise HTTPException(status_code=503, detail="Webhook CoverCut não configurado.")
+    if isinstance(exc, CovercutWebhookOwnershipUnavailableError):
+        raise HTTPException(status_code=503, detail="Controle de atendimento indisponível.")
     if isinstance(exc, CovercutAPIError):
         raise HTTPException(status_code=502, detail="Falha ao obter mídia do provider.")
     raise exc

@@ -36,11 +36,20 @@ class ProfessionalRepository:
 
         return db.scalars(stmt).all()
 
-    def get_by_business(self, db: Session, business_id: int):
+    def get_by_business(self, db: Session, business_id: int, sort: str | None = None):
         stmt = select(Professional).where(
             Professional.is_active == True,
             Professional.business_id == business_id,
         )
+        name = func.lower(func.coalesce(Professional.name, ""))
+        ordering = {
+            "name_asc": (name.asc(), Professional.id.asc()),
+            "name_desc": (name.desc(), Professional.id.desc()),
+            "oldest": (Professional.id.asc(),),
+            "newest": (Professional.id.desc(),),
+        }.get(sort)
+        if ordering:
+            stmt = stmt.order_by(*ordering)
         return db.scalars(stmt).all()
 
     def get_eligible_for_service(self, db: Session, business_id: int, service_id: int):

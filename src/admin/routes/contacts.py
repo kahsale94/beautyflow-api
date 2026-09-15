@@ -22,11 +22,13 @@ def contacts_page(
     policy: str | None = None,
     provider: str | None = None,
     saved: str | None = None,
+    sort: str = "newest",
     page: int = 1,
 ):
     page = max(1, page)
     page_size = 50
     saved_filter = None if saved not in {"yes", "no"} else saved == "yes"
+    sort = sort if sort in {"name_asc", "name_desc", "newest", "oldest"} else "newest"
     items, total = service.contact_repo.list_page(
         service.db,
         session.business_id,
@@ -36,6 +38,7 @@ def contacts_page(
         policy=policy if policy in service.POLICIES else None,
         provider=provider if provider in {"covercut", "evolution"} else None,
         saved=saved_filter,
+        sort=sort,
     )
     takeover = service.ownership.active_map(
         session.business_id,
@@ -51,6 +54,7 @@ def contacts_page(
             "policy": policy or "",
             "provider": provider or "",
             "saved": saved or "",
+            "sort": sort,
             "page": page,
             "pages": max(1, ceil(total / page_size)),
             "total": total,
@@ -92,7 +96,16 @@ async def resume_bot(contact_id: int, request: Request, service: ContactServiceD
         contact = service.get(session.business_id, contact_id)
         if not contact.whatsapp_connection_id:
             raise ValueError()
-        service.ownership.clear(session.business_id, contact.whatsapp_connection_id, contact.id)
+        connection = service.connection_repo.get_by_id(
+            service.db, session.business_id, contact.whatsapp_connection_id
+        )
+        if not connection:
+            raise ValueError()
+        service.ownership.clear(
+            session.business_id, connection.id, contact.id,
+            connection_key=connection.connection_key,
+            conversation_key=f"contact:{contact.id}",
+        )
     except (ContactNotFoundError, ValueError, RuntimeError):
         return redirect_with_flash("/admin/contacts", "Não foi possível retomar o bot.", "error", request=request)
     return redirect_with_flash("/admin/contacts", "Bot retomado para este contato.", request=request)

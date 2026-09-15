@@ -41,8 +41,15 @@ class FakeOwnership:
         self.map_calls.append((business_id, identities))
         return {contact_id: False for _, contact_id in identities}
 
-    def clear(self, business_id, connection_id, contact_id):
-        self.clear_calls.append((business_id, connection_id, contact_id))
+    def clear(self, business_id, connection_id, contact_id, **kwargs):
+        self.clear_calls.append((business_id, connection_id, contact_id, kwargs))
+
+
+class FakeConnectionRepository:
+    def get_by_id(self, db, business_id, connection_id):
+        if (business_id, connection_id) == (7, 4):
+            return SimpleNamespace(id=4, connection_key="covercut:pnid-7")
+        return None
 
 
 class FakeContactService:
@@ -52,6 +59,7 @@ class FakeContactService:
         self.contact_repo = FakeContactRepository(contacts or [])
         self.ownership = FakeOwnership()
         self.db = object()
+        self.connection_repo = FakeConnectionRepository()
         self.policy_calls = []
         self.bulk_calls = []
         self.contact = SimpleNamespace(id=31, whatsapp_connection_id=4)
@@ -95,15 +103,29 @@ def test_contacts_page_is_sql_paginated_tenant_scoped_and_batches_takeover(monke
 
     routes.contacts_page(
         object(), service, SimpleNamespace(business_id=7),
-        q="ana", policy="HUMAN", provider="covercut", saved="yes", page=2,
+        q="ana", policy="HUMAN", provider="covercut", saved="yes",
+        sort="name_desc", page=2,
     )
 
     assert service.contact_repo.calls == [(7, {
         "page": 2, "page_size": 50, "query": "ana", "policy": "HUMAN",
         "provider": "covercut", "saved": True,
+        "sort": "name_desc",
     })]
     assert service.ownership.map_calls == [(7, [(4, 31)])]
     assert captured["contacts"] == contacts
+
+
+def test_contacts_page_rejects_unallowlisted_sort(monkeypatch):
+    service = FakeContactService()
+    monkeypatch.setattr(routes, "render", lambda request, template, context, **kwargs: context)
+
+    routes.contacts_page(
+        object(), service, SimpleNamespace(business_id=7),
+        sort="updated_at desc; drop table contacts",
+    )
+
+    assert service.contact_repo.calls[0][1]["sort"] == "newest"
 
 
 def test_contact_admin_policy_bulk_and_resume_use_session_tenant_and_csrf(monkeypatch):
@@ -121,7 +143,10 @@ def test_contact_admin_policy_bulk_and_resume_use_session_tenant_and_csrf(monkey
     assert csrf_requests == [policy_request, bulk_request, resume_request]
     assert service.policy_calls == [(7, 31, "HUMAN")]
     assert service.bulk_calls == [(7, [31, 32], "BOT")]
-    assert service.ownership.clear_calls == [(7, 4, 31)]
+    assert service.ownership.clear_calls == [(
+        7, 4, 31,
+        {"connection_key": "covercut:pnid-7", "conversation_key": "contact:31"},
+    )]
 
 
 def test_contact_sync_uses_session_tenant_and_csrf(monkeypatch):

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Response, status
 
 from src.dependecies import BusinessIntegrationDep, ContactServiceDep
-from src.schemas import ContactIdentityRequest, ContactOwnershipResponse, ContactTakeoverRequest
+from src.schemas import ContactBufferAppendRequest, ContactIdentityRequest, ContactMemoryAppendRequest, ContactOwnershipResponse, ContactTakeoverRequest
 from src.services.contact_service import ContactConnectionError, ContactIdentityConflictError, ContactNotFoundError
 
 
@@ -32,6 +32,8 @@ def resolve_contact(data: ContactIdentityRequest, actor: BusinessIntegrationDep,
         raise HTTPException(status_code=409, detail="Identidades pertencem a contatos diferentes.")
     except ValueError:
         raise HTTPException(status_code=422, detail="Identidade do contato inválida.")
+    except RuntimeError:
+        raise HTTPException(status_code=503, detail="Controle de atendimento indisponível.")
 
 
 @router.post("/{contact_id}/takeover", status_code=status.HTTP_204_NO_CONTENT)
@@ -67,7 +69,11 @@ def clear_takeover(contact_id: int, actor: BusinessIntegrationDep, service: Cont
         )
         if not connection or connection.id != contact.whatsapp_connection_id:
             raise ContactConnectionError()
-        service.ownership.clear(actor.business_id, connection.id, contact.id)
+        service.ownership.clear(
+            actor.business_id, connection.id, contact.id,
+            connection_key=connection.connection_key,
+            conversation_key=f"contact:{contact.id}",
+        )
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     except ContactNotFoundError:
         raise HTTPException(status_code=404, detail="Contato não encontrado.")
@@ -75,3 +81,85 @@ def clear_takeover(contact_id: int, actor: BusinessIntegrationDep, service: Cont
         raise HTTPException(status_code=409, detail="Contato não possui conexão WhatsApp.")
     except RuntimeError:
         raise HTTPException(status_code=503, detail="Controle de atendimento indisponível.")
+
+
+@router.post("/{contact_id}/conversation-buffer", status_code=status.HTTP_204_NO_CONTENT)
+def append_conversation_buffer(
+    contact_id: int,
+    data: ContactBufferAppendRequest,
+    actor: BusinessIntegrationDep,
+    service: ContactServiceDep,
+):
+    try:
+        contact = service.get(actor.business_id, contact_id)
+        connection = service.connection_repo.get_by_business(
+            service.db, actor.business_id, actor.integration_id
+        )
+        if not connection or connection.id != contact.whatsapp_connection_id:
+            raise ContactConnectionError()
+        service.ownership.append_buffer(
+            connection.connection_key,
+            f"contact:{contact.id}",
+            data.message,
+        )
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    except ContactNotFoundError:
+        raise HTTPException(status_code=404, detail="Contato não encontrado.")
+    except ContactConnectionError:
+        raise HTTPException(status_code=409, detail="Contato não pertence à conexão WhatsApp.")
+    except RuntimeError:
+        raise HTTPException(status_code=503, detail="Buffer de conversa indisponível.")
+
+
+@router.post("/{contact_id}/conversation-memory", status_code=status.HTTP_204_NO_CONTENT)
+def append_conversation_memory(
+    contact_id: int,
+    data: ContactMemoryAppendRequest,
+    actor: BusinessIntegrationDep,
+    service: ContactServiceDep,
+):
+    try:
+        contact = service.get(actor.business_id, contact_id)
+        connection = service.connection_repo.get_by_business(
+            service.db, actor.business_id, actor.integration_id
+        )
+        if not connection or connection.id != contact.whatsapp_connection_id:
+            raise ContactConnectionError()
+        service.ownership.append_history(
+            connection.connection_key,
+            f"contact:{contact.id}",
+            data.message,
+        )
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    except ContactNotFoundError:
+        raise HTTPException(status_code=404, detail="Contato não encontrado.")
+    except ContactConnectionError:
+        raise HTTPException(status_code=409, detail="Contato não pertence à conexão WhatsApp.")
+    except RuntimeError:
+        raise HTTPException(status_code=503, detail="Histórico de conversa indisponível.")
+
+
+@router.post("/{contact_id}/conversation-memory/maintain", status_code=status.HTTP_204_NO_CONTENT)
+def maintain_conversation_memory(
+    contact_id: int,
+    actor: BusinessIntegrationDep,
+    service: ContactServiceDep,
+):
+    try:
+        contact = service.get(actor.business_id, contact_id)
+        connection = service.connection_repo.get_by_business(
+            service.db, actor.business_id, actor.integration_id
+        )
+        if not connection or connection.id != contact.whatsapp_connection_id:
+            raise ContactConnectionError()
+        service.ownership.maintain_history(
+            connection.connection_key,
+            f"contact:{contact.id}",
+        )
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    except ContactNotFoundError:
+        raise HTTPException(status_code=404, detail="Contato não encontrado.")
+    except ContactConnectionError:
+        raise HTTPException(status_code=409, detail="Contato não pertence à conexão WhatsApp.")
+    except RuntimeError:
+        raise HTTPException(status_code=503, detail="Histórico de conversa indisponível.")

@@ -2,7 +2,7 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 
 // <workflow-map>
 // Workflow : pending state-staging
-// Nodes   : 15  |  Connections: 14
+// Nodes   : 17  |  Connections: 16
 //
 // NODE INDEX
 // ──────────────────────────────────────────────────────────────────
@@ -16,6 +16,8 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 // SplitOutsideHoursContextKeys       splitOut
 // GetOutsideHoursContext             redis                      [creds]
 // PrepareOutsideHoursResume          code
+// GetOutsideHoursResumeToken         httpRequest                [onError→out(1)] [creds] [retry]
+// OutsideHoursResumeAuthError        stopAndError
 // GetOutsideHoursState               redis                      [creds]
 // ShouldResumeOutsideHours           if
 // SendOutsideHoursResume             httpRequest
@@ -34,13 +36,15 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 //      → SplitOutsideHoursContextKeys
 //        → GetOutsideHoursContext
 //          → PrepareOutsideHoursResume
-//            → GetOutsideHoursState
-//              → ShouldResumeOutsideHours
-//                → SendOutsideHoursResume
-//                  → DeleteOutsideHoursContext
-//                    → ShouldDeleteOutsideHoursState
-//                      → DeleteOutsideHoursState
-//               .out(1) → DeleteOutsideHoursContext (↩ loop)
+//            → GetOutsideHoursResumeToken
+//              → GetOutsideHoursState
+//                → ShouldResumeOutsideHours
+//                  → SendOutsideHoursResume
+//                    → DeleteOutsideHoursContext
+//                      → ShouldDeleteOutsideHoursState
+//                        → DeleteOutsideHoursState
+//                 .out(1) → DeleteOutsideHoursContext (↩ loop)
+//             .out(1) → OutsideHoursResumeAuthError
 // </workflow-map>
 
 // =====================================================================
@@ -379,6 +383,45 @@ return [
     };
 
     @node({
+        id: '68e734a8-0aa6-4636-8ae7-c1942151d778',
+        name: 'get outside hours resume token',
+        type: 'n8n-nodes-base.httpRequest',
+        version: 4.4,
+        position: [704, 304],
+        credentials: { httpBearerAuth: { id: 'GOtlhhje8hFoh3UQ', name: 'n8n beautyflow token - staging' } },
+        onError: 'continueErrorOutput',
+        retryOnFail: true,
+    })
+    GetOutsideHoursResumeToken = {
+        method: 'POST',
+        url: "={{ $('prepare outside hours resume').first().json.api.url }}/auth/integration",
+        authentication: 'genericCredentialType',
+        genericAuthType: 'httpBearerAuth',
+        sendHeaders: true,
+        headerParameters: {
+            parameters: [
+                {
+                    name: 'X-WhatsApp-Connection',
+                    value: "={{ $('prepare outside hours resume').first().json.api.connection_key }}",
+                },
+            ],
+        },
+        options: {},
+    };
+
+    @node({
+        id: '444c609a-9bd0-47f2-8155-9491c2fe7c3b',
+        name: 'outside hours resume auth error',
+        type: 'n8n-nodes-base.stopAndError',
+        version: 1,
+        position: [912, 448],
+    })
+    OutsideHoursResumeAuthError = {
+        errorType: 'errorMessage',
+        errorMessage: 'Não foi possível obter token efêmero para retomar a conversa fora do horário.',
+    };
+
+    @node({
         id: '7fd06126-8ca7-4420-b1dc-ed015a6228a3',
         name: 'get outside hours state',
         type: 'n8n-nodes-base.redis',
@@ -389,7 +432,7 @@ return [
     GetOutsideHoursState = {
         operation: 'get',
         propertyName: 'pending_state',
-        key: '={{ $json.state_key }}',
+        key: "={{ $('prepare outside hours resume').first().json.state_key }}",
         keyType: 'string',
         options: {},
     };
@@ -436,13 +479,13 @@ return [
     })
     SendOutsideHoursResume = {
         method: 'POST',
-        url: '={{ $json.api.url }}/whatsapp/messages',
+        url: "={{ $('prepare outside hours resume').first().json.api.url }}/whatsapp/messages",
         sendHeaders: true,
         headerParameters: {
             parameters: [
                 {
                     name: 'Authorization',
-                    value: '={{ $json.api.token }}',
+                    value: "=Bearer {{ $('get outside hours resume token').first().json.access_token }}",
                 },
             ],
         },
@@ -450,13 +493,13 @@ return [
         specifyBody: 'json',
         jsonBody: `={{ {
   type: 'text',
-  ...($json.client?.phone
-    ? { to: $json.client.phone }
-    : $json.client?.provider_user_id
-      ? { recipient: $json.client.provider_user_id }
-      : { to: String($json.client?.remote_jid || '').split('@')[0] }),
-  ...($json.client?.contact_id ? { contact_id: $json.client.contact_id } : {}),
-  text: $json.resume_message
+  ...($('prepare outside hours resume').first().json.client?.phone
+    ? { to: $('prepare outside hours resume').first().json.client.phone }
+    : $('prepare outside hours resume').first().json.client?.provider_user_id
+      ? { recipient: $('prepare outside hours resume').first().json.client.provider_user_id }
+      : { to: String($('prepare outside hours resume').first().json.client?.remote_jid || '').split('@')[0] }),
+  ...($('prepare outside hours resume').first().json.client?.contact_id ? { contact_id: $('prepare outside hours resume').first().json.client.contact_id } : {}),
+  text: $('prepare outside hours resume').first().json.resume_message
 } }}`,
         options: {},
     };
@@ -533,7 +576,9 @@ return [
         this.GetOutsideHoursContextKeys.out(0).to(this.SplitOutsideHoursContextKeys.in(0));
         this.SplitOutsideHoursContextKeys.out(0).to(this.GetOutsideHoursContext.in(0));
         this.GetOutsideHoursContext.out(0).to(this.PrepareOutsideHoursResume.in(0));
-        this.PrepareOutsideHoursResume.out(0).to(this.GetOutsideHoursState.in(0));
+        this.PrepareOutsideHoursResume.out(0).to(this.GetOutsideHoursResumeToken.in(0));
+        this.GetOutsideHoursResumeToken.out(0).to(this.GetOutsideHoursState.in(0));
+        this.GetOutsideHoursResumeToken.out(1).to(this.OutsideHoursResumeAuthError.in(0));
         this.GetOutsideHoursState.out(0).to(this.ShouldResumeOutsideHours.in(0));
         this.ShouldResumeOutsideHours.out(0).to(this.SendOutsideHoursResume.in(0));
         this.ShouldResumeOutsideHours.out(1).to(this.DeleteOutsideHoursContext.in(0));

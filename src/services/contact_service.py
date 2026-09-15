@@ -215,7 +215,7 @@ class ContactService:
         return len(contacts)
 
     def ownership_result(self, contact: Contact, connection) -> dict:
-        takeover = self.ownership.is_active(contact.business_id, connection.id, contact.id)
+        takeover = self.ownership.is_active_strict(contact.business_id, connection.id, contact.id)
         return {"contact": contact, "human_takeover": takeover, "should_respond": not takeover and contact.bot_policy != "HUMAN"}
 
 

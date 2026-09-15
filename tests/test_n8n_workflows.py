@@ -44,6 +44,16 @@ def test_business_context_workflows_version_cached_payload():
         assert "payment_method_labels: paymentMethodLabels" in source
 
 
+def test_business_context_staging_avoids_blocked_prototype_access():
+    source = workflow_body(
+        (ROOT / "workflows/businesses-staging.workflow.ts").read_text(encoding="utf-8")
+    )
+
+    assert "Object.prototype" not in source
+    assert "Object.keys(features).includes(key)" in source
+    assert "Object.keys(featureConfigs).includes(key)" in source
+
+
 def test_main_workflows_answer_payment_faq_with_labels():
     for source in workflow_sources("main"):
         assert "business.payment_method_labels" in source
@@ -84,14 +94,22 @@ def test_daily_cache_cleanup_workflows_target_context_caches_and_legacy_context_
 
 
 def test_main_workflows_have_conversation_act_guard_and_meta():
-    for source in workflow_sources("main"):
-        assert "name: 'conversation act guard'" in source
+    for name, source in workflow_source_items("main"):
+        if "-staging." in name:
+            assert "name: 'build classification context'" in source
+            assert "name: 'resolve classification'" in source
+            assert "name: 'needs semantic classification'" in source
+            assert "schema_version: 2" in source
+            assert "last_conversation_act" in source
+            assert "$('resolve classification').item.json.route" in source
+        else:
+            assert "name: 'conversation act guard'" in source
+            assert "last_interaction_act" in source
+            assert "$('conversation act guard').item.json.route" in source
         assert "conversation_meta" in source
         assert "last_response_type" in source
-        assert "last_interaction_act" in source
         assert "preserve_conversation_meta" in source
         assert "name: 'check appointments response'" in source
-        assert "$('conversation act guard').item.json.route" in source
 
 
 def test_conversation_redis_keys_are_instance_scoped():
@@ -120,7 +138,11 @@ def test_conversation_redis_keys_are_instance_scoped():
         expected_scope = "api.connection_key || 'default'" if "-staging." in name else "api.evo_instance || 'default'"
         assert expected_scope in source
         assert ".state" in source
-        assert ".chat_memory" in source
+        if "-staging." in name:
+            assert "/conversation-memory" in source
+            assert ".contact:{{ $('data handler').item.json.client.contact_id }}.state" in source
+        else:
+            assert ".chat_memory" in source
         assert ".chat_buffer" in source
         for old_fragment in old_key_fragments:
             assert old_fragment not in source
@@ -170,7 +192,11 @@ def test_staging_contact_ownership_precedes_business_context_and_classifier():
     assert "PERSONAL_OR_HUMAN" not in source
     assert "HUMAN_HANDOFF_REQUEST" in source
     assert "PERSONAL_CONTEXT" in source
-    assert "this.MessageClassifier.out(0).to(this.ActivateHumanTakeover.in(0))" in source
+    assert "this.MessageClassifier.out(0).to(this.PersonalHandoffResponse.in(0))" in source
+    assert "this.PersonalHandoffResponse.out(0).to(this.FinalResponse.in(0))" in source
+    assert "this.SendHandoffResponse.out(0).to(this.ActivateHumanTakeover.in(0))" in source
+    assert "this.SendHandoffResponse.out(1).to(this.ActivateHumanTakeover.in(0))" in source
+    assert "if (route === 'HUMAN_HANDOFF_REQUEST') return [];" in source
     assert "this.MessageClassifier.out(9).to(this.CommercialSpamAudit.in(0))" in source
     assert "this.MessageClassifier.out(9).to(this.ActivateHumanTakeover.in(0))" not in source
     assert "this.MessageClassifier.out(10).to(this.PersonalContextApplies.in(0))" in source
@@ -223,8 +249,8 @@ def test_staging_pending_and_error_outbound_support_bsuid_and_last_mile_ownershi
         (ROOT / "workflows/main-staging.workflow.ts").read_text(encoding="utf-8")
     )
 
-    assert "? { recipient: $json.client.provider_user_id }" in pending
-    assert "{ contact_id: $json.client.contact_id }" in pending
+    assert "? { recipient: $('prepare outside hours resume').first().json.client.provider_user_id }" in pending
+    assert "{ contact_id: $('prepare outside hours resume').first().json.client.contact_id }" in pending
     assert "provider_user_id: $('data handler').item.json.client.provider_user_id" in pending
     assert "const hasDeliverableIdentity = Boolean(" in pending
     assert "? { recipient: $('data handler').first().json.client.provider_user_id }" in error
@@ -265,7 +291,9 @@ def test_staging_demo_customizations_are_removed():
     assert 'Allowed actions:' in main
     assert '- "get": retrieve customer appointments.' in main
     assert '- "post": create a new appointment.' in main
-    assert "this.ValidateClassification.out(0).to(this.ConversationActGuard.in(0))" in main
+    assert "this.BuildClassificationContext.out(0).to(this.NeedsSemanticClassification.in(0))" in main
+    assert "this.NeedsSemanticClassification.out(0).to(this.TextClassifier.in(0))" in main
+    assert "this.ResolveClassification.out(0).to(this.MessageClassifier.in(0))" in main
     assert "this.AiAgent.uses({" in main
     for tool in ["Appointments", "Professionals", "Availabilities", "Services"]:
         assert f"this.{tool}.output" in main
@@ -317,9 +345,97 @@ def test_staging_scheduling_workflows_delegate_capacity_to_backend():
     assert "Object.fromEntries(Object.entries" in appointments
     assert "/no-show" in appointments
     assert "studio/check-and-suggest" in availabilities
+    assert "/studio/slots" in availabilities
+    assert "value: 'exact_time'" in availabilities
+    assert "value: 'date_slots'" in availabilities
     assert "studio_capacity" in availabilities
     assert "weekday" in availabilities
     assert "simultaneous_capacity" in professionals
+
+
+def test_staging_logical_replies_are_single_physical_whatsapp_requests():
+    main = workflow_body((ROOT / "workflows/main-staging.workflow.ts").read_text(encoding="utf-8"))
+    clients = workflow_body((ROOT / "workflows/clients-staging.workflow.ts").read_text(encoding="utf-8"))
+    error = workflow_body((ROOT / "workflows/error-staging.workflow.ts").read_text(encoding="utf-8"))
+
+    for source in (main, clients, error):
+        assert "type: 'n8n-nodes-base.splitInBatches'" not in source
+        assert ".split(/\\n\\n+/).filter(Boolean)" not in source
+    assert "name: 'output policy'" in main
+    assert "this.OutputPolicy.out(0).to(this.IsHandoffConfirmation.in(0))" in main
+    assert "this.SendResponse.out(0).to(this.DeleteBuffer.in(0))" in main
+
+
+def test_staging_conversation_metadata_and_selection_are_versioned_and_bounded():
+    main = workflow_body((ROOT / "workflows/main-staging.workflow.ts").read_text(encoding="utf-8"))
+
+    assert "schema_version: 2" in main
+    assert "pending_action" in main
+    assert "selection_context" in main
+    assert "expires_at" in main
+    assert "preserve_conversation_meta" in main
+    assert "appointment_id: appointment.id" in main
+    assert "'no_show'].includes(status)" in main
+    assert "$json.selection?.appointment_id || $fromAI" in main
+    assert "ambiguous_selection" in main
+
+
+def test_staging_classifier_has_deterministic_bypass_and_risk_thresholds():
+    main = workflow_body((ROOT / "workflows/main-staging.workflow.ts").read_text(encoding="utf-8"))
+
+    assert "needs_semantic_classification: !route" in main
+    assert "semantic_model_called: !context.hard_route" in main
+    assert "intent === 'COMMERCIAL_SPAM'" in main and "0.92" in main
+    assert "intent === 'HUMAN_HANDOFF_REQUEST'" in main and "0.90" in main
+    assert "intent === 'PERSONAL_CONTEXT'" in main and "0.88" in main
+    assert "risk_signal_missing" in main
+    assert "decision_source" in main
+    assert "decision_rule" in main
+    assert "name: 'agent_called'" in main
+    assert "agent_called: true" in main
+    assert "else if (commercialSignal)" not in main
+    assert "APPOINTMENT_CHANGE_LOOKUP" in main
+    assert "matched_by: ordinal ? 'ordinal' : timeMatch ? 'time' : weekday ? 'weekday' : professionalMatches.length ? 'professional'" in main
+    assert "const explicitFourthOrdinal" in main
+    assert "let operation_intent = context.operation_intent || 'AI_AGENT_FALLBACK'" in main
+    assert "if (context.operation_intent) {" in main
+    assert "operation_hint: context.operation_hint || null" in main
+    assert "source: 'awaiting_appointment_selection'" in main
+    assert "selection_count:" in main
+    assert "slice(-6000)" not in main
+    assert "name: 'get memories 1'" not in main
+    assert "name: 'clear memory'" not in main
+
+
+def test_staging_appointment_mutations_revalidate_current_tenant_state():
+    appointments = workflow_body(
+        (ROOT / "workflows/appointments-staging.workflow.ts").read_text(encoding="utf-8")
+    )
+
+    assert "name: 'validate appointment for update'" in appointments
+    assert "this.Action.out(1).to(this.ValidateAppointmentForUpdate.in(0))" in appointments
+    assert "this.ValidateAppointmentForUpdate.out(0).to(this.Patch.in(0))" in appointments
+    assert "this.Action.out(2).to(this.GetById.in(0))" in appointments
+
+
+def test_staging_buffer_and_outside_hours_state_have_bounded_minimal_contracts():
+    main = workflow_body((ROOT / "workflows/main-staging.workflow.ts").read_text(encoding="utf-8"))
+    pending = workflow_body((ROOT / "workflows/pending state-staging.workflow.ts").read_text(encoding="utf-8"))
+
+    assert "/conversation-buffer" in main
+    assert "/conversation-memory" in main
+    assert "/conversation-memory/maintain" in main
+    assert "this.AgentMessage.out(0).to(this.MaintainAgentMemory.in(0))" in main
+    assert ".contact:{{ $('resolve contact ownership').first().json.contact.id }}" in main
+    assert "operation: 'push',\n        list:" not in main.split("name: 'push buffer'", 1)[1][:900]
+    assert "getData('check appointments response')" in main
+    outside = main.split("name: 'outside hours response'", 1)[1].split("name: 'should notify outside hours?'", 1)[0]
+    assert "version: 2" in outside
+    assert "message_text" not in outside
+    assert "message_id" not in outside
+    assert "token:" not in outside
+    assert "name: 'get outside hours resume token'" in pending
+    assert "=Bearer {{ $('get outside hours resume token').first().json.access_token }}" in pending
 
 
 def test_new_staging_domain_workflows_are_backend_authoritative():

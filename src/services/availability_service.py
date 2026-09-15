@@ -407,6 +407,30 @@ class AvailabilityService:
             suggestions=suggestions,
         )
 
+    def get_studio_slots(self, business_id: int, service_id: int, target_date: date):
+        if not self.business_repo or not self.business_feature_service or not self.assignment_service:
+            raise CapacityBasedBookingDisabledError()
+        business = self.business_repo.get_by_id(self.db, business_id)
+        if not business or business.id != business_id or not business.is_active or not business.booking_enabled:
+            raise BusinessNotAvailableForBookingError()
+        if not self.business_feature_service.is_enabled(
+            business_id, BusinessFeatureKey.capacity_based_booking
+        ):
+            raise CapacityBasedBookingDisabledError()
+        service = self._validate_service(business_id, service_id)
+        now = datetime.now(ZoneInfo(business.timezone))
+        max_date = now.date() + timedelta(days=business.maximum_schedule_days or 30)
+        if target_date < now.date():
+            raise ProfessionalUnavailableError()
+        if target_date > max_date:
+            raise AvailabilityNotFoundError()
+        return [
+            self._build_suggestion(slot_start, service.duration_minutes)
+            for slot_start in self._studio_slot_datetimes_for_date(
+                business_id, service, target_date, now
+            )
+        ]
+
     def get_all(self, business_id: int, professional_id: int):
         self._validate_professional(business_id, professional_id)
 

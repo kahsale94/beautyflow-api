@@ -626,10 +626,10 @@ return output;`,
     };
     for (const feature of Array.isArray(business.features) ? business.features : []) {
       const key = String(feature?.feature_key || '');
-      if (Object.prototype.hasOwnProperty.call(features, key)) {
+      if (Object.keys(features).includes(key)) {
         features[key] = Boolean(feature.enabled);
       }
-      if (Object.prototype.hasOwnProperty.call(featureConfigs, key)) {
+      if (Object.keys(featureConfigs).includes(key)) {
         featureConfigs[key] = feature.config && typeof feature.config === 'object'
           ? feature.config
           : featureConfigs[key];

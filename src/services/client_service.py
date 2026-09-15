@@ -45,8 +45,8 @@ class ClientService:
 
         return client
 
-    def get_all(self, business_id: int):
-        result = self.client_repo.get_by_business(self.db, business_id)
+    def get_all(self, business_id: int, sort: str | None = None):
+        result = self.client_repo.get_by_business(self.db, business_id, sort) if sort else self.client_repo.get_by_business(self.db, business_id)
         if not all(item.business_id == business_id and item.is_active for item in result):
             raise ClientNotFoundError()
 

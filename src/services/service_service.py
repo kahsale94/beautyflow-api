@@ -40,8 +40,8 @@ class ServiceService:
     def get_by_id(self, business_id: int, service_id: int):
         return self._get_valid(business_id, service_id)
     
-    def get_all(self, business_id: int):
-        result = self.service_repo.get_by_business(self.db, business_id)
+    def get_all(self, business_id: int, sort: str | None = None):
+        result = self.service_repo.get_by_business(self.db, business_id, sort) if sort else self.service_repo.get_by_business(self.db, business_id)
 
         return result
     

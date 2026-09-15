@@ -2,7 +2,7 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 
 // <workflow-map>
 // Workflow : clients-staging
-// Nodes   : 61  |  Connections: 72
+// Nodes   : 61  |  Connections: 70
 //
 // NODE INDEX
 // ──────────────────────────────────────────────────────────────────
@@ -18,8 +18,8 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 // NameExtractor                      informationExtractor       [AI] [onError→out(1)] [executeOnce]
 // Switch_                            switch
 // NameInMessage                      if
-// SplitOut                           splitOut
-// LoopResponse                       splitInBatches
+// OutputPolicy                       code
+// DeliveryComplete                   noOp
 // SendResponse                       httpRequest                [onError→out(1)]
 // TypingDelay                        code
 // GetClient1                         httpRequest                [onError→out(1)] [retry]
@@ -36,17 +36,17 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 // ExistingClientSuccess              code
 // Convert                            code
 // AddName                            httpRequest                [onError→out(1)]
-// SplitOut1                          splitOut
+// OutputPolicy1                      code
 // DeletePending                      redis                      [onError→out(1)] [creds] [executeOnce] [retry]
-// LoopResponse1                      splitInBatches
+// DeliveryComplete1                  noOp
 // TypingDelay1                       code
 // SendResponse1                      httpRequest                [onError→out(1)]
 // Response1                          set
 // Response                           set
-// PushHumanMemory                    redis                      [onError→out(1)] [creds] [retry]
-// PushHumanMemory1                   redis                      [onError→out(1)] [creds] [retry]
-// PushAiMemory                       redis                      [onError→out(1)] [creds]
-// PushAiMemory1                      redis                      [onError→out(1)] [creds]
+// PushHumanMemory                    httpRequest                [onError→out(1)] [retry]
+// PushHumanMemory1                   httpRequest                [onError→out(1)] [retry]
+// PushAiMemory                       httpRequest                [onError→out(1)]
+// PushAiMemory1                      httpRequest                [onError→out(1)]
 // ErrorReport12                      stopAndError
 // ErrorReport21                      executeWorkflow
 // ErrorReport13                      stopAndError
@@ -80,44 +80,42 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 //              → NameInMessage
 //                → AddName
 //                  → Response1
-//                    → SplitOut1
-//                      → LoopResponse1
-//                        → DeletePending
-//                          → PushHumanMemory
-//                            → PushAiMemory
-//                              → DeleteBuffer
-//                               .out(1) → ErrorReport24
-//                             .out(1) → ErrorReport26
-//                                → DeleteBuffer (↩ loop)
-//                           .out(1) → ErrorReport26 (↩ loop)
-//                         .out(1) → ErrorReport17
-//                       .out(1) → TypingDelay1
-//                          → SendResponse1
-//                            → LoopResponse1 (↩ loop)
-//                           .out(1) → ErrorReport18
+//                    → OutputPolicy1
+//                      → TypingDelay1
+//                        → SendResponse1
+//                          → DeliveryComplete1
+//                            → DeletePending
+//                              → PushHumanMemory
+//                                → PushAiMemory
+//                                  → DeleteBuffer
+//                                   .out(1) → ErrorReport24
+//                                 .out(1) → ErrorReport26
+//                                    → DeleteBuffer (↩ loop)
+//                               .out(1) → ErrorReport26 (↩ loop)
+//                             .out(1) → ErrorReport17
+//                         .out(1) → ErrorReport18
 //                 .out(1) → ErrorReport14
 //               .out(1) → Response2
-//                  → SplitOut
-//                    → LoopResponse
-//                      → SetPendingState
-//                        → PushHumanMemory1
-//                          → PushAiMemory1
-//                            → DeleteBuffer (↩ loop)
-//                           .out(1) → ErrorReport25
-//                              → DeleteBuffer (↩ loop)
-//                         .out(1) → ErrorReport25 (↩ loop)
-//                       .out(1) → ErrorReport16
-//                     .out(1) → TypingDelay
-//                        → SendResponse
-//                          → LoopResponse (↩ loop)
-//                         .out(1) → ErrorReport15
+//                  → OutputPolicy
+//                    → TypingDelay
+//                      → SendResponse
+//                        → DeliveryComplete
+//                          → SetPendingState
+//                            → PushHumanMemory1
+//                              → PushAiMemory1
+//                                → DeleteBuffer (↩ loop)
+//                               .out(1) → ErrorReport25
+//                                  → DeleteBuffer (↩ loop)
+//                             .out(1) → ErrorReport25 (↩ loop)
+//                           .out(1) → ErrorReport16
+//                       .out(1) → ErrorReport15
 //             .out(1) → ErrorReport23
 //                → NameInMessage (↩ loop)
 //           .out(1) → ErrorReport1
 //         .out(1) → PostClient
 //            → ClientData
 //              → Response
-//                → SplitOut (↩ loop)
+//                → OutputPolicy (↩ loop)
 //           .out(1) → ErrorReport
 //         .out(2) → BypassCacheForExistingOnly
 //            → GetClient2
@@ -226,6 +224,7 @@ export class ClientsStagingWorkflow {
                     name: 'api',
                     value: `={{ {
   ...$json.api,
+  base_url: $json.api.base_url || $json.api.url,
   url: $json.api.url + '/clients'
 } }}`,
                     type: 'object',
@@ -354,6 +353,8 @@ export class ClientsStagingWorkflow {
         onError: 'continueErrorOutput',
     })
     SendConfirmation = {
+        resource: 'message',
+        operation: 'send',
         sendTo: 'ultimateclash22@gmail.com',
         subject: "=NOVO CLIENTE CADASTRADO ({{ $('data handler').item.json.business.name }})",
         message: `=<!DOCTYPE html>
@@ -653,26 +654,28 @@ export class ClientsStagingWorkflow {
 
     @node({
         id: 'ac0dcf5e-360e-4ad7-a8be-3090ac711eb6',
-        name: 'split out',
-        type: 'n8n-nodes-base.splitOut',
-        version: 1,
+        name: 'output policy',
+        type: 'n8n-nodes-base.code',
+        version: 2,
         position: [1344, 4400],
     })
-    SplitOut = {
-        fieldToSplitOut: 'response',
-        options: {},
+    OutputPolicy = {
+        jsCode: `const current = $input.first().json || {};
+const response = String(current.response ?? current.output ?? '')
+  .replace(/\\r\\n?/g, '\\n')
+  .replace(/\\n{3,}/g, '\\n\\n')
+  .trim();
+return [{ json: { ...current, response } }];`,
     };
 
     @node({
         id: 'ca905608-9731-45f7-9aa5-ea0e6b9939e7',
-        name: 'loop response',
-        type: 'n8n-nodes-base.splitInBatches',
-        version: 3,
+        name: 'delivery complete',
+        type: 'n8n-nodes-base.noOp',
+        version: 1,
         position: [1552, 4400],
     })
-    LoopResponse = {
-        options: {},
-    };
+    DeliveryComplete = {};
 
     @node({
         id: '68f6b4b0-1a8c-4bb9-977e-5cea41e9c020',
@@ -792,7 +795,7 @@ return [
     })
     SetPendingState = {
         operation: 'set',
-        key: "=beautyflow_bot.{{ $('data handler').item.json.api.connection_key || 'default' }}.{{ $('data handler').item.json.client.remote_jid }}.state",
+        key: "=beautyflow_bot.{{ $('data handler').item.json.api.connection_key || 'default' }}.contact:{{ $('data handler').item.json.client.contact_id }}.state",
         value: 'awaiting_name',
         expire: true,
         ttl: 86400,
@@ -1220,14 +1223,18 @@ return output;`,
 
     @node({
         id: '24d60fc5-9b28-4bc5-a2b0-57deac270049',
-        name: 'split out1',
-        type: 'n8n-nodes-base.splitOut',
-        version: 1,
+        name: 'output policy 1',
+        type: 'n8n-nodes-base.code',
+        version: 2,
         position: [1312, 3664],
     })
-    SplitOut1 = {
-        fieldToSplitOut: 'response',
-        options: {},
+    OutputPolicy1 = {
+        jsCode: `const current = $input.first().json || {};
+const response = String(current.response ?? current.output ?? '')
+  .replace(/\\r\\n?/g, '\\n')
+  .replace(/\\n{3,}/g, '\\n\\n')
+  .trim();
+return [{ json: { ...current, response } }];`,
     };
 
     @node({
@@ -1243,19 +1250,17 @@ return output;`,
     })
     DeletePending = {
         operation: 'delete',
-        key: "=beautyflow_bot.{{ $('data handler').item.json.api.connection_key || 'default' }}.{{ $('data handler').item.json.client.remote_jid }}.state",
+        key: "=beautyflow_bot.{{ $('data handler').item.json.api.connection_key || 'default' }}.contact:{{ $('data handler').item.json.client.contact_id }}.state",
     };
 
     @node({
         id: '5bf3f49e-3ab7-4285-a4ec-0cc7d9bbb53b',
-        name: 'loop response 1',
-        type: 'n8n-nodes-base.splitInBatches',
-        version: 3,
+        name: 'delivery complete 1',
+        type: 'n8n-nodes-base.noOp',
+        version: 1,
         position: [1536, 3664],
     })
-    LoopResponse1 = {
-        options: {},
-    };
+    DeliveryComplete1 = {};
 
     @node({
         id: 'd81ae2e8-e64e-4210-ae05-65fc20ac90ee',
@@ -1336,14 +1341,8 @@ return [
                 {
                     id: '43099950-bb55-4647-830f-b0aa10e7d3c3',
                     name: 'response',
-                    value: `={{
-\`Perfeito!
-Anotei aqui \${$('add name').item.json.name}
-Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\`
-.split(/\\n+/)
-.filter(Boolean)
-}}`,
-                    type: 'array',
+                    value: "={{ 'Perfeito, ' + $('add name').item.json.name + '! Para continuar, qual serviço você deseja?' }}",
+                    type: 'string',
                 },
             ],
         },
@@ -1363,8 +1362,8 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
                 {
                     id: '43099950-bb55-4647-830f-b0aa10e7d3c3',
                     name: 'response',
-                    value: '={{ "Claro!\\nPoderia me confirmar seu nome?\\nAssim podemos continuar certinho! 😊".split(/\\n+/).filter(Boolean) }}',
-                    type: 'array',
+                    value: 'Para continuar, pode me dizer seu nome?',
+                    type: 'string',
                 },
             ],
         },
@@ -1374,68 +1373,96 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
     @node({
         id: '4cc84d23-775d-4da6-b22e-73c6946c3700',
         name: 'push human memory',
-        type: 'n8n-nodes-base.redis',
-        version: 1,
+        type: 'n8n-nodes-base.httpRequest',
+        version: 4.4,
         position: [2384, 3632],
-        credentials: { redis: { id: 'yq1GIl0nbdK5QpYm', name: 'beautyflow test' } },
         onError: 'continueErrorOutput',
         executeOnce: false,
         retryOnFail: true,
     })
     PushHumanMemory = {
-        operation: 'push',
-        list: "=beautyflow_bot.{{ $('data handler').item.json.api.connection_key || 'default' }}.{{ $('data handler').item.json.client.remote_jid }}.chat_memory",
-        messageData: `={{ JSON.stringify({
+        method: 'POST',
+        url: "={{ $('data handler').item.json.api.base_url }}/whatsapp/contacts/{{ $('data handler').item.json.client.contact_id }}/conversation-memory",
+        sendHeaders: true,
+        headerParameters: {
+            parameters: [
+                {
+                    name: 'Authorization',
+                    value: "={{ $('data handler').item.json.api.token }}",
+                },
+            ],
+        },
+        sendBody: true,
+        specifyBody: 'json',
+        jsonBody: `={{ { message: JSON.stringify({
   type: "human",
   data: {
     content: $('data handler').item.json.client.message,
     additional_kwargs: {},
     response_metadata: {}
   }
-}) }}`,
-        expire: true,
-        ttl: 86400,
+}) } }}`,
+        options: {},
     };
 
     @node({
         id: '1e62a9eb-1007-4989-99a1-267c167a12dc',
         name: 'push human memory 1',
-        type: 'n8n-nodes-base.redis',
-        version: 1,
+        type: 'n8n-nodes-base.httpRequest',
+        version: 4.4,
         position: [2432, 4368],
-        credentials: { redis: { id: 'yq1GIl0nbdK5QpYm', name: 'beautyflow test' } },
         onError: 'continueErrorOutput',
         executeOnce: false,
         retryOnFail: true,
     })
     PushHumanMemory1 = {
-        operation: 'push',
-        list: "=beautyflow_bot.{{ $('data handler').item.json.api.connection_key || 'default' }}.{{ $('data handler').item.json.client.remote_jid }}.chat_memory",
-        messageData: `={{ JSON.stringify({
+        method: 'POST',
+        url: "={{ $('data handler').item.json.api.base_url }}/whatsapp/contacts/{{ $('data handler').item.json.client.contact_id }}/conversation-memory",
+        sendHeaders: true,
+        headerParameters: {
+            parameters: [
+                {
+                    name: 'Authorization',
+                    value: "={{ $('data handler').item.json.api.token }}",
+                },
+            ],
+        },
+        sendBody: true,
+        specifyBody: 'json',
+        jsonBody: `={{ { message: JSON.stringify({
   type: "human",
   data: {
     content: $('data handler').item.json.client.message,
     additional_kwargs: {},
     response_metadata: {}
   }
-}) }}`,
-        expire: true,
-        ttl: 86400,
+}) } }}`,
+        options: {},
     };
 
     @node({
         id: '0fbeda6c-2646-4b17-857d-50e02ebbb1e2',
         name: 'push ai memory',
-        type: 'n8n-nodes-base.redis',
-        version: 1,
+        type: 'n8n-nodes-base.httpRequest',
+        version: 4.4,
         position: [2592, 3616],
-        credentials: { redis: { id: 'yq1GIl0nbdK5QpYm', name: 'beautyflow test' } },
         onError: 'continueErrorOutput',
     })
     PushAiMemory = {
-        operation: 'push',
-        list: "=beautyflow_bot.{{ $('data handler').item.json.api.connection_key || 'default' }}.{{ $('data handler').item.json.client.remote_jid }}.chat_memory",
-        messageData: `={{ (() => { 
+        method: 'POST',
+        url: "={{ $('data handler').item.json.api.base_url }}/whatsapp/contacts/{{ $('data handler').item.json.client.contact_id }}/conversation-memory",
+        sendHeaders: true,
+        headerParameters: {
+            parameters: [
+                {
+                    name: 'Authorization',
+                    value: "={{ $('data handler').item.json.api.token }}",
+                },
+            ],
+        },
+        sendBody: true,
+        specifyBody: 'json',
+        jsonBody: `={{ { message: (() => {
   const raw = $('response 1').first().json.response
 
   const content = Array.isArray(raw)
@@ -1452,24 +1479,33 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
       response_metadata: {}
     }
   });
-})() }}`,
-        expire: true,
-        ttl: 86400,
+})() } }}`,
+        options: {},
     };
 
     @node({
         id: '119f65f6-76f3-49f0-84b4-b0f8c6f160a5',
         name: 'push ai memory 1',
-        type: 'n8n-nodes-base.redis',
-        version: 1,
+        type: 'n8n-nodes-base.httpRequest',
+        version: 4.4,
         position: [2672, 4352],
-        credentials: { redis: { id: 'yq1GIl0nbdK5QpYm', name: 'beautyflow test' } },
         onError: 'continueErrorOutput',
     })
     PushAiMemory1 = {
-        operation: 'push',
-        list: "=beautyflow_bot.{{ $('data handler').item.json.api.connection_key || 'default' }}.{{ $('data handler').item.json.client.remote_jid }}.chat_memory",
-        messageData: `={{ (() => { 
+        method: 'POST',
+        url: "={{ $('data handler').item.json.api.base_url }}/whatsapp/contacts/{{ $('data handler').item.json.client.contact_id }}/conversation-memory",
+        sendHeaders: true,
+        headerParameters: {
+            parameters: [
+                {
+                    name: 'Authorization',
+                    value: "={{ $('data handler').item.json.api.token }}",
+                },
+            ],
+        },
+        sendBody: true,
+        specifyBody: 'json',
+        jsonBody: `={{ { message: (() => {
   const raw = $('response 2').isExecuted
     ? $('response 2').first().json.response
     : $('response').first().json.response;
@@ -1488,9 +1524,8 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
       response_metadata: {}
     }
   });
-})() }}`,
-        expire: true,
-        ttl: 86400,
+})() } }}`,
+        options: {},
     };
 
     @node({
@@ -2529,7 +2564,7 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
     })
     DeleteBuffer = {
         operation: 'delete',
-        key: "=beautyflow_bot.{{ $('data handler').item.json.api.connection_key || 'default' }}.{{ $('data handler').item.json.client.remote_jid }}.chat_buffer",
+        key: "=beautyflow_bot.{{ $('data handler').item.json.api.connection_key || 'default' }}.contact:{{ $('data handler').item.json.client.contact_id }}.chat_buffer",
     };
 
     @node({
@@ -2643,8 +2678,8 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
                 {
                     id: '43099950-bb55-4647-830f-b0aa10e7d3c3',
                     name: 'response',
-                    value: '={{ "Desculpa, não entendi!\\nPoderia repetir?".split(/\\n+/).filter(Boolean) }}',
-                    type: 'array',
+                    value: 'Desculpe, não entendi. Pode repetir seu nome?',
+                    type: 'string',
                 },
             ],
         },
@@ -2672,11 +2707,10 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
         this.Switch_.out(2).to(this.BypassCacheForExistingOnly.in(0));
         this.NameInMessage.out(0).to(this.AddName.in(0));
         this.NameInMessage.out(1).to(this.Response2.in(0));
-        this.SplitOut.out(0).to(this.LoopResponse.in(0));
-        this.LoopResponse.out(0).to(this.SetPendingState.in(0));
-        this.LoopResponse.out(1).to(this.TypingDelay.in(0));
-        this.SendResponse.out(0).to(this.LoopResponse.in(0));
+        this.OutputPolicy.out(0).to(this.TypingDelay.in(0));
+        this.SendResponse.out(0).to(this.DeliveryComplete.in(0));
         this.SendResponse.out(1).to(this.ErrorReport15.in(0));
+        this.DeliveryComplete.out(0).to(this.SetPendingState.in(0));
         this.TypingDelay.out(0).to(this.SendResponse.in(0));
         this.GetClient1.out(0).to(this.NameExtractor.in(0));
         this.GetClient1.out(1).to(this.ErrorReport1.in(0));
@@ -2698,16 +2732,15 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
         this.ClientData.out(0).to(this.Response.in(0));
         this.AddName.out(0).to(this.Response1.in(0));
         this.AddName.out(1).to(this.ErrorReport14.in(0));
-        this.SplitOut1.out(0).to(this.LoopResponse1.in(0));
         this.DeletePending.out(0).to(this.PushHumanMemory.in(0));
         this.DeletePending.out(1).to(this.ErrorReport17.in(0));
-        this.LoopResponse1.out(0).to(this.DeletePending.in(0));
-        this.LoopResponse1.out(1).to(this.TypingDelay1.in(0));
+        this.OutputPolicy1.out(0).to(this.TypingDelay1.in(0));
         this.TypingDelay1.out(0).to(this.SendResponse1.in(0));
-        this.SendResponse1.out(0).to(this.LoopResponse1.in(0));
+        this.SendResponse1.out(0).to(this.DeliveryComplete1.in(0));
         this.SendResponse1.out(1).to(this.ErrorReport18.in(0));
-        this.Response1.out(0).to(this.SplitOut1.in(0));
-        this.Response.out(0).to(this.SplitOut.in(0));
+        this.DeliveryComplete1.out(0).to(this.DeletePending.in(0));
+        this.Response1.out(0).to(this.OutputPolicy1.in(0));
+        this.Response.out(0).to(this.OutputPolicy.in(0));
         this.PushHumanMemory.out(0).to(this.PushAiMemory.in(0));
         this.PushHumanMemory.out(1).to(this.ErrorReport26.in(0));
         this.PushHumanMemory1.out(0).to(this.PushAiMemory1.in(0));
@@ -2728,7 +2761,7 @@ Agora para continuarmos, poderia me confirmar qual serviço você deseja mesmo?\
         this.ExistingOnly.out(0).to(this.ExistingClientNotFound.in(0));
         this.ExistingOnly.out(1).to(this.PostClient1.in(0));
         this.DeleteBuffer.out(1).to(this.ErrorReport24.in(0));
-        this.Response2.out(0).to(this.SplitOut.in(0));
+        this.Response2.out(0).to(this.OutputPolicy.in(0));
 
         this.NameExtractor.uses({
             ai_languageModel: this.OpenrouterChatModel.output,

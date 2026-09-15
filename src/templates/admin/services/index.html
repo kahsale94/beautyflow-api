@@ -25,10 +25,22 @@
     </form>
     {% endcall %}
 
-    {% call control_panel("Pesquisa e filtros", "Encontre serviços pelo nome.", initially_open=q) %}
+    {% call control_panel("Pesquisa e filtros", "Encontre e ordene serviços.", initially_open=(q or sort != 'name_asc')) %}
     <form method="get" action="/admin/services" class="stack admin-search-form">
         <h2>Buscar</h2>
         <label>Nome do serviço <input name="q" value="{{ q }}" placeholder="Corte Masculino" /></label>
+        <label>Ordenar por
+            <select name="sort">
+                <option value="name_asc" {{ 'selected' if sort == 'name_asc' else '' }}>Nome (A–Z)</option>
+                <option value="name_desc" {{ 'selected' if sort == 'name_desc' else '' }}>Nome (Z–A)</option>
+                <option value="price_asc" {{ 'selected' if sort == 'price_asc' else '' }}>Menor preço</option>
+                <option value="price_desc" {{ 'selected' if sort == 'price_desc' else '' }}>Maior preço</option>
+                <option value="duration_asc" {{ 'selected' if sort == 'duration_asc' else '' }}>Menor duração</option>
+                <option value="duration_desc" {{ 'selected' if sort == 'duration_desc' else '' }}>Maior duração</option>
+                <option value="newest" {{ 'selected' if sort == 'newest' else '' }}>Mais recentes</option>
+                <option value="oldest" {{ 'selected' if sort == 'oldest' else '' }}>Mais antigos</option>
+            </select>
+        </label>
         <div class="filter-actions">
             <button class="button" type="submit">Filtrar</button>
             {% if q %}<a class="button secondary" href="/admin/services">Limpar busca</a>{% endif %}

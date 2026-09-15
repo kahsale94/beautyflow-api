@@ -27,10 +27,18 @@
     </form>
     {% endcall %}
 
-    {% call control_panel("Pesquisa e filtros", "Encontre profissionais por nome, email ou telefone.", initially_open=q) %}
+    {% call control_panel("Pesquisa e filtros", "Encontre e ordene profissionais.", initially_open=(q or sort != 'name_asc')) %}
     <form method="get" action="/admin/professionals" class="stack admin-search-form">
         <h2>Buscar</h2>
         <label>Nome, email ou telefone <input name="q" value="{{ q }}" placeholder="Carlos, exemplo@exemplo.com ou 5511999999999"/></label>
+        <label>Ordenar por
+            <select name="sort">
+                <option value="name_asc" {{ 'selected' if sort == 'name_asc' else '' }}>Nome (A–Z)</option>
+                <option value="name_desc" {{ 'selected' if sort == 'name_desc' else '' }}>Nome (Z–A)</option>
+                <option value="newest" {{ 'selected' if sort == 'newest' else '' }}>Mais recentes</option>
+                <option value="oldest" {{ 'selected' if sort == 'oldest' else '' }}>Mais antigos</option>
+            </select>
+        </label>
         <div class="filter-actions">
             <button class="button" type="submit">Filtrar</button>
             {% if q %}<a class="button secondary" href="/admin/professionals">Limpar busca</a>{% endif %}

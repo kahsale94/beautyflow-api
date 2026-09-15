@@ -134,8 +134,38 @@ export class AvailabilitiesStagingWorkflow {
                 {
                     id: 'efa277d9-3e4a-4938-a6c4-86420ebd2152',
                     name: 'slots',
-                    value: "={{ $('aggregate').first().json.slots }}",
+                    value: `={{ ($('aggregate').first().json.slots || []).map(slot => ({
+  start_datetime: slot.start_datetime || null,
+  end_datetime: slot.end_datetime || null,
+  date: slot.date || $('data handler').first().json.data.date,
+  time: slot.slot_time || slot.time || null,
+  weekday: slot.weekday || null
+})) }}`,
                     type: 'array',
+                },
+                {
+                    id: '75661f43-677f-4fc2-9964-98b69010469f',
+                    name: 'mode',
+                    value: 'date_slots',
+                    type: 'string',
+                },
+                {
+                    id: 'c54eeaf5-9379-4d68-b93c-248538316a69',
+                    name: 'scope',
+                    value: "={{ $('data handler').first().json.data.studio_mode ? 'studio_capacity' : 'professional' }}",
+                    type: 'string',
+                },
+                {
+                    id: '595b200c-c2b3-44a1-89cd-f2eadfe38fa8',
+                    name: 'requested_date',
+                    value: "={{ $('data handler').first().json.data.date }}",
+                    type: 'string',
+                },
+                {
+                    id: '050e11e8-d3ba-4b73-a814-467bdf70daea',
+                    name: 'available',
+                    value: "={{ ($('aggregate').first().json.slots || []).length > 0 }}",
+                    type: 'boolean',
                 },
             ],
         },
@@ -152,13 +182,13 @@ export class AvailabilitiesStagingWorkflow {
         alwaysOutputData: false,
     })
     GetSlots = {
-        url: "={{ $('data handler').first().json.api.url }}/",
+        url: "={{ $('data handler').first().json.api.url }}{{ $('data handler').first().json.data.studio_mode ? '/studio/slots' : '/' }}",
         sendQuery: true,
         queryParameters: {
             parameters: [
                 {
                     name: 'professional_id',
-                    value: "={{ $('data handler').first().json.data.professional_id }}",
+                    value: "={{ $('data handler').first().json.data.studio_mode ? undefined : $('data handler').first().json.data.professional_id }}",
                 },
                 {
                     name: 'service_id',
@@ -435,7 +465,13 @@ export class AvailabilitiesStagingWorkflow {
                 {
                     id: '1a4ce6d0-b026-46ed-9b3b-e880b262f5cd',
                     name: 'mode',
-                    value: "={{ $('data handler').first().json.data.studio_mode ? 'studio_capacity' : 'check_and_suggest' }}",
+                    value: 'exact_time',
+                    type: 'string',
+                },
+                {
+                    id: '729277a2-b068-4744-af17-fb06be19b18b',
+                    name: 'scope',
+                    value: "={{ $('data handler').first().json.data.studio_mode ? 'studio_capacity' : 'professional' }}",
                     type: 'string',
                 },
                 {
@@ -461,6 +497,12 @@ export class AvailabilitiesStagingWorkflow {
                     name: 'requested_end',
                     value: '={{ $json.requested_end }}',
                     type: 'string',
+                },
+                {
+                    id: 'e089034d-495e-482f-89be-6dc896e9d9d6',
+                    name: 'requested_slot',
+                    value: '={{ ({ start_datetime: $json.requested_start || null, end_datetime: $json.requested_end || null, weekday: $json.weekday || null }) }}',
+                    type: 'object',
                 },
                 {
                     id: '32f90a5b-550e-46f6-9373-b0ec543fbaae',
